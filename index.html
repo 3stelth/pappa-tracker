@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>🍼 Pappa Tracker</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍼</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gabriel-pri: #4A90D9; --gabriel-acc: #2D6CB4; --gabriel-light: #E8F1FB;
+  --vittorio-pri: #D97B4A; --vittorio-acc: #B45C2D; --vittorio-light: #FBF0E8;
+  --bg: #F6F7FB; --card: #fff; --txt: #1a1a2e; --sub: #888; --border: #eee;
+  --green: #10B981; --green-light: #DCFCE7; --red: #EF4444; --red-light: #FEF2F2;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--txt); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
+.header { padding: 22px 16px 14px; border-radius: 0 0 24px 24px; color: #fff; position: relative; overflow: hidden; }
+.header::after { content: ''; position: absolute; top: -20px; right: -20px; width: 90px; height: 90px; border-radius: 50%; background: rgba(255,255,255,0.08); }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; position: relative; z-index: 1; }
+.app-title { font-size: 19px; font-weight: 800; }
+.app-sub { font-size: 10px; opacity: 0.8; }
+.header-btns { display: flex; gap: 5px; }
+.header-btns button { background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 9px; padding: 3px 7px; border-radius: 7px; cursor: pointer; font-weight: 600; font-family: inherit; }
+.pills { display: flex; gap: 6px; margin-bottom: 8px; position: relative; z-index: 1; }
+.pill { flex: 1; padding: 8px 0; border: none; border-radius: 12px; font-size: 12px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.25s; white-space: nowrap; }
+.pill.off { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); }
+.pill.on { background: #fff; box-shadow: 0 3px 12px rgba(0,0,0,0.12); transform: scale(1.02); }
+.tabs { display: flex; gap: 4px; position: relative; z-index: 1; }
+.tab { flex: 1; padding: 8px 0; border: none; border-radius: 12px; font-size: 11px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.25s; white-space: nowrap; }
+.tab.off { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); }
+.tab.on { background: rgba(255,255,255,0.95); box-shadow: 0 3px 12px rgba(0,0,0,0.12); }
+.cal-wrap { padding: 10px 12px 0; }
+.cal { background: var(--card); border-radius: 16px; padding: 10px; box-shadow: 0 1px 12px rgba(0,0,0,0.04); }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-nav button { border: none; width: 28px; height: 28px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 700; font-family: inherit; }
+.cal-nav span { font-weight: 700; font-size: 13px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; text-align: center; }
+.cal-head { font-size: 9px; font-weight: 700; color: #aaa; padding: 2px 0; }
+.cal-day { border: none; width: 100%; aspect-ratio: 1; border-radius: 9px; font-size: 11px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: transparent; font-family: 'Nunito', sans-serif; font-weight: 600; transition: all 0.15s; }
+.cal-day.other { color: #ccc; }
+.cal-dots { display: flex; gap: 1.5px; }
+.cal-dot { width: 3px; height: 3px; border-radius: 50%; }
+.recap-section { padding: 10px 12px 0; }
+.recap-label { font-size: 11px; font-weight: 800; color: #888; margin-bottom: 6px; }
+.recap-row { display: flex; gap: 8px; }
+.recap-card { flex: 1; background: var(--card); border-radius: 14px; padding: 9px 11px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); border-top: 3px solid; }
+.recap-name { font-size: 11px; font-weight: 800; margin-bottom: 5px; }
+.recap-line { display: flex; align-items: center; gap: 4px; font-size: 10px; margin-bottom: 2px; }
+.recap-line b { font-weight: 700; color: #444; }
+.recap-line .sub { font-size: 9px; color: #aaa; }
+.therapy-badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.therapy-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 5px; }
+.therapy-badge.done { background: var(--green-light); color: var(--green); }
+.therapy-badge.pending { background: var(--red-light); color: var(--red); }
+.content { padding: 10px 12px 0; }
+.content-title { font-size: 12px; font-weight: 800; color: #555; margin-bottom: 6px; }
+.empty { background: var(--card); border-radius: 14px; padding: 20px 16px; text-align: center; color: #bbb; font-size: 11px; box-shadow: 0 1px 8px rgba(0,0,0,0.03); }
+.entry { background: var(--card); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 8px; border-left: 3px solid; margin-bottom: 6px; cursor: pointer; }
+.entry-icon { font-size: 16px; flex-shrink: 0; }
+.entry-body { flex: 1; min-width: 0; }
+.entry-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.entry-time { font-weight: 800; font-size: 12px; }
+.entry-ml { font-size: 11px; font-weight: 700; }
+.entry-tag { font-size: 8px; padding: 1px 5px; border-radius: 5px; font-weight: 700; }
+.entry-note { font-size: 9px; color: #999; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-del { border: none; background: #fee; color: #e55; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; cursor: pointer; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
+.therapy-item { background: var(--card); border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); border-left: 3px solid; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; }
+.therapy-item.done { background: #F0FDF4; opacity: 0.85; }
+.therapy-check { width: 22px; height: 22px; border-radius: 7px; border: 2px solid #ddd; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; font-size: 13px; color: #fff; font-weight: 800; }
+.therapy-check.checked { background: var(--green); border-color: var(--green); }
+.therapy-name { font-weight: 800; font-size: 12px; }
+.therapy-name.checked { text-decoration: line-through; color: #999; }
+.therapy-cat { font-size: 8px; padding: 1px 5px; border-radius: 5px; font-weight: 700; }
+.therapy-dose { font-size: 9px; color: #888; margin-top: 1px; }
+.therapy-done-badge { font-size: 8px; font-weight: 700; color: var(--green); background: var(--green-light); padding: 2px 5px; border-radius: 5px; }
+.fab { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 50%; color: #fff; border: none; font-size: 26px; font-weight: 300; cursor: pointer; box-shadow: 0 5px 20px rgba(0,0,0,0.25); z-index: 100; display: flex; align-items: center; justify-content: center; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+.modal { background: #fff; border-radius: 20px 20px 0 0; padding: 18px 16px 28px; width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 36px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 12px; }
+.modal-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; }
+.form-label { font-size: 10px; font-weight: 700; color: #888; margin-bottom: 4px; display: block; }
+.form-row { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; }
+.form-select { flex: 1; padding: 8px; border-radius: 10px; border: 2px solid var(--border); font-size: 15px; font-weight: 700; background: #fafafa; text-align: center; font-family: 'Nunito', sans-serif; }
+.form-input { width: 100%; padding: 8px 12px; border-radius: 10px; border: 2px solid var(--border); font-size: 14px; font-family: 'Nunito', sans-serif; outline: none; transition: border 0.2s; }
+.form-input:focus { border-color: var(--gabriel-pri); }
+.form-input.big { font-size: 16px; font-weight: 700; }
+.chips { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.chip { padding: 7px 13px; border: 2px solid #ddd; border-radius: 10px; background: #fff; color: #666; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: 'Nunito', sans-serif; }
+.chip.on { border-color: var(--gabriel-pri); background: var(--gabriel-pri); color: #fff; }
+.form-actions { display: flex; gap: 8px; margin-top: 4px; }
+.btn-cancel { flex: 1; padding: 11px; border-radius: 12px; border: 2px solid var(--border); background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; color: #888; font-family: 'Nunito', sans-serif; }
+.btn-save { flex: 2; padding: 11px; border-radius: 12px; border: none; color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,0.15); font-family: 'Nunito', sans-serif; }
+.sync-status { font-size: 8px; padding: 2px 6px; border-radius: 6px; font-weight: 700; }
+.sync-ok { background: var(--green-light); color: var(--green); }
+.sync-err { background: var(--red-light); color: var(--red); }
+.sync-wait { background: #FEF3C7; color: #D97706; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<script>
+// =============================================
+// CONFIG - Supabase credentials
+// =============================================
+const SUPABASE_URL = "https://ukcwajbbybkobaroyqiq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_jicoWcdW87NzVXFQTx3fxA_dJOv_dVe";
+// ─── DATA CONFIG ───
+const BABIES = ["Gabriel", "Vittorio"];
+const FEED_TYPES = ["Formula", "Materno"];
+const DIAPER_TYPES = ["Cacca", "Pipì", "Entrambi"];
+const COLORS = {
+  Gabriel: { pri: "#4A90D9", acc: "#2D6CB4", light: "#E8F1FB", grad: "linear-gradient(135deg,#4A90D9,#2D6CB4)" },
+  Vittorio: { pri: "#D97B4A", acc: "#B45C2D", light: "#FBF0E8", grad: "linear-gradient(135deg,#D97B4A,#B45C2D)" }
+};
+const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+const DAYNAMES = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+const THERAPIES = {
+  Gabriel: [
+    { id: "smartprevit", name: "Smart Previt", cat: "Multi-vitaminico", icon: "💊", dose: "1 ml/giorno", color: "#F59E0B" },
+    { id: "ferrodue", name: "Ferrodue", cat: "Ferro", icon: "🩸", dose: "2 gocce/Kg fino al 6° mese", color: "#EF4444" }
+  ],
+  Vittorio: [
+    { id: "smartprevit", name: "Smart Previt", cat: "Multi-vitaminico", icon: "💊", dose: "1 ml/giorno", color: "#F59E0B" },
+    { id: "ferrodue", name: "Ferrodue", cat: "Ferro", icon: "🩸", dose: "2 gocce/Kg fino al 6° mese", color: "#EF4444" },
+    { id: "aldactazide", name: "Aldactazide", cat: "Diuretico", icon: "💧", dose: "0,6 ml/giorno", color: "#3B82F6" }
+  ]
+};
+const STORAGE_KEY = "pappatracker_data_v2";
+// ─── STATE ───
+let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local" };
+function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function ft(h,m) { return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
+// ─── STORAGE (localStorage + Supabase sync) ───
+function loadLocal() {
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) state.data = JSON.parse(s); } catch(e) {}
+}
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); } catch(e) {}
+}
+// Supabase helpers
+function useSupabase() { return SUPABASE_URL && SUPABASE_ANON_KEY; }
+async function supaFetch(method, path, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method, headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": method === "POST" ? "resolution=merge-duplicates,return=minimal" : "return=minimal"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return r;
+}
+async function syncToCloud() {
+  if (!useSupabase()) return;
+  try {
+    state.syncStatus = "syncing"; render();
+    await supaFetch("POST", "pappa_tracker_data", { id: "main", data: state.data });
+    state.syncStatus = "ok"; render();
+    setTimeout(() => { state.syncStatus = "ok"; }, 2000);
+  } catch(e) { console.error("Sync error:", e); state.syncStatus = "error"; render(); }
+}
+async function syncFromCloud() {
+  if (!useSupabase()) return;
+  try {
+    state.syncStatus = "syncing"; render();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pappa_tracker_data?id=eq.main&select=data`, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    const rows = await r.json();
+    if (rows.length > 0 && rows[0].data) {
+      state.data = rows[0].data;
+      saveLocal();
+    }
+    state.syncStatus = "ok"; render();
+  } catch(e) { console.error("Load cloud error:", e); state.syncStatus = "error"; render(); }
+}
+async function saveData() {
+  saveLocal();
+  await syncToCloud();
+}
+// ─── HELPERS ───
+function getBabyDay(bn, dateKey) {
+  const bd = state.data[dateKey]?.[bn];
+  const feeds = bd?.feeds || [], diapers = bd?.diapers || [], checks = bd?.therapies || {}, ts = THERAPIES[bn] || [];
+  return { feeds, diapers, checks, therapies: ts, totalMl: feeds.reduce((s,f)=>s+(f.ml||0),0), totalDiapers: diapers.length, therapyDone: ts.filter(t=>checks[t.id]).length };
+}
+function getCalDays(y, mo) {
+  const first = new Date(y, mo, 1), last = new Date(y, mo+1, 0);
+  let start = first.getDay()-1; if(start<0) start=6;
+  const days = [];
+  for(let i=0;i<start;i++) days.push({date:new Date(y,mo,-start+i+1),cur:false});
+  for(let i=1;i<=last.getDate();i++) days.push({date:new Date(y,mo,i),cur:true});
+  while(days.length%7){const n=days.length-start-last.getDate()+1;days.push({date:new Date(y,mo+1,n),cur:false});}
+  return days;
+}
+function hasData(d) {
+  const dd=state.data[dk(d)]; if(!dd) return {};
+  return { feed:BABIES.some(b=>dd[b]?.feeds?.length>0), diaper:BABIES.some(b=>dd[b]?.diapers?.length>0), therapy:BABIES.some(b=>dd[b]?.therapies&&Object.values(dd[b].therapies).some(v=>v)) };
+}
+// ─── ACTIONS ───
+async function toggleTherapy(bn, tid) {
+  const key=dk(state.selDate);
+  if(!state.data[key]) state.data[key]={};
+  if(!state.data[key][bn]) state.data[key][bn]={};
+  if(!state.data[key][bn].therapies) state.data[key][bn].therapies={};
+  state.data[key][bn].therapies[tid]=!state.data[key][bn].therapies[tid];
+  await saveData(); render();
+}
+async function addEntry(entry) {
+  const key=dk(state.selDate), sec=state.tab==="feed"?"feeds":"diapers";
+  if(!state.data[key]) state.data[key]={};
+  if(!state.data[key][state.baby]) state.data[key][state.baby]={};
+  if(!state.data[key][state.baby][sec]) state.data[key][state.baby][sec]=[];
+  if(state._editIdx!==null&&state._editIdx!==undefined) state.data[key][state.baby][sec][state._editIdx]=entry;
+  else state.data[key][state.baby][sec].push(entry);
+  state.data[key][state.baby][sec].sort((a,b)=>a.time.localeCompare(b.time));
+  await saveData(); closeModal(); render();
+}
+async function delEntry(idx) {
+  const key=dk(state.selDate), sec=state.tab==="feed"?"feeds":"diapers";
+  state.data[key][state.baby][sec].splice(idx,1);
+  if(!state.data[key][state.baby][sec].length) delete state.data[key][state.baby][sec];
+  if(state.data[key][state.baby]&&!Object.keys(state.data[key][state.baby]).length) delete state.data[key][state.baby];
+  if(state.data[key]&&!Object.keys(state.data[key]).length) delete state.data[key];
+  await saveData(); render();
+}
+async function resetAll() {
+  if(confirm("Sei sicuro? Tutti i dati verranno cancellati.")) { state.data={}; await saveData(); render(); }
+}
+function exportCSV() {
+  const BOM="\uFEFF", rows=[["Data","Bambino","Categoria","Ora","ml","Tipo Latte","Tipo Pannolino","Colore","Terapia","Somministrata","Note"]];
+  Object.keys(state.data).sort().forEach(date=>{
+    BABIES.forEach(bn=>{
+      const bd=state.data[date]?.[bn]; if(!bd) return;
+      (bd.feeds||[]).forEach(f=>rows.push([date,bn,"Poppata",f.time,f.ml,f.type,"","","","",f.note||""]));
+      (bd.diapers||[]).forEach(d=>rows.push([date,bn,"Pannolino",d.time,"","",d.dtype,d.color||"","","",d.note||""]));
+      if(bd.therapies)(THERAPIES[bn]||[]).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",t.dose]);});
+    });
+  });
+  const csv=BOM+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}), a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=`pappa-tracker-${dk(new Date())}.csv`; a.click();
+}
+// ─── RENDER ───
+function render() {
+  const c=COLORS[state.baby], key=dk(state.selDate), todayK=dk(new Date());
+  const isToday=key===todayK, dateLabel=isToday?"Oggi":`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
+  const sec=state.tab==="feed"?"feeds":"diapers";
+  const entries=state.tab!=="therapy"?(state.data[key]?.[state.baby]?.[sec]||[]):[];
+  const vm=state.viewMonth, calDays=getCalDays(vm.getFullYear(),vm.getMonth());
+  // Sync indicator
+  const syncBadge = useSupabase() ? (
+    state.syncStatus==="ok" ? '<span class="sync-status sync-ok">☁️ Sync</span>' :
+    state.syncStatus==="syncing" ? '<span class="sync-status sync-wait">⏳</span>' :
+    state.syncStatus==="error" ? '<span class="sync-status sync-err">⚠️</span>' :
+    '<span class="sync-status sync-wait">📱 Local</span>'
+  ) : '<span class="sync-status sync-wait">📱 Local</span>';
+  let h = `<div class="header" style="background:${c.grad}">
+    <div class="header-top">
+      <div><div class="app-title">🍼 Pappa Tracker</div><div class="app-sub">Gabriel & Vittorio</div></div>
+      <div class="header-btns">${syncBadge}<button onclick="exportCSV()">📊 Export</button><button onclick="resetAll()" style="opacity:.7">Reset</button></div>
+    </div>
+    <div class="pills">${BABIES.map(b=>`<button class="pill ${state.baby===b?'on':'off'}" style="${state.baby===b?`color:${COLORS[b].acc}`:''}" onclick="state.baby='${b}';render()">👶🏻 ${b}</button>`).join("")}</div>
+    <div class="tabs">${[["feed","🍼 Poppate"],["diaper","💩 Pannolini"],["therapy","💊 Terapie"]].map(([t,l])=>`<button class="tab ${state.tab===t?'on':'off'}" style="${state.tab===t?`color:${c.acc}`:''}" onclick="state.tab='${t}';render()">${l}</button>`).join("")}</div>
+  </div>`;
+  // Calendar
+  h+=`<div class="cal-wrap"><div class="cal"><div class="cal-nav">
+    <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()-1});render()">‹</button>
+    <span>${MONTHS[vm.getMonth()]} ${vm.getFullYear()}</span>
+    <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()+1});render()">›</button>
+  </div><div class="cal-grid">${DAYNAMES.map(d=>`<div class="cal-head">${d}</div>`).join("")}${calDays.map(day=>{
+    const k2=dk(day.date),isSel=k2===dk(state.selDate),isTod=k2===todayK,hd=hasData(day.date);
+    const bg=isSel?c.grad:isTod?c.light:"transparent",col=isSel?"#fff":!day.cur?"#ccc":isTod?c.pri:"#333";
+    return`<button class="cal-day${!day.cur?' other':''}" style="background:${bg};color:${col};${isSel?'font-weight:800':''}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#4A90D9"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#D97B4A"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
+  }).join("")}</div></div></div>`;
+  // Recap
+  h+=`<div class="recap-section"><div class="recap-label">📊 Riepilogo — ${dateLabel}</div><div class="recap-row">${BABIES.map(bn=>{
+    const d=getBabyDay(bn,key),bc=COLORS[bn];
+    return`<div class="recap-card" style="border-top-color:${bc.pri};${bn!==state.baby?'opacity:.7':''}">
+      <div class="recap-name" style="color:${bc.acc}">👶🏻 ${bn}</div>
+      <div class="recap-line">🍼 <b>${d.totalMl} ml</b> <span class="sub">(${d.feeds.length})</span></div>
+      <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
+      <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
+    </div>`;
+  }).join("")}</div></div>`;
+  // Tab content
+  if(state.tab==="therapy"){
+    const ts=THERAPIES[state.baby]||[], checks=state.data[key]?.[state.baby]?.therapies||{};
+    h+=`<div class="content"><div class="content-title">💊 Terapie ${state.baby} — ${dateLabel}</div>${ts.map(t=>{
+      const done=!!checks[t.id];
+      return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
+        <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
+        <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${t.dose}</div></div>
+        ${done?'<span class="therapy-done-badge">Fatto</span>':''}
+      </div>`;
+    }).join("")}</div>`;
+  } else {
+    h+=`<div class="content"><div class="content-title">${state.tab==="feed"?"🍼 Poppate":"💩 Pannolini"} ${state.baby} — ${dateLabel}</div>`;
+    if(!entries.length) h+=`<div class="empty">${state.tab==="feed"?"Nessuna poppata":"Nessun cambio"}</div>`;
+    else entries.forEach((e,i)=>{
+      const isF=state.tab==="feed",eI=isF?(e.type==="Materno"?"🤱":"🍼"):(e.dtype==="Cacca"?"💩":e.dtype==="Pipì"?"💧":"💩💧");
+      const tBg=isF?(e.type==="Formula"?"#E8F1FB":"#FFF0E8"):"#F5F0FB",tC=isF?(e.type==="Formula"?"#4A90D9":"#D97B4A"):"#8B6FA8";
+      h+=`<div class="entry" style="border-left-color:${c.pri}" onclick="openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span>${isF?`<span class="entry-ml" style="color:${c.acc}">${e.ml}ml</span>`:''}<span class="entry-tag" style="background:${tBg};color:${tC}">${isF?e.type:e.dtype}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${e.color?`<div class="entry-note">Colore: ${e.color}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delEntry(${i})">✕</button></div>`;
+    });
+    h+=`</div><button class="fab" style="background:${c.grad}" onclick="openAdd()">+</button>`;
+  }
+  document.getElementById("app").innerHTML=h;
+}
+// ─── MODAL ───
+function openAdd(){
+  state._editIdx=null;const n=new Date();showModal(n.getHours(),n.getMinutes(),"","Formula","","Cacca","","");
+}
+function openEdit(idx){
+  state._editIdx=idx;const key=dk(state.selDate),sec=state.tab==="feed"?"feeds":"diapers",e=state.data[key][state.baby][sec][idx];
+  const[h,m]=e.time.split(":").map(Number);
+  if(state.tab==="feed")showModal(h,m,String(e.ml),e.type,e.note||"","Cacca","","");
+  else showModal(h,m,"","Formula","",e.dtype,e.color||"",e.note||"");
+}
+function showModal(h,m,ml,ftype,fnote,dtype,dcolor,dnote){
+  const c=COLORS[state.baby],isF=state.tab==="feed",title=(state._editIdx!==null?"Modifica":"Aggiungi")+" "+(isF?"poppata":"pannolino")+" — "+state.baby;
+  const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const mO=Array.from({length:60},(_,i)=>`<option value="${i}"${i===m?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  let fields="";
+  if(isF){fields=`<div class="form-label">Quantità (ml)</div><input class="form-input big" type="number" inputmode="numeric" id="f-ml" value="${ml}" placeholder="es. 120" style="margin-bottom:12px"><div class="form-label">Tipo</div><div class="chips" id="f-type-chips">${FEED_TYPES.map(t=>`<button class="chip${ftype===t?' on':''}" data-val="${t}" onclick="pickChip('f-type-chips','${t}')">${t==='Formula'?'🍼 Formula':'🤱 Materno'}</button>`).join("")}</div><div class="form-label">Note (opzionale)</div><input class="form-input" id="f-note" value="${fnote}" placeholder="es. rigurgito..." style="margin-bottom:12px">`;}
+  else{fields=`<div class="form-label">Tipo</div><div class="chips" id="d-type-chips">${DIAPER_TYPES.map(t=>`<button class="chip${dtype===t?' on':''}" data-val="${t}" onclick="pickChip('d-type-chips','${t}')">${t==='Cacca'?'💩 Cacca':t==='Pipì'?'💧 Pipì':'💩💧 Entrambi'}</button>`).join("")}</div><div class="form-label">Colore (opzionale)</div><input class="form-input" id="d-color" value="${dcolor}" placeholder="es. giallo, verde..." style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="d-note" value="${dnote}" placeholder="es. diarrea..." style="margin-bottom:12px">`;}
+  document.getElementById("modal-root").innerHTML=`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${title}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div>${fields}<div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitForm()">${state._editIdx!==null?'Salva':'Aggiungi'} ${isF?'🍼':'💩'}</button></div></div></div>`;
+}
+function closeModal(){document.getElementById("modal-root").innerHTML="";}
+function pickChip(id,val){document.querySelectorAll(`#${id} .chip`).forEach(c=>c.classList.toggle('on',c.dataset.val===val));}
+function getChip(id){const o=document.querySelector(`#${id} .chip.on`);return o?o.dataset.val:"";}
+function submitForm(){
+  const h=parseInt(document.getElementById("f-h").value),m=parseInt(document.getElementById("f-m").value),time=ft(h,m);
+  if(state.tab==="feed"){const ml=parseInt(document.getElementById("f-ml").value);if(!ml||isNaN(ml))return;addEntry({time,ml,type:getChip("f-type-chips")||"Formula",note:document.getElementById("f-note").value.trim()});}
+  else{addEntry({time,dtype:getChip("d-type-chips")||"Cacca",color:document.getElementById("d-color").value.trim(),note:document.getElementById("d-note").value.trim()});}
+}
+// ─── INIT ───
+loadLocal();
+render();
+syncFromCloud(); // load from Supabase if configured
+</script>
+</body>
+</html>
