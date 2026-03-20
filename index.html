@@ -11,7 +11,7 @@
 <style>
 :root {
   --gabriel-pri: #4A90D9; --gabriel-acc: #2D6CB4; --gabriel-light: #E8F1FB;
-  --vittorio-pri: #D97B4A; --vittorio-acc: #B45C2D; --vittorio-light: #FBF0E8;
+  --vittorio-pri: #14B8A6; --vittorio-acc: #0D9488; --vittorio-light: #E6FAF7;
   --bg: #F6F7FB; --card: #fff; --txt: #1a1a2e; --sub: #888; --border: #eee;
   --green: #10B981; --green-light: #DCFCE7; --red: #EF4444; --red-light: #FEF2F2;
 }
@@ -98,6 +98,10 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .sync-ok { background: var(--green-light); color: var(--green); }
 .sync-err { background: var(--red-light); color: var(--red); }
 .sync-wait { background: #FEF3C7; color: #D97706; }
+.quickadd-popup { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 6px; z-index: 50; display: flex; gap: 4px; min-width: max-content; }
+.quickadd-btn { border: none; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif; background: #f5f5f5; transition: all 0.15s; white-space: nowrap; }
+.quickadd-btn:active { transform: scale(0.95); }
+.quickadd-overlay { position: fixed; inset: 0; z-index: 40; }
 .lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
 .lock-icon { font-size: 64px; margin-bottom: 16px; }
 .lock-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
@@ -123,7 +127,7 @@ const FEED_TYPES = ["Formula", "Materno"];
 const DIAPER_TYPES = ["Cacca", "Pipì", "Entrambi"];
 const COLORS = {
   Gabriel: { pri: "#4A90D9", acc: "#2D6CB4", light: "#E8F1FB", grad: "linear-gradient(135deg,#4A90D9,#2D6CB4)" },
-  Vittorio: { pri: "#D97B4A", acc: "#B45C2D", light: "#FBF0E8", grad: "linear-gradient(135deg,#D97B4A,#B45C2D)" }
+  Vittorio: { pri: "#14B8A6", acc: "#0D9488", light: "#E6FAF7", grad: "linear-gradient(135deg,#14B8A6,#0D9488)" }
 };
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const DAYNAMES = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
@@ -255,6 +259,28 @@ function exportCSV() {
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}), a=document.createElement("a");
   a.href=URL.createObjectURL(blob); a.download=`pappa-tracker-${dk(new Date())}.csv`; a.click();
 }
+// ─── QUICK ADD ───
+let quickAddBaby = null;
+function showQuickAdd(bn, event) {
+  event.stopPropagation();
+  quickAddBaby = quickAddBaby === bn ? null : bn;
+  render();
+}
+function quickAddAction(bn, action) {
+  state.baby = bn;
+  quickAddBaby = null;
+  if (action === 'therapy') {
+    state.tab = 'therapy';
+    render();
+  } else {
+    state.tab = action === 'feed' ? 'feed' : 'diaper';
+    openAdd();
+  }
+}
+function closeQuickAdd() {
+  quickAddBaby = null;
+  render();
+}
 // ─── RENDER ───
 function render() {
   const c=COLORS[state.baby], key=dk(state.selDate), todayK=dk(new Date());
@@ -275,7 +301,6 @@ function render() {
       <div class="header-btns">${syncBadge}<button onclick="exportCSV()">📊 Export</button><button onclick="resetAll()" style="opacity:.7">Reset</button></div>
     </div>
     <div class="pills">${BABIES.map(b=>`<button class="pill ${state.baby===b?'on':'off'}" style="${state.baby===b?`color:${COLORS[b].acc}`:''}" onclick="state.baby='${b}';render()">👶🏻 ${b}</button>`).join("")}</div>
-    <div class="tabs">${[["feed","🍼 Poppate"],["diaper","💩 Pannolini"],["therapy","💊 Terapie"]].map(([t,l])=>`<button class="tab ${state.tab===t?'on':'off'}" style="${state.tab===t?`color:${c.acc}`:''}" onclick="state.tab='${t}';render()">${l}</button>`).join("")}</div>
   </div>`;
   // Calendar
   h+=`<div class="cal-wrap"><div class="cal"><div class="cal-nav">
@@ -285,39 +310,49 @@ function render() {
   </div><div class="cal-grid">${DAYNAMES.map(d=>`<div class="cal-head">${d}</div>`).join("")}${calDays.map(day=>{
     const k2=dk(day.date),isSel=k2===dk(state.selDate),isTod=k2===todayK,hd=hasData(day.date);
     const bg=isSel?c.grad:isTod?c.light:"transparent",col=isSel?"#fff":!day.cur?"#ccc":isTod?c.pri:"#333";
-    return`<button class="cal-day${!day.cur?' other':''}" style="background:${bg};color:${col};${isSel?'font-weight:800':''}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#4A90D9"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#D97B4A"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
+    return`<button class="cal-day${!day.cur?' other':''}" style="background:${bg};color:${col};${isSel?'font-weight:800':''}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#4A90D9"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#14B8A6"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
   }).join("")}</div></div></div>`;
   // Recap
   h+=`<div class="recap-section"><div class="recap-label">📊 Riepilogo — ${dateLabel}</div><div class="recap-row">${BABIES.map(bn=>{
     const d=getBabyDay(bn,key),bc=COLORS[bn];
-    return`<div class="recap-card" style="border-top-color:${bc.pri};${bn!==state.baby?'opacity:.7':''}">
-      <div class="recap-name" style="color:${bc.acc}">👶🏻 ${bn}</div>
+    return`<div class="recap-card" style="border-top-color:${bc.pri};${bn!==state.baby?'opacity:.7':''};position:relative">
+      <div class="recap-name" style="color:${bc.acc};cursor:pointer" onclick="showQuickAdd('${bn}',event)">👶🏻 ${bn} <span style="font-size:9px;opacity:0.5">＋</span></div>
+      ${quickAddBaby===bn?`<div class="quickadd-overlay" onclick="closeQuickAdd()"></div><div class="quickadd-popup"><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','feed')">🍼 Poppata</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','diaper')">💩 Pannolino</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','therapy')">💊 Terapia</button></div>`:''}
       <div class="recap-line">🍼 <b>${d.totalMl} ml</b> <span class="sub">(${d.feeds.length})</span></div>
       <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
       <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
     </div>`;
   }).join("")}</div></div>`;
-  // Tab content
-  if(state.tab==="therapy"){
-    const ts=THERAPIES[state.baby]||[], checks=state.data[key]?.[state.baby]?.therapies||{};
-    h+=`<div class="content"><div class="content-title">💊 Terapie ${state.baby} — ${dateLabel}</div>${ts.map(t=>{
-      const done=!!checks[t.id];
-      return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
-        <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
-        <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${t.dose}</div></div>
-        ${done?'<span class="therapy-done-badge">Fatto</span>':''}
-      </div>`;
-    }).join("")}</div>`;
-  } else {
-    h+=`<div class="content"><div class="content-title">${state.tab==="feed"?"🍼 Poppate":"💩 Pannolini"} ${state.baby} — ${dateLabel}</div>`;
-    if(!entries.length) h+=`<div class="empty">${state.tab==="feed"?"Nessuna poppata":"Nessun cambio"}</div>`;
-    else entries.forEach((e,i)=>{
-      const isF=state.tab==="feed",eI=isF?(e.type==="Materno"?"🤱":"🍼"):(e.dtype==="Cacca"?"💩":e.dtype==="Pipì"?"💧":"💩💧");
-      const tBg=isF?(e.type==="Formula"?"#E8F1FB":"#FFF0E8"):"#F5F0FB",tC=isF?(e.type==="Formula"?"#4A90D9":"#D97B4A"):"#8B6FA8";
-      h+=`<div class="entry" style="border-left-color:${c.pri}" onclick="openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span>${isF?`<span class="entry-ml" style="color:${c.acc}">${e.ml}ml</span>`:''}<span class="entry-tag" style="background:${tBg};color:${tC}">${isF?e.type:e.dtype}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${e.color?`<div class="entry-note">Colore: ${e.color}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delEntry(${i})">✕</button></div>`;
-    });
-    h+=`</div><button class="fab" style="background:${c.grad}" onclick="openAdd()">+</button>`;
-  }
+  // Content - All sections
+  // Feeds
+  const feeds = state.data[key]?.[state.baby]?.feeds || [];
+  h+=`<div class="content"><div class="content-title">🍼 Poppate ${state.baby} — ${dateLabel}</div>`;
+  if(!feeds.length) h+=`<div class="empty">Nessuna poppata</div>`;
+  else feeds.forEach((e,i)=>{
+    const eI=e.type==="Materno"?"🤱":"🍼";
+    const tBg=e.type==="Formula"?"#E8F1FB":"#FFF0E8",tC=e.type==="Formula"?"#4A90D9":"#D97B4A";
+    h+=`<div class="entry" style="border-left-color:${c.pri}" onclick="state.tab='feed';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:${c.acc}">${e.ml}ml</span><span class="entry-tag" style="background:${tBg};color:${tC}">${e.type}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='feed';delEntry(${i})">✕</button></div>`;
+  });
+  h+=`</div>`;
+  // Diapers
+  const diapers = state.data[key]?.[state.baby]?.diapers || [];
+  h+=`<div class="content"><div class="content-title">💩 Pannolini ${state.baby} — ${dateLabel}</div>`;
+  if(!diapers.length) h+=`<div class="empty">Nessun cambio</div>`;
+  else diapers.forEach((e,i)=>{
+    const eI=e.dtype==="Cacca"?"💩":e.dtype==="Pipì"?"💧":"💩💧";
+    h+=`<div class="entry" style="border-left-color:${c.pri}" onclick="state.tab='diaper';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-tag" style="background:#F5F0FB;color:#8B6FA8">${e.dtype}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${e.color?`<div class="entry-note">Colore: ${e.color}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='diaper';delEntry(${i})">✕</button></div>`;
+  });
+  h+=`</div>`;
+  // Therapies
+  const ts=THERAPIES[state.baby]||[], checks=state.data[key]?.[state.baby]?.therapies||{};
+  h+=`<div class="content"><div class="content-title">💊 Terapie ${state.baby} — ${dateLabel}</div>${ts.map(t=>{
+    const done=!!checks[t.id];
+    return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
+      <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${t.dose}</div></div>
+      ${done?'<span class="therapy-done-badge">Fatto</span>':''}
+    </div>`;
+  }).join("")}</div>`;
   document.getElementById("app").innerHTML=h;
 }
 // ─── MODAL ───
@@ -333,7 +368,7 @@ function openEdit(idx){
 function showModal(h,m,ml,ftype,fnote,dtype,dcolor,dnote){
   const c=COLORS[state.baby],isF=state.tab==="feed",title=(state._editIdx!==null?"Modifica":"Aggiungi")+" "+(isF?"poppata":"pannolino")+" — "+state.baby;
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
-  const mO=Array.from({length:60},(_,i)=>`<option value="${i}"${i===m?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const mins=[0,15,30,45],nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   let fields="";
   if(isF){fields=`<div class="form-label">Quantità (ml)</div><input class="form-input big" type="number" inputmode="numeric" id="f-ml" value="${ml}" placeholder="es. 120" style="margin-bottom:12px"><div class="form-label">Tipo</div><div class="chips" id="f-type-chips">${FEED_TYPES.map(t=>`<button class="chip${ftype===t?' on':''}" data-val="${t}" onclick="pickChip('f-type-chips','${t}')">${t==='Formula'?'🍼 Formula':'🤱 Materno'}</button>`).join("")}</div><div class="form-label">Note (opzionale)</div><input class="form-input" id="f-note" value="${fnote}" placeholder="es. rigurgito..." style="margin-bottom:12px">`;}
   else{fields=`<div class="form-label">Tipo</div><div class="chips" id="d-type-chips">${DIAPER_TYPES.map(t=>`<button class="chip${dtype===t?' on':''}" data-val="${t}" onclick="pickChip('d-type-chips','${t}')">${t==='Cacca'?'💩 Cacca':t==='Pipì'?'💧 Pipì':'💩💧 Entrambi'}</button>`).join("")}</div><div class="form-label">Colore (opzionale)</div><input class="form-input" id="d-color" value="${dcolor}" placeholder="es. giallo, verde..." style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="d-note" value="${dnote}" placeholder="es. diarrea..." style="margin-bottom:12px">`;}
