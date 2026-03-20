@@ -17,7 +17,7 @@
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--txt); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
-.header { padding: 22px 16px 14px; border-radius: 0 0 24px 24px; color: #fff; position: relative; overflow: hidden; }
+.header { padding: 22px 16px 14px; border-radius: 0 0 24px 24px; color: #fff; position: sticky; top: 0; z-index: 30; overflow: hidden; }
 .header::after { content: ''; position: absolute; top: -20px; right: -20px; width: 90px; height: 90px; border-radius: 50%; background: rgba(255,255,255,0.08); }
 .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; position: relative; z-index: 1; }
 .app-title { font-size: 19px; font-weight: 800; }
@@ -98,8 +98,8 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .sync-ok { background: var(--green-light); color: var(--green); }
 .sync-err { background: var(--red-light); color: var(--red); }
 .sync-wait { background: #FEF3C7; color: #D97706; }
-.quickadd-popup { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 6px; z-index: 50; display: flex; gap: 4px; min-width: max-content; }
-.quickadd-btn { border: none; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif; background: #f5f5f5; transition: all 0.15s; white-space: nowrap; }
+.quickadd-popup { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 6px; z-index: 50; display: flex; flex-direction: column; gap: 3px; }
+.quickadd-btn { border: none; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif; background: #f5f5f5; transition: all 0.15s; white-space: nowrap; text-align: left; width: 100%; }
 .quickadd-btn:active { transform: scale(0.95); }
 .quickadd-overlay { position: fixed; inset: 0; z-index: 40; }
 .lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
