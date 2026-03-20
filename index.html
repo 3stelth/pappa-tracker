@@ -263,6 +263,7 @@ function exportCSV() {
 let quickAddBaby = null;
 function showQuickAdd(bn, event) {
   event.stopPropagation();
+  state.baby = bn;
   quickAddBaby = quickAddBaby === bn ? null : bn;
   render();
 }
