@@ -98,6 +98,14 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .sync-ok { background: var(--green-light); color: var(--green); }
 .sync-err { background: var(--red-light); color: var(--red); }
 .sync-wait { background: #FEF3C7; color: #D97706; }
+.lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
+.lock-icon { font-size: 64px; margin-bottom: 16px; }
+.lock-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
+.lock-sub { font-size: 12px; color: #888; margin-bottom: 24px; }
+.lock-input { width: 100%; max-width: 260px; padding: 12px 16px; border-radius: 14px; border: 2px solid #ddd; font-size: 16px; font-family: 'Nunito', sans-serif; font-weight: 700; text-align: center; outline: none; transition: border 0.2s; }
+.lock-input:focus { border-color: #4A90D9; }
+.lock-btn { margin-top: 14px; width: 100%; max-width: 260px; padding: 12px; border-radius: 14px; border: none; background: linear-gradient(135deg,#4A90D9,#2D6CB4); color: #fff; font-size: 14px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; box-shadow: 0 4px 15px rgba(74,144,217,0.3); }
+.lock-error { color: #EF4444; font-size: 11px; font-weight: 700; margin-top: 8px; min-height: 16px; }
 </style>
 </head>
 <body>
@@ -339,10 +347,45 @@ function submitForm(){
   if(state.tab==="feed"){const ml=parseInt(document.getElementById("f-ml").value);if(!ml||isNaN(ml))return;addEntry({time,ml,type:getChip("f-type-chips")||"Formula",note:document.getElementById("f-note").value.trim()});}
   else{addEntry({time,dtype:getChip("d-type-chips")||"Cacca",color:document.getElementById("d-color").value.trim(),note:document.getElementById("d-note").value.trim()});}
 }
+// ─── AUTH ───
+const APP_PASSWORD = "Ebby";
+const AUTH_KEY = "pappatracker_auth";
+function isAuthenticated() {
+  return sessionStorage.getItem(AUTH_KEY) === "true";
+}
+function showLockScreen() {
+  document.getElementById("app").innerHTML = `<div class="lock-screen">
+    <div class="lock-icon">🍼</div>
+    <div class="lock-title">Pappa Tracker</div>
+    <div class="lock-sub">Gabriel & Vittorio</div>
+    <input class="lock-input" type="password" id="lock-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="lock-btn" onclick="checkPassword()">Accedi</button>
+    <div class="lock-error" id="lock-err"></div>
+  </div>`;
+  document.getElementById("lock-pwd").focus();
+}
+function checkPassword() {
+  const pwd = document.getElementById("lock-pwd").value;
+  if (pwd === APP_PASSWORD) {
+    sessionStorage.setItem(AUTH_KEY, "true");
+    initApp();
+  } else {
+    document.getElementById("lock-err").textContent = "Password errata";
+    document.getElementById("lock-pwd").value = "";
+    document.getElementById("lock-pwd").focus();
+  }
+}
+function initApp() {
+  loadLocal();
+  render();
+  syncFromCloud();
+}
 // ─── INIT ───
-loadLocal();
-render();
-syncFromCloud(); // load from Supabase if configured
+if (isAuthenticated()) {
+  initApp();
+} else {
+  showLockScreen();
+}
 </script>
 </body>
 </html>
