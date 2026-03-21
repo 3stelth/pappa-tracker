@@ -102,6 +102,16 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .quickadd-btn { border: none; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif; background: #f5f5f5; transition: all 0.15s; white-space: nowrap; text-align: left; width: 100%; }
 .quickadd-btn:active { transform: scale(0.95); }
 .quickadd-overlay { position: fixed; inset: 0; z-index: 40; }
+.weight-chart-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.weight-chart-modal { background: #fff; border-radius: 20px; padding: 18px 14px; width: 100%; max-width: 460px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+.weight-chart-title { font-size: 15px; font-weight: 800; margin-bottom: 12px; text-align: center; }
+.weight-chart-canvas { width: 100%; border-radius: 12px; background: #fafafa; }
+.weight-legend { display: flex; justify-content: center; gap: 16px; margin-top: 10px; }
+.weight-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; }
+.weight-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.weight-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; background: var(--card); border-radius: 14px; border: none; box-shadow: 0 1px 8px rgba(0,0,0,0.04); font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; color: #555; margin-top: 8px; transition: all 0.15s; }
+.weight-btn:active { transform: scale(0.97); }
+.weight-entry { background: var(--card); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 8px; border-left: 3px solid; margin-bottom: 6px; }
 .lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
 .lock-icon { font-size: 64px; margin-bottom: 16px; }
 .lock-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
@@ -252,6 +262,7 @@ function exportCSV() {
       const bd=state.data[date]?.[bn]; if(!bd) return;
       (bd.feeds||[]).forEach(f=>rows.push([date,bn,"Poppata",f.time,f.ml,f.type,"","","","",f.note||""]));
       (bd.diapers||[]).forEach(d=>rows.push([date,bn,"Pannolino",d.time,"","",d.dtype,d.color||"","","",d.note||""]));
+      if(bd.weight)rows.push([date,bn,"Peso",bd.weight.time,bd.weight.kg,"","","","","",bd.weight.note||""]);
       if(bd.therapies)(THERAPIES[bn]||[]).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",t.dose]);});
     });
   });
@@ -270,9 +281,8 @@ function showQuickAdd(bn, event) {
 function quickAddAction(bn, action) {
   state.baby = bn;
   quickAddBaby = null;
-  if (action === 'therapy') {
-    state.tab = 'therapy';
-    render();
+  if (action === 'weight') {
+    openWeightModal(bn);
   } else {
     state.tab = action === 'feed' ? 'feed' : 'diaper';
     openAdd();
@@ -318,9 +328,10 @@ function render() {
     const d=getBabyDay(bn,key),bc=COLORS[bn];
     return`<div class="recap-card" style="border-top-color:${bc.pri};${bn!==state.baby?'opacity:.7':''};position:relative">
       <div class="recap-name" style="color:${bc.acc};cursor:pointer" onclick="showQuickAdd('${bn}',event)">👶🏻 ${bn} <span style="font-size:9px;opacity:0.5">＋</span></div>
-      ${quickAddBaby===bn?`<div class="quickadd-overlay" onclick="closeQuickAdd()"></div><div class="quickadd-popup"><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','feed')">🍼 Poppata</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','diaper')">💩 Pannolino</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','therapy')">💊 Terapia</button></div>`:''}
+      ${quickAddBaby===bn?`<div class="quickadd-overlay" onclick="closeQuickAdd()"></div><div class="quickadd-popup"><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','feed')">🍼 Poppata</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','diaper')">💩 Pannolino</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','weight')">⚖️ Peso</button></div>`:''}
       <div class="recap-line">🍼 <b>${d.totalMl} ml</b> <span class="sub">(${d.feeds.length})</span></div>
       <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
+      <div class="recap-line">⚖️ <b>${(state.data[key]?.[bn]?.weight?.kg||'—')}${state.data[key]?.[bn]?.weight?' kg':''}</b></div>
       <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
     </div>`;
   }).join("")}</div></div>`;
@@ -344,6 +355,15 @@ function render() {
     h+=`<div class="entry" style="border-left-color:${c.pri}" onclick="state.tab='diaper';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-tag" style="background:#F5F0FB;color:#8B6FA8">${e.dtype}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${e.color?`<div class="entry-note">Colore: ${e.color}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='diaper';delEntry(${i})">✕</button></div>`;
   });
   h+=`</div>`;
+  // Weight
+  const weight = state.data[key]?.[state.baby]?.weight;
+  h+=`<div class="content"><div class="content-title">⚖️ Peso ${state.baby} — ${dateLabel}</div>`;
+  if(weight) {
+    h+=`<div class="weight-entry" style="border-left-color:${c.pri}"><div class="entry-icon">⚖️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${weight.time}</span><span class="entry-ml" style="color:${c.acc}">${weight.kg} kg</span></div>${weight.note?`<div class="entry-note">${weight.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delWeight('${state.baby}')">✕</button></div>`;
+  } else {
+    h+=`<div class="empty">Nessuna pesata</div>`;
+  }
+  h+=`<button class="weight-btn" onclick="showWeightChart()">📈 Grafico Peso</button></div>`;
   // Therapies
   const ts=THERAPIES[state.baby]||[], checks=state.data[key]?.[state.baby]?.therapies||{};
   h+=`<div class="content"><div class="content-title">💊 Terapie ${state.baby} — ${dateLabel}</div>${ts.map(t=>{
@@ -382,6 +402,89 @@ function submitForm(){
   const h=parseInt(document.getElementById("f-h").value),m=parseInt(document.getElementById("f-m").value),time=ft(h,m);
   if(state.tab==="feed"){const ml=parseInt(document.getElementById("f-ml").value);if(!ml||isNaN(ml))return;addEntry({time,ml,type:getChip("f-type-chips")||"Formula",note:document.getElementById("f-note").value.trim()});}
   else{addEntry({time,dtype:getChip("d-type-chips")||"Cacca",color:document.getElementById("d-color").value.trim(),note:document.getElementById("d-note").value.trim()});}
+}
+// ─── WEIGHT ───
+function openWeightModal(bn) {
+  const c=COLORS[bn], n=new Date(), h=n.getHours(), m=n.getMinutes();
+  const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);
+  const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  // Check existing weight for today
+  const key=dk(state.selDate), existing=state.data[key]?.[bn]?.weight;
+  const wVal=existing?String(existing.kg):'', wNote=existing?.note||'';
+  document.getElementById("modal-root").innerHTML=`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${existing?'Modifica':'Aggiungi'} peso — ${bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div><div class="form-label">Peso (kg)</div><input class="form-input big" type="number" inputmode="decimal" step="0.01" id="w-kg" value="${wVal}" placeholder="es. 3.45" style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="w-note" value="${wNote}" placeholder="es. prima della poppata..." style="margin-bottom:12px"><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitWeight('${bn}')">${existing?'Salva':'Aggiungi'} ⚖️</button></div></div></div>`;
+}
+async function submitWeight(bn) {
+  const kg=parseFloat(document.getElementById("w-kg").value);
+  if(!kg||isNaN(kg)) return;
+  const h=parseInt(document.getElementById("f-h").value), m=parseInt(document.getElementById("f-m").value);
+  const key=dk(state.selDate);
+  if(!state.data[key]) state.data[key]={};
+  if(!state.data[key][bn]) state.data[key][bn]={};
+  state.data[key][bn].weight={kg, time:ft(h,m), note:document.getElementById("w-note").value.trim()};
+  await saveData(); closeModal(); render();
+}
+async function delWeight(bn) {
+  const key=dk(state.selDate);
+  if(state.data[key]?.[bn]?.weight) {
+    delete state.data[key][bn].weight;
+    if(!Object.keys(state.data[key][bn]).length) delete state.data[key][bn];
+    if(!Object.keys(state.data[key]).length) delete state.data[key];
+    await saveData(); render();
+  }
+}
+function getWeightHistory(bn) {
+  const points=[];
+  Object.keys(state.data).sort().forEach(date=>{
+    const w=state.data[date]?.[bn]?.weight;
+    if(w) points.push({date, kg:w.kg});
+  });
+  return points;
+}
+function showWeightChart() {
+  const gData=getWeightHistory("Gabriel"), vData=getWeightHistory("Vittorio");
+  if(!gData.length && !vData.length) { alert("Nessun dato peso registrato."); return; }
+  // Collect all dates and find min/max
+  const allDates=[...new Set([...gData.map(p=>p.date),...vData.map(p=>p.date)])].sort();
+  const allKg=[...gData.map(p=>p.kg),...vData.map(p=>p.kg)];
+  const minKg=Math.floor(Math.min(...allKg)*10)/10-0.2, maxKg=Math.ceil(Math.max(...allKg)*10)/10+0.2;
+  const W=420, H=260, pad={t:25,r:15,b:40,l:40};
+  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+  function x(i){return pad.l+(i/(allDates.length-1||1))*cw;}
+  function y(kg){return pad.t+ch-(((kg-minKg)/(maxKg-minKg||1))*ch);}
+  // Draw SVG
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="weight-chart-canvas" xmlns="http://www.w3.org/2000/svg">`;
+  // Grid lines
+  const steps=5;
+  for(let i=0;i<=steps;i++){
+    const val=minKg+((maxKg-minKg)/steps)*i, yy=y(val);
+    svg+=`<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="#eee" stroke-width="1"/>`;
+    svg+=`<text x="${pad.l-5}" y="${yy+3}" text-anchor="end" font-size="8" fill="#aaa" font-family="Nunito">${val.toFixed(1)}</text>`;
+  }
+  // Date labels
+  const maxLabels=Math.min(allDates.length,7), step=Math.max(1,Math.floor(allDates.length/maxLabels));
+  allDates.forEach((d,i)=>{
+    if(i%step===0||i===allDates.length-1){
+      const parts=d.split('-');
+      svg+=`<text x="${x(i)}" y="${H-pad.b+18}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${parts[2]}/${parts[1]}</text>`;
+    }
+  });
+  // Draw lines
+  function drawLine(data, color){
+    if(data.length<1) return '';
+    let path='', circles='';
+    data.forEach(p=>{
+      const i=allDates.indexOf(p.date), px=x(i), py=y(p.kg);
+      if(!path) path=`M${px},${py}`; else path+=` L${px},${py}`;
+      circles+=`<circle cx="${px}" cy="${py}" r="4" fill="${color}" stroke="#fff" stroke-width="2"/>`;
+      circles+=`<text x="${px}" y="${py-8}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700" font-family="Nunito">${p.kg}</text>`;
+    });
+    return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${circles}`;
+  }
+  svg+=drawLine(gData, COLORS.Gabriel.pri);
+  svg+=drawLine(vData, COLORS.Vittorio.pri);
+  svg+=`</svg>`;
+  document.getElementById("modal-root").innerHTML=`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div>${svg}<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div></div><div style="margin-top:14px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`;
 }
 // ─── AUTH ───
 const APP_PASSWORD = "Ebby";
