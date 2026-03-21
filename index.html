@@ -752,12 +752,17 @@ async function delTemp(bn) {
 }
 function tempColor(t) { return t < 37.5 ? '#10B981' : t <= 38.5 ? '#F59E0B' : '#EF4444'; }
 // ─── WEEKLY SUMMARY ───
-function showWeeklySummary() {
+let weeklyOffset = 0;
+function showWeeklySummary(offset) {
+  if(offset!==undefined) weeklyOffset=offset;
   const bn=state.baby, c=COLORS[bn], now=new Date();
+  const endDate=new Date(now.getFullYear(),now.getMonth(),now.getDate()-weeklyOffset*7);
+  const startDate=new Date(endDate.getFullYear(),endDate.getMonth(),endDate.getDate()-6);
+  const label=`${startDate.getDate()}/${startDate.getMonth()+1} — ${endDate.getDate()}/${endDate.getMonth()+1}`;
   let rows='';
   let totMl=0,totFeeds=0,totDiapers=0,days=0;
   for(let i=6;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+    const d=new Date(endDate.getFullYear(),endDate.getMonth(),endDate.getDate()-i);
     const key=dk(d), bd=state.data[key]?.[bn];
     const dayFeeds=bd?.feeds||[], dayDiapers=bd?.diapers||[];
     const ml=dayFeeds.reduce((s,f)=>s+(f.ml||0),0);
@@ -770,7 +775,8 @@ function showWeeklySummary() {
     rows+=`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 4px;font-weight:700;font-size:10px">${dayName} ${d.getDate()}/${d.getMonth()+1}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${ml||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayFeeds.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayDiapers.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${wt}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${tmp}</td></tr>`;
   }
   const avgMl=days?Math.round(totMl/days):0, avgFeeds=days?(totFeeds/days).toFixed(1):0, avgDiapers=days?(totDiapers/days).toFixed(1):0;
-  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">📅 Settimana — ${bn}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:'Nunito',sans-serif"><thead><tr style="border-bottom:2px solid ${c.pri}"><th style="padding:6px 4px;text-align:left;font-size:9px;color:#888">Giorno</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">ml</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">🍼</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">💩</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">kg</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">°C</th></tr></thead><tbody>${rows}<tr style="background:${c.light};font-weight:800"><td style="padding:6px 4px;font-size:10px">Media/gg</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgMl}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgFeeds}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgDiapers}</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td></tr></tbody></table></div><div style="margin-top:14px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`);
+  const isCurrentWeek=weeklyOffset===0;
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">📅 Settimana — ${bn}</div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><button onclick="event.stopPropagation();showWeeklySummary(${weeklyOffset+1})" style="border:none;width:32px;height:32px;border-radius:8px;background:${c.light};color:${c.pri};font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">‹</button><span style="font-size:12px;font-weight:800;color:#555">${label}</span><button onclick="event.stopPropagation();showWeeklySummary(${weeklyOffset-1})" style="border:none;width:32px;height:32px;border-radius:8px;background:${isCurrentWeek?'#eee':c.light};color:${isCurrentWeek?'#ccc':c.pri};font-size:16px;font-weight:700;cursor:pointer;font-family:inherit"${isCurrentWeek?' disabled':''}>›</button></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:'Nunito',sans-serif"><thead><tr style="border-bottom:2px solid ${c.pri}"><th style="padding:6px 4px;text-align:left;font-size:9px;color:#888">Giorno</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">ml</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">🍼</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">💩</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">kg</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">°C</th></tr></thead><tbody>${rows}<tr style="background:${c.light};font-weight:800"><td style="padding:6px 4px;font-size:10px">Media/gg</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgMl}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgFeeds}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgDiapers}</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td></tr></tbody></table></div><div style="margin-top:14px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`);
 }
 // ─── AUTH ───
 const APP_PASSWORD = "Ebby";
