@@ -206,6 +206,16 @@ const THERAPIES = {
   ]
 };
 const STORAGE_KEY = "pappatracker_data_v2";
+const GEST_WEEKS = 27; // settimane gestazionali alla nascita
+const PRETERM_CORRECTION = 40 - GEST_WEEKS; // 13 settimane da sottrarre per età corretta
+// Fenton 2013 Preterm Boys Weight (P3, P50, P97) — settimane gestazionali 22-50
+const FENTON_BOYS = {
+  weeks: [22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50],
+  p3:  [0.40,0.45,0.55,0.65,0.75,0.85,0.95,1.05,1.20,1.35,1.55,1.75,1.95,2.15,2.35,2.55,2.70,2.85,2.95,3.05,3.10,3.15,3.25,3.35,3.50,3.65,3.80,3.95,4.10],
+  p50: [0.50,0.56,0.68,0.80,0.93,1.05,1.18,1.35,1.55,1.75,2.00,2.25,2.50,2.70,2.90,3.10,3.30,3.45,3.55,3.65,3.75,3.85,4.00,4.15,4.35,4.55,4.75,4.95,5.15],
+  p97: [0.65,0.72,0.85,1.00,1.15,1.35,1.55,1.75,2.00,2.30,2.60,2.90,3.20,3.50,3.75,3.95,4.15,4.35,4.55,4.70,4.85,5.00,5.20,5.45,5.70,5.95,6.20,6.45,6.70]
+};
+// WHO Boys Weight-for-age (0-24 months corrected age) - P3, P50, P97
 const WHO_BOYS = {
   months: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
   p3:  [2.5,3.4,4.3,5.0,5.6,6.0,6.4,6.7,6.9,7.1,7.4,7.6,7.7,7.9,8.1,8.3,8.4,8.6,8.8,8.9,9.1,9.2,9.4,9.5,9.7],
@@ -541,71 +551,121 @@ function getWeightHistory(bn) {
 function showWeightChart() {
   const gData=getWeightHistory("Gabriel"), vData=getWeightHistory("Vittorio");
   if(!gData.length && !vData.length) { alert("Nessun dato peso registrato."); return; }
-  function ageWeeks(dateStr) {
+  // Età corretta per prematuri: età anagrafica - (40 - settimane gestazione)
+  function ageWeeksFromBirth(dateStr) {
     const parts=dateStr.split('-');
     const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
     return (d - BIRTH_DATE) / (7 * 24 * 3600 * 1000);
   }
-  const gPts=gData.map(p=>({weeks:ageWeeks(p.date),kg:p.kg}));
-  const vPts=vData.map(p=>({weeks:ageWeeks(p.date),kg:p.kg}));
+  function correctedAgeWeeks(dateStr) {
+    return ageWeeksFromBirth(dateStr) - PRETERM_CORRECTION;
+  }
+  // Punti peso: asse X = età corretta
+  const gPts=gData.map(p=>({weeks:ageWeeksFromBirth(p.date),corrected:correctedAgeWeeks(p.date),kg:p.kg}));
+  const vPts=vData.map(p=>({weeks:ageWeeksFromBirth(p.date),corrected:correctedAgeWeeks(p.date),kg:p.kg}));
   const allWeeks=[...gPts.map(p=>p.weeks),...vPts.map(p=>p.weeks)];
   const maxWeekData=Math.max(...allWeeks);
-  const maxWeek=Math.max(Math.ceil(maxWeekData)+2, 16);
+  const maxWeek=Math.max(Math.ceil(maxWeekData)+2, 20);
   const allKg=[...gData.map(p=>p.kg),...vData.map(p=>p.kg)];
-  const maxMonthVis=Math.min(Math.ceil(maxWeek/4.345)+1, 24);
-  const whoMinVis=WHO_BOYS.p3[0], whoMaxVis=WHO_BOYS.p97[Math.min(maxMonthVis, 24)];
-  const minKg=Math.floor(Math.min(Math.min(...allKg), whoMinVis)*10)/10-0.2;
-  const maxKg=Math.ceil(Math.max(Math.max(...allKg), whoMaxVis)*10)/10+0.2;
-  const W=420, H=300, pad={t:25,r:15,b:50,l:40};
+  // Fenton range visibile (da settimana gestazionale di nascita fino a 50)
+  const fentonStartIdx=FENTON_BOYS.weeks.indexOf(GEST_WEEKS);
+  const fentonMinKg=FENTON_BOYS.p3[fentonStartIdx<0?0:fentonStartIdx];
+  // WHO range per età corretta
+  const maxCorrMonth=Math.min(Math.ceil((maxWeekData-PRETERM_CORRECTION)/4.345)+1, 24);
+  const whoMaxKg=maxCorrMonth>0?WHO_BOYS.p97[Math.min(Math.max(maxCorrMonth,0),24)]:0;
+  const minKg=Math.max(0, Math.floor(Math.min(Math.min(...allKg), fentonMinKg)*10)/10-0.1);
+  const maxKg=Math.ceil(Math.max(Math.max(...allKg), whoMaxKg, FENTON_BOYS.p97[FENTON_BOYS.weeks.length-1]>0?6:0)*10)/10+0.3;
+  const W=420, H=320, pad={t:25,r:15,b:55,l:40};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
   function x(w){return pad.l+(w/maxWeek)*cw;}
   function y(kg){return pad.t+ch-(((kg-minKg)/(maxKg-minKg||1))*ch);}
-  function whoWeeks(mi){return mi*4.345;}
   let svg=`<svg viewBox="0 0 ${W} ${H}" class="weight-chart-canvas" xmlns="http://www.w3.org/2000/svg">`;
+  // Grid
   const steps=6;
   for(let i=0;i<=steps;i++){
     const val=minKg+((maxKg-minKg)/steps)*i, yy=y(val);
     svg+=`<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="#eee" stroke-width="1"/>`;
     svg+=`<text x="${pad.l-5}" y="${yy+3}" text-anchor="end" font-size="8" fill="#aaa" font-family="Nunito">${val.toFixed(1)}</text>`;
   }
-  const wStep=maxWeek<=16?2:maxWeek<=30?4:8;
+  // X labels (settimane dalla nascita)
+  const wStep=maxWeek<=20?2:maxWeek<=40?4:8;
   for(let w=0;w<=maxWeek;w+=wStep){
-    svg+=`<text x="${x(w)}" y="${H-pad.b+16}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${w}s</text>`;
+    svg+=`<text x="${x(w)}" y="${H-pad.b+16}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${w}</text>`;
   }
-  svg+=`<text x="${pad.l+cw/2}" y="${H-pad.b+32}" text-anchor="middle" font-size="9" fill="#999" font-family="Nunito">Settimane di vita</text>`;
-  // WHO percentile band P3-P97
-  const visMonths=Math.min(maxMonthVis, 24);
-  let bandPath='';
-  for(let mi=0;mi<=visMonths;mi++){
-    const wx=whoWeeks(mi); if(wx>maxWeek) break;
-    bandPath+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p97[mi])}`;
+  svg+=`<text x="${pad.l+cw/2}" y="${H-pad.b+30}" text-anchor="middle" font-size="8" fill="#999" font-family="Nunito">Settimane dalla nascita</text>`;
+  svg+=`<text x="${pad.l+cw/2}" y="${H-pad.b+42}" text-anchor="middle" font-size="7" fill="#bbb" font-family="Nunito">(Età corretta = -${PRETERM_CORRECTION} sett. per curve di riferimento)</text>`;
+  // Vertical line at "termine corretto" (week PRETERM_CORRECTION from birth = 40 sett. gestazionali)
+  const termLine=x(PRETERM_CORRECTION);
+  if(termLine>pad.l && termLine<W-pad.r){
+    svg+=`<line x1="${termLine}" y1="${pad.t}" x2="${termLine}" y2="${H-pad.b}" stroke="#F59E0B" stroke-width="1" stroke-dasharray="4,3"/>`;
+    svg+=`<text x="${termLine}" y="${pad.t-5}" text-anchor="middle" font-size="7" fill="#F59E0B" font-family="Nunito" font-weight="700">Termine (40s)</text>`;
   }
-  for(let mi=visMonths;mi>=0;mi--){
-    const wx=whoWeeks(mi); if(wx>maxWeek) continue;
-    bandPath+=`L${x(wx)},${y(WHO_BOYS.p3[mi])}`;
+  // FENTON curves (from birth to ~10 weeks post-term = 50 sett gestazionali)
+  // Map Fenton gestational weeks to weeks-from-birth: weekFromBirth = gestWeek - GEST_WEEKS
+  let fenBandPath='';
+  for(let fi=fentonStartIdx;fi<FENTON_BOYS.weeks.length;fi++){
+    const wfb=FENTON_BOYS.weeks[fi]-GEST_WEEKS;
+    if(wfb>maxWeek) break;
+    const px=x(wfb), py=y(FENTON_BOYS.p97[fi]);
+    fenBandPath+=(fi===fentonStartIdx?'M':'L')+`${px},${py}`;
   }
-  bandPath+='Z';
-  svg+=`<path d="${bandPath}" fill="#E5E7EB" fill-opacity="0.4"/>`;
-  // P3, P50, P97 lines
-  let p3P='',p50P='',p97P='';
-  for(let mi=0;mi<=visMonths;mi++){
-    const wx=whoWeeks(mi); if(wx>maxWeek) break;
-    p3P+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p3[mi])}`;
-    p50P+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p50[mi])}`;
-    p97P+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p97[mi])}`;
+  for(let fi=FENTON_BOYS.weeks.length-1;fi>=fentonStartIdx;fi--){
+    const wfb=FENTON_BOYS.weeks[fi]-GEST_WEEKS;
+    if(wfb>maxWeek) continue;
+    fenBandPath+=`L${x(wfb)},${y(FENTON_BOYS.p3[fi])}`;
   }
-  svg+=`<path d="${p3P}" fill="none" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="3,3"/>`;
-  svg+=`<path d="${p50P}" fill="none" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="5,4"/>`;
-  svg+=`<path d="${p97P}" fill="none" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="3,3"/>`;
-  // Percentile labels
-  const lm=Math.min(visMonths, Math.floor(maxWeek/4.345));
-  if(lm>=0){
-    const lx=x(whoWeeks(lm))+5;
-    svg+=`<text x="${lx}" y="${y(WHO_BOYS.p3[lm])+3}" font-size="7" fill="#aaa" font-family="Nunito">3°</text>`;
-    svg+=`<text x="${lx}" y="${y(WHO_BOYS.p50[lm])+3}" font-size="7" fill="#888" font-family="Nunito">50°</text>`;
-    svg+=`<text x="${lx}" y="${y(WHO_BOYS.p97[lm])+3}" font-size="7" fill="#aaa" font-family="Nunito">97°</text>`;
+  fenBandPath+='Z';
+  svg+=`<path d="${fenBandPath}" fill="#DBEAFE" fill-opacity="0.35"/>`;
+  // Fenton P50 line
+  let fen50='';
+  for(let fi=fentonStartIdx;fi<FENTON_BOYS.weeks.length;fi++){
+    const wfb=FENTON_BOYS.weeks[fi]-GEST_WEEKS;
+    if(wfb>maxWeek) break;
+    fen50+=(fi===fentonStartIdx?'M':'L')+`${x(wfb)},${y(FENTON_BOYS.p50[fi])}`;
   }
-  // Baby data
+  svg+=`<path d="${fen50}" fill="none" stroke="#93C5FD" stroke-width="1.5" stroke-dasharray="5,4"/>`;
+  // Fenton labels
+  const fenLabelIdx=Math.min(FENTON_BOYS.weeks.length-1, fentonStartIdx+Math.floor((FENTON_BOYS.weeks.length-fentonStartIdx)*0.7));
+  const fenLabelW=FENTON_BOYS.weeks[fenLabelIdx]-GEST_WEEKS;
+  if(fenLabelW<=maxWeek){
+    svg+=`<text x="${x(fenLabelW)+3}" y="${y(FENTON_BOYS.p3[fenLabelIdx])+3}" font-size="6" fill="#93C5FD" font-family="Nunito">Fenton 3°</text>`;
+    svg+=`<text x="${x(fenLabelW)+3}" y="${y(FENTON_BOYS.p50[fenLabelIdx])+3}" font-size="6" fill="#60A5FA" font-family="Nunito">Fenton 50°</text>`;
+    svg+=`<text x="${x(fenLabelW)+3}" y="${y(FENTON_BOYS.p97[fenLabelIdx])+3}" font-size="6" fill="#93C5FD" font-family="Nunito">Fenton 97°</text>`;
+  }
+  // WHO curves mapped to weeks-from-birth (age corretta + PRETERM_CORRECTION)
+  // WHO month 0 = termine corretto = week PRETERM_CORRECTION from birth
+  const maxWhoMonth=Math.min(24, Math.max(0,maxCorrMonth));
+  if(maxWhoMonth>0){
+    let whoBand='';
+    for(let mi=0;mi<=maxWhoMonth;mi++){
+      const wfb=PRETERM_CORRECTION+mi*4.345;
+      if(wfb>maxWeek) break;
+      whoBand+=(mi===0?'M':'L')+`${x(wfb)},${y(WHO_BOYS.p97[mi])}`;
+    }
+    for(let mi=maxWhoMonth;mi>=0;mi--){
+      const wfb=PRETERM_CORRECTION+mi*4.345;
+      if(wfb>maxWeek) continue;
+      whoBand+=`L${x(wfb)},${y(WHO_BOYS.p3[mi])}`;
+    }
+    whoBand+='Z';
+    svg+=`<path d="${whoBand}" fill="#E5E7EB" fill-opacity="0.3"/>`;
+    let who50='';
+    for(let mi=0;mi<=maxWhoMonth;mi++){
+      const wfb=PRETERM_CORRECTION+mi*4.345;
+      if(wfb>maxWeek) break;
+      who50+=(mi===0?'M':'L')+`${x(wfb)},${y(WHO_BOYS.p50[mi])}`;
+    }
+    svg+=`<path d="${who50}" fill="none" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="5,4"/>`;
+    // WHO labels
+    const whoLm=Math.min(maxWhoMonth, Math.max(0,Math.floor((maxWeek-PRETERM_CORRECTION)/4.345)));
+    if(whoLm>0){
+      const wlx=x(PRETERM_CORRECTION+whoLm*4.345)+3;
+      svg+=`<text x="${wlx}" y="${y(WHO_BOYS.p3[whoLm])+3}" font-size="6" fill="#aaa" font-family="Nunito">OMS 3°</text>`;
+      svg+=`<text x="${wlx}" y="${y(WHO_BOYS.p50[whoLm])+3}" font-size="6" fill="#888" font-family="Nunito">OMS 50°</text>`;
+      svg+=`<text x="${wlx}" y="${y(WHO_BOYS.p97[whoLm])+3}" font-size="6" fill="#aaa" font-family="Nunito">OMS 97°</text>`;
+    }
+  }
+  // Baby data (plotted on weeks from birth)
   function drawLine(pts, color){
     if(pts.length<1) return '';
     let path='', circles='';
@@ -620,8 +680,8 @@ function showWeightChart() {
   svg+=drawLine(gPts, COLORS.Gabriel.pri);
   svg+=drawLine(vPts, COLORS.Vittorio.pri);
   svg+=`</svg>`;
-  const helpText='<div style="font-size:9px;color:#888;margin-top:8px;padding:0 4px;line-height:1.4">📖 <b>Come leggere:</b> La banda grigia mostra il range normale OMS (3°-97° percentile). La linea tratteggiata è la mediana (50°). Se il peso del bimbo è dentro la banda grigia, la crescita è nella norma. Sotto il 3° o sopra il 97° consultare il pediatra.</div>';
-  setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso — Percentili OMS</div>${svg}<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:#D1D5DB"></div>OMS 3°-97°</div></div>${helpText}<div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`);
+  const helpText='<div style="font-size:9px;color:#888;margin-top:8px;padding:0 4px;line-height:1.5">📖 <b>Come leggere (prematuri ${GEST_WEEKS} sett.):</b><br>• <b style="color:#60A5FA">Banda azzurra</b> = Curve Fenton (prematuri) — dalla nascita fino al termine corretto<br>• <b style="color:#9CA3AF">Banda grigia</b> = Curve OMS (a termine) — dal termine corretto in poi, usando l\'età corretta (-${PRETERM_CORRECTION} sett.)<br>• <b style="color:#F59E0B">Linea gialla</b> = Termine corretto (40 sett. gestazionali)<br>• I punti dei bimbi sono posizionati sulle settimane dalla nascita reale<br>• Se il peso è dentro la banda colorata, la crescita è nella norma per prematuri</div>';
+  setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Peso — Fenton + OMS (prem. ${GEST_WEEKS}s)</div>${svg}<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:#93C5FD"></div>Fenton</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:#D1D5DB"></div>OMS</div></div>${helpText}<div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`);
 }
 // ─── PEDIATRIC REPORT ───
 const BIRTH_DATE = new Date(2025, 11, 8);
