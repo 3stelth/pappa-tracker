@@ -15,6 +15,29 @@
   --bg: #F6F7FB; --card: #fff; --txt: #1a1a2e; --sub: #888; --border: #eee;
   --green: #10B981; --green-light: #DCFCE7; --red: #EF4444; --red-light: #FEF2F2;
 }
+body.dark {
+  --bg: #0f0f1a; --card: #1e1e30; --txt: #e0e0e0; --sub: #888; --border: #333;
+  --green-light: #064e3b; --red-light: #450a0a;
+}
+body.dark .cal-head { color: #666; }
+body.dark .cal-day { color: #ccc; }
+body.dark .cal-day.other { color: #444; }
+body.dark .empty { color: #555; }
+body.dark .entry-note { color: #666; }
+body.dark .recap-line b { color: #ccc; }
+body.dark .form-input, body.dark .form-select { background: #2a2a3e; color: #e0e0e0; border-color: #444; }
+body.dark .modal { background: #1e1e30; }
+body.dark .chip { background: #2a2a3e; color: #aaa; border-color: #444; }
+body.dark .quickadd-popup { background: #1e1e30; }
+body.dark .quickadd-btn { background: #2a2a3e; color: #ccc; }
+body.dark .weight-chart-modal { background: #1e1e30; }
+body.dark .lock-screen { background: #0f0f1a; }
+body.dark .lock-title { color: #e0e0e0; }
+body.dark .lock-input { background: #1e1e30; color: #e0e0e0; border-color: #444; }
+body.dark .btn-cancel { background: #2a2a3e; color: #aaa; border-color: #444; }
+body.dark .therapy-item { background: var(--card); }
+body.dark .therapy-item.done { background: #0a2e1a; }
+body.dark .entry-del { background: #3a1a1a; }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--txt); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
 .header { padding: 22px 16px 14px; border-radius: 0 0 24px 24px; color: #fff; position: sticky; top: 0; z-index: 30; overflow: hidden; }
@@ -112,6 +135,8 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .weight-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; background: var(--card); border-radius: 14px; border: none; box-shadow: 0 1px 8px rgba(0,0,0,0.04); font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; color: #555; margin-top: 8px; transition: all 0.15s; }
 .weight-btn:active { transform: scale(0.97); }
 .weight-entry { background: var(--card); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 8px; border-left: 3px solid; margin-bottom: 6px; }
+.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px); background: #10B981; color: #fff; padding: 8px 20px; border-radius: 12px; font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; z-index: 300; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: transform 0.3s ease; pointer-events: none; }
+.toast.show { transform: translateX(-50%) translateY(0); }
 .lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
 .lock-icon { font-size: 64px; margin-bottom: 16px; }
 .lock-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
@@ -120,17 +145,45 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .lock-input:focus { border-color: #4A90D9; }
 .lock-btn { margin-top: 14px; width: 100%; max-width: 260px; padding: 12px; border-radius: 14px; border: none; background: linear-gradient(135deg,#4A90D9,#2D6CB4); color: #fff; font-size: 14px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; box-shadow: 0 4px 15px rgba(74,144,217,0.3); }
 .lock-error { color: #EF4444; font-size: 11px; font-weight: 700; margin-top: 8px; min-height: 16px; }
+.report-section { margin-bottom: 16px; }
+.report-section h3 { font-size: 13px; font-weight: 800; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #eee; }
+.report-stat { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+.report-stat .label { color: #888; }
+.report-stat .value { font-weight: 700; }
+.report-flag { color: #EF4444; font-weight: 700; font-size: 11px; }
+.report-ok { color: #10B981; font-weight: 700; font-size: 11px; }
+@media print {
+  body > *:not(#modal-root) { display: none !important; }
+  .modal-bg { position: static !important; background: none !important; }
+  .modal { border-radius: 0 !important; max-height: none !important; box-shadow: none !important; }
+  .btn-cancel, .modal-handle { display: none !important; }
+}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div id="modal-root"></div>
+<div id="toast" class="toast"></div>
 <script>
 // =============================================
 // CONFIG - Supabase credentials
 // =============================================
 const SUPABASE_URL = "https://ukcwajbbybkobaroyqiq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_jicoWcdW87NzVXFQTx3fxA_dJOv_dVe";
+// ─── DARK MODE ───
+const DARK_KEY = "pappatracker_darkmode";
+function isDark() {
+  const saved = localStorage.getItem(DARK_KEY);
+  if (saved !== null) return saved === "true";
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function toggleDark() {
+  const dark = !document.body.classList.contains('dark');
+  document.body.classList.toggle('dark', dark);
+  localStorage.setItem(DARK_KEY, dark);
+  render();
+}
+if (isDark()) document.body.classList.add('dark');
 // ─── DATA CONFIG ───
 const BABIES = ["Gabriel", "Vittorio"];
 const FEED_TYPES = ["Formula", "Materno"];
@@ -153,6 +206,12 @@ const THERAPIES = {
   ]
 };
 const STORAGE_KEY = "pappatracker_data_v2";
+const WHO_BOYS = {
+  months: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
+  p3:  [2.5,3.4,4.3,5.0,5.6,6.0,6.4,6.7,6.9,7.1,7.4,7.6,7.7,7.9,8.1,8.3,8.4,8.6,8.8,8.9,9.1,9.2,9.4,9.5,9.7],
+  p50: [3.3,4.5,5.6,6.4,7.0,7.5,7.9,8.3,8.6,8.9,9.2,9.4,9.6,9.9,10.1,10.3,10.5,10.7,10.9,11.1,11.3,11.5,11.8,12.0,12.2],
+  p97: [4.4,5.8,7.1,8.0,8.7,9.3,9.8,10.3,10.7,11.0,11.4,11.7,12.0,12.3,12.6,12.8,13.1,13.4,13.6,13.9,14.2,14.5,14.7,15.0,15.3]
+};
 // ─── STATE ───
 let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local" };
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
@@ -205,6 +264,7 @@ async function syncFromCloud() {
 async function saveData() {
   saveLocal();
   await syncToCloud();
+  showToast();
 }
 // ─── HELPERS ───
 function getBabyDay(bn, dateKey) {
@@ -224,6 +284,26 @@ function getCalDays(y, mo) {
 function hasData(d) {
   const dd=state.data[dk(d)]; if(!dd) return {};
   return { feed:BABIES.some(b=>dd[b]?.feeds?.length>0), diaper:BABIES.some(b=>dd[b]?.diapers?.length>0), therapy:BABIES.some(b=>dd[b]?.therapies&&Object.values(dd[b].therapies).some(v=>v)) };
+}
+function getLastFeedAgo(bn) {
+  const now = new Date();
+  const todayKey = dk(now);
+  const yesterdayKey = dk(new Date(now.getFullYear(), now.getMonth(), now.getDate()-1));
+  for (const dateKey of [todayKey, yesterdayKey]) {
+    const feeds = state.data[dateKey]?.[bn]?.feeds;
+    if (feeds && feeds.length) {
+      const lastFeed = feeds[feeds.length - 1];
+      const [hh, mm] = lastFeed.time.split(':').map(Number);
+      const feedDate = new Date(parseInt(dateKey.split('-')[0]), parseInt(dateKey.split('-')[1])-1, parseInt(dateKey.split('-')[2]), hh, mm);
+      const diffMs = now - feedDate;
+      const diffH = Math.floor(diffMs / 3600000);
+      const diffM = Math.floor((diffMs % 3600000) / 60000);
+      const color = diffH < 3 ? '#10B981' : diffH < 4 ? '#F59E0B' : '#EF4444';
+      const text = diffH > 0 ? `${diffH}h ${diffM}min fa` : `${diffM}min fa`;
+      return { text, color };
+    }
+  }
+  return { text: 'Nessuna recente', color: '#aaa' };
 }
 // ─── ACTIONS ───
 async function toggleTherapy(bn, tid) {
@@ -263,6 +343,7 @@ function exportCSV() {
       (bd.feeds||[]).forEach(f=>rows.push([date,bn,"Poppata",f.time,f.ml,f.type,"","","","",f.note||""]));
       (bd.diapers||[]).forEach(d=>rows.push([date,bn,"Pannolino",d.time,"","",d.dtype,d.color||"","","",d.note||""]));
       if(bd.weight)rows.push([date,bn,"Peso",bd.weight.time,bd.weight.kg,"","","","","",bd.weight.note||""]);
+      if(bd.temperature)rows.push([date,bn,"Temperatura",bd.temperature.time,bd.temperature.temp,"","","","","",bd.temperature.note||""]);
       if(bd.therapies)(THERAPIES[bn]||[]).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",t.dose]);});
     });
   });
@@ -283,6 +364,8 @@ function quickAddAction(bn, action) {
   quickAddBaby = null;
   if (action === 'weight') {
     openWeightModal(bn);
+  } else if (action === 'temp') {
+    openTempModal(bn);
   } else {
     state.tab = action === 'feed' ? 'feed' : 'diaper';
     openAdd();
@@ -309,7 +392,7 @@ function render() {
   let h = `<div class="header" style="background:${c.grad}">
     <div class="header-top">
       <div><div class="app-title">🍼 Pappa Tracker</div><div class="app-sub">Gabriel & Vittorio</div></div>
-      <div class="header-btns">${syncBadge}<button onclick="exportCSV()">📊 Export</button><button onclick="resetAll()" style="opacity:.7">Reset</button></div>
+      <div class="header-btns">${syncBadge}<button onclick="toggleDark()">${document.body.classList.contains('dark')?'☀️':'🌙'}</button><button onclick="showPediatricReport()">📋</button><button onclick="exportCSV()">📊 Export</button><button onclick="resetAll()" style="opacity:.7">Reset</button></div>
     </div>
     <div class="pills">${BABIES.map(b=>`<button class="pill ${state.baby===b?'on':'off'}" style="${state.baby===b?`color:${COLORS[b].acc}`:''}" onclick="state.baby='${b}';render()">👶🏻 ${b}</button>`).join("")}</div>
   </div>`;
@@ -328,13 +411,16 @@ function render() {
     const d=getBabyDay(bn,key),bc=COLORS[bn];
     return`<div class="recap-card" style="border-top-color:${bc.pri};${bn!==state.baby?'opacity:.7':''};position:relative">
       <div class="recap-name" style="color:${bc.acc};cursor:pointer" onclick="showQuickAdd('${bn}',event)">👶🏻 ${bn} <span style="font-size:9px;opacity:0.5">＋</span></div>
-      ${quickAddBaby===bn?`<div class="quickadd-overlay" onclick="closeQuickAdd()"></div><div class="quickadd-popup"><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','feed')">🍼 Poppata</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','diaper')">💩 Pannolino</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','weight')">⚖️ Peso</button></div>`:''}
+      ${quickAddBaby===bn?`<div class="quickadd-overlay" onclick="closeQuickAdd()"></div><div class="quickadd-popup"><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','feed')">🍼 Poppata</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','diaper')">💩 Pannolino</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','weight')">⚖️ Peso</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','temp')">🌡️ Temperatura</button></div>`:''}
       <div class="recap-line">🍼 <b>${d.totalMl} ml</b> <span class="sub">(${d.feeds.length})</span></div>
+      <div class="recap-line" style="font-size:9px"><span style="color:${getLastFeedAgo(bn).color}">🕐 Ultima: ${getLastFeedAgo(bn).text}</span></div>
       <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
       <div class="recap-line">⚖️ <b>${(state.data[key]?.[bn]?.weight?.kg||'—')}${state.data[key]?.[bn]?.weight?' kg':''}</b></div>
+      <div class="recap-line">🌡️ <b style="color:${state.data[key]?.[bn]?.temperature?tempColor(state.data[key][bn].temperature.temp):'inherit'}">${state.data[key]?.[bn]?.temperature?.temp||'—'}${state.data[key]?.[bn]?.temperature?'°C':''}</b></div>
       <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
     </div>`;
   }).join("")}</div></div>`;
+  h+=`<div style="padding:4px 12px 0"><button class="weight-btn" onclick="showWeeklySummary()">📅 Riepilogo Settimanale</button></div>`;
   // Content - All sections
   // Feeds
   const feeds = state.data[key]?.[state.baby]?.feeds || [];
@@ -364,6 +450,16 @@ function render() {
     h+=`<div class="empty">Nessuna pesata</div>`;
   }
   h+=`<button class="weight-btn" onclick="showWeightChart()">📈 Grafico Peso</button></div>`;
+  // Temperature
+  const temperature = state.data[key]?.[state.baby]?.temperature;
+  h+=`<div class="content"><div class="content-title">🌡️ Temperatura ${state.baby} — ${dateLabel}</div>`;
+  if(temperature) {
+    const tc=tempColor(temperature.temp);
+    h+=`<div class="weight-entry" style="border-left-color:${tc}"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${temperature.time}</span><span class="entry-ml" style="color:${tc}">${temperature.temp}°C</span></div>${temperature.note?`<div class="entry-note">${temperature.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}')">✕</button></div>`;
+  } else {
+    h+=`<div class="empty">Nessuna misurazione</div>`;
+  }
+  h+=`</div>`;
   // Therapies
   const ts=THERAPIES[state.baby]||[], checks=state.data[key]?.[state.baby]?.therapies||{};
   h+=`<div class="content"><div class="content-title">💊 Terapie ${state.baby} — ${dateLabel}</div>${ts.map(t=>{
@@ -444,47 +540,283 @@ function getWeightHistory(bn) {
 function showWeightChart() {
   const gData=getWeightHistory("Gabriel"), vData=getWeightHistory("Vittorio");
   if(!gData.length && !vData.length) { alert("Nessun dato peso registrato."); return; }
-  // Collect all dates and find min/max
-  const allDates=[...new Set([...gData.map(p=>p.date),...vData.map(p=>p.date)])].sort();
+  function ageWeeks(dateStr) {
+    const parts=dateStr.split('-');
+    const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    return (d - BIRTH_DATE) / (7 * 24 * 3600 * 1000);
+  }
+  const gPts=gData.map(p=>({weeks:ageWeeks(p.date),kg:p.kg}));
+  const vPts=vData.map(p=>({weeks:ageWeeks(p.date),kg:p.kg}));
+  const allWeeks=[...gPts.map(p=>p.weeks),...vPts.map(p=>p.weeks)];
+  const maxWeekData=Math.max(...allWeeks);
+  const maxWeek=Math.max(Math.ceil(maxWeekData)+2, 16);
   const allKg=[...gData.map(p=>p.kg),...vData.map(p=>p.kg)];
-  const minKg=Math.floor(Math.min(...allKg)*10)/10-0.2, maxKg=Math.ceil(Math.max(...allKg)*10)/10+0.2;
-  const W=420, H=260, pad={t:25,r:15,b:40,l:40};
+  const maxMonthVis=Math.min(Math.ceil(maxWeek/4.345)+1, 24);
+  const whoMinVis=WHO_BOYS.p3[0], whoMaxVis=WHO_BOYS.p97[Math.min(maxMonthVis, 24)];
+  const minKg=Math.floor(Math.min(Math.min(...allKg), whoMinVis)*10)/10-0.2;
+  const maxKg=Math.ceil(Math.max(Math.max(...allKg), whoMaxVis)*10)/10+0.2;
+  const W=420, H=300, pad={t:25,r:15,b:50,l:40};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  function x(i){return pad.l+(i/(allDates.length-1||1))*cw;}
+  function x(w){return pad.l+(w/maxWeek)*cw;}
   function y(kg){return pad.t+ch-(((kg-minKg)/(maxKg-minKg||1))*ch);}
-  // Draw SVG
+  function whoWeeks(mi){return mi*4.345;}
   let svg=`<svg viewBox="0 0 ${W} ${H}" class="weight-chart-canvas" xmlns="http://www.w3.org/2000/svg">`;
-  // Grid lines
-  const steps=5;
+  const steps=6;
   for(let i=0;i<=steps;i++){
     const val=minKg+((maxKg-minKg)/steps)*i, yy=y(val);
     svg+=`<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="#eee" stroke-width="1"/>`;
     svg+=`<text x="${pad.l-5}" y="${yy+3}" text-anchor="end" font-size="8" fill="#aaa" font-family="Nunito">${val.toFixed(1)}</text>`;
   }
-  // Date labels
-  const maxLabels=Math.min(allDates.length,7), step=Math.max(1,Math.floor(allDates.length/maxLabels));
-  allDates.forEach((d,i)=>{
-    if(i%step===0||i===allDates.length-1){
-      const parts=d.split('-');
-      svg+=`<text x="${x(i)}" y="${H-pad.b+18}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${parts[2]}/${parts[1]}</text>`;
-    }
-  });
-  // Draw lines
-  function drawLine(data, color){
-    if(data.length<1) return '';
+  const wStep=maxWeek<=16?2:maxWeek<=30?4:8;
+  for(let w=0;w<=maxWeek;w+=wStep){
+    svg+=`<text x="${x(w)}" y="${H-pad.b+16}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${w}s</text>`;
+  }
+  svg+=`<text x="${pad.l+cw/2}" y="${H-pad.b+32}" text-anchor="middle" font-size="9" fill="#999" font-family="Nunito">Settimane di vita</text>`;
+  // WHO percentile band P3-P97
+  const visMonths=Math.min(maxMonthVis, 24);
+  let bandPath='';
+  for(let mi=0;mi<=visMonths;mi++){
+    const wx=whoWeeks(mi); if(wx>maxWeek) break;
+    bandPath+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p97[mi])}`;
+  }
+  for(let mi=visMonths;mi>=0;mi--){
+    const wx=whoWeeks(mi); if(wx>maxWeek) continue;
+    bandPath+=`L${x(wx)},${y(WHO_BOYS.p3[mi])}`;
+  }
+  bandPath+='Z';
+  svg+=`<path d="${bandPath}" fill="#E5E7EB" fill-opacity="0.4"/>`;
+  // P3, P50, P97 lines
+  let p3P='',p50P='',p97P='';
+  for(let mi=0;mi<=visMonths;mi++){
+    const wx=whoWeeks(mi); if(wx>maxWeek) break;
+    p3P+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p3[mi])}`;
+    p50P+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p50[mi])}`;
+    p97P+=(mi===0?'M':'L')+`${x(wx)},${y(WHO_BOYS.p97[mi])}`;
+  }
+  svg+=`<path d="${p3P}" fill="none" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="3,3"/>`;
+  svg+=`<path d="${p50P}" fill="none" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="5,4"/>`;
+  svg+=`<path d="${p97P}" fill="none" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="3,3"/>`;
+  // Percentile labels
+  const lm=Math.min(visMonths, Math.floor(maxWeek/4.345));
+  if(lm>=0){
+    const lx=x(whoWeeks(lm))+5;
+    svg+=`<text x="${lx}" y="${y(WHO_BOYS.p3[lm])+3}" font-size="7" fill="#aaa" font-family="Nunito">3°</text>`;
+    svg+=`<text x="${lx}" y="${y(WHO_BOYS.p50[lm])+3}" font-size="7" fill="#888" font-family="Nunito">50°</text>`;
+    svg+=`<text x="${lx}" y="${y(WHO_BOYS.p97[lm])+3}" font-size="7" fill="#aaa" font-family="Nunito">97°</text>`;
+  }
+  // Baby data
+  function drawLine(pts, color){
+    if(pts.length<1) return '';
     let path='', circles='';
-    data.forEach(p=>{
-      const i=allDates.indexOf(p.date), px=x(i), py=y(p.kg);
+    pts.forEach(p=>{
+      const px=x(p.weeks), py=y(p.kg);
       if(!path) path=`M${px},${py}`; else path+=` L${px},${py}`;
       circles+=`<circle cx="${px}" cy="${py}" r="4" fill="${color}" stroke="#fff" stroke-width="2"/>`;
       circles+=`<text x="${px}" y="${py-8}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700" font-family="Nunito">${p.kg}</text>`;
     });
     return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${circles}`;
   }
-  svg+=drawLine(gData, COLORS.Gabriel.pri);
-  svg+=drawLine(vData, COLORS.Vittorio.pri);
+  svg+=drawLine(gPts, COLORS.Gabriel.pri);
+  svg+=drawLine(vPts, COLORS.Vittorio.pri);
   svg+=`</svg>`;
-  document.getElementById("modal-root").innerHTML=`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div>${svg}<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div></div><div style="margin-top:14px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`;
+  const helpText='<div style="font-size:9px;color:#888;margin-top:8px;padding:0 4px;line-height:1.4">📖 <b>Come leggere:</b> La banda grigia mostra il range normale OMS (3°-97° percentile). La linea tratteggiata è la mediana (50°). Se il peso del bimbo è dentro la banda grigia, la crescita è nella norma. Sotto il 3° o sopra il 97° consultare il pediatra.</div>';
+  document.getElementById("modal-root").innerHTML=`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso — Percentili OMS</div>${svg}<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:#D1D5DB"></div>OMS 3°-97°</div></div>${helpText}<div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`;
+}
+// ─── PEDIATRIC REPORT ───
+const BIRTH_DATE = new Date(2025, 11, 8);
+function showPediatricReport() {
+  let reportBaby = state.baby;
+  function buildReport(bn) {
+    const c = COLORS[bn];
+    const today = new Date();
+    // Age calculation
+    const ageMs = today - BIRTH_DATE;
+    const ageDays = Math.floor(ageMs / 86400000);
+    const ageMonths = Math.floor(ageDays / 30.44);
+    const ageRemDays = Math.floor(ageDays - ageMonths * 30.44);
+    const ageStr = ageMonths > 0 ? `${ageMonths} mesi e ${ageRemDays} giorni` : `${ageDays} giorni`;
+    // Collect last 7 days
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      days.push(dk(d));
+    }
+    const daysWithData = days.filter(k => state.data[k]?.[bn]);
+    const numDays = daysWithData.length || 1;
+    // Feeds
+    let totalMl = 0, totalFeeds = 0, formulaCount = 0, maternoCount = 0;
+    days.forEach(k => {
+      const feeds = state.data[k]?.[bn]?.feeds || [];
+      totalFeeds += feeds.length;
+      feeds.forEach(f => {
+        totalMl += f.ml || 0;
+        if (f.type === "Formula") formulaCount++; else maternoCount++;
+      });
+    });
+    const avgMl = numDays ? Math.round(totalMl / numDays) : 0;
+    const avgFeeds = numDays ? (totalFeeds / numDays).toFixed(1) : "0";
+    const prevalente = formulaCount >= maternoCount ? "Formula" : "Materno";
+    // Diapers
+    let totalDiapers = 0;
+    days.forEach(k => { totalDiapers += (state.data[k]?.[bn]?.diapers || []).length; });
+    const avgDiapers = numDays ? (totalDiapers / numDays).toFixed(1) : "0";
+    // Weight
+    let lastWeight = null, firstWeight = null;
+    days.forEach(k => {
+      const w = state.data[k]?.[bn]?.weight;
+      if (w) { if (!firstWeight) firstWeight = w.kg; lastWeight = w.kg; }
+    });
+    // If no weight in period, get most recent from all history
+    if (!lastWeight) {
+      const hist = getWeightHistory(bn);
+      if (hist.length) lastWeight = hist[hist.length - 1].kg;
+    }
+    const weightVar = (firstWeight && lastWeight) ? (lastWeight - firstWeight).toFixed(2) : null;
+    // Temperature
+    let lastTemp = null;
+    days.forEach(k => {
+      const t = state.data[k]?.[bn]?.temperature;
+      if (t) lastTemp = t;
+    });
+    // Therapy compliance
+    const therapies = THERAPIES[bn] || [];
+    let therapyTotal = 0, therapyDone = 0;
+    if (therapies.length) {
+      days.forEach(k => {
+        therapyTotal++;
+        const checks = state.data[k]?.[bn]?.therapies || {};
+        const allDone = therapies.every(t => checks[t.id]);
+        if (allDone) therapyDone++;
+      });
+    }
+    const compliance = therapyTotal ? Math.round((therapyDone / therapyTotal) * 100) : null;
+    // Period label
+    const startDate = days[0].split('-').reverse().join('/');
+    const endDate = days[days.length - 1].split('-').reverse().join('/');
+    return `
+      <div style="padding:4px 0 12px;">
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:18px;font-weight:800;color:${c.acc}">Report per il Pediatra</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">Periodo: ${startDate} — ${endDate} (7 giorni)</div>
+          <div style="font-size:11px;color:#888">Generato il ${new Date().toLocaleDateString('it-IT')}</div>
+        </div>
+        <div style="background:${c.light};border-radius:12px;padding:10px 12px;margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:800;color:${c.acc}">👶🏻 ${bn}</div>
+          <div style="font-size:11px;color:#666;margin-top:2px">Età: ${ageStr} (nato l'8 dicembre 2025)</div>
+        </div>
+        <div class="report-section">
+          <h3 style="color:${c.acc}">🍼 Alimentazione</h3>
+          <div class="report-stat"><span class="label">Media ml/giorno</span><span class="value">${avgMl} ml</span></div>
+          <div class="report-stat"><span class="label">Media poppate/giorno</span><span class="value">${avgFeeds}</span></div>
+          <div class="report-stat"><span class="label">Tipo prevalente</span><span class="value">${prevalente}</span></div>
+          <div class="report-stat"><span class="label">Totale nel periodo</span><span class="value">${totalMl} ml (${totalFeeds} poppate)</span></div>
+        </div>
+        <div class="report-section">
+          <h3 style="color:${c.acc}">💩 Pannolini</h3>
+          <div class="report-stat"><span class="label">Media/giorno</span><span class="value">${avgDiapers}</span></div>
+          <div class="report-stat"><span class="label">Totale nel periodo</span><span class="value">${totalDiapers}</span></div>
+        </div>
+        <div class="report-section">
+          <h3 style="color:${c.acc}">⚖️ Peso</h3>
+          <div class="report-stat"><span class="label">Ultimo peso</span><span class="value">${lastWeight ? lastWeight + ' kg' : '—'}</span></div>
+          ${weightVar !== null ? `<div class="report-stat"><span class="label">Variazione nel periodo</span><span class="value ${parseFloat(weightVar) >= 0 ? 'report-ok' : 'report-flag'}">${parseFloat(weightVar) >= 0 ? '+' : ''}${weightVar} kg</span></div>` : ''}
+        </div>
+        <div class="report-section">
+          <h3 style="color:${c.acc}">🌡️ Temperatura</h3>
+          ${lastTemp ? `<div class="report-stat"><span class="label">Ultima registrata</span><span class="value">${lastTemp}°C</span></div>
+          ${parseFloat(lastTemp) > 37.5 ? '<div class="report-flag">⚠️ Sopra 37.5°C</div>' : '<div class="report-ok">✓ Nella norma</div>'}` : '<div style="font-size:11px;color:#aaa">Nessun dato registrato</div>'}
+        </div>
+        <div class="report-section">
+          <h3 style="color:${c.acc}">💊 Terapie</h3>
+          ${therapies.length ? `
+            <div class="report-stat"><span class="label">Compliance</span><span class="value ${compliance >= 80 ? 'report-ok' : compliance >= 50 ? '' : 'report-flag'}">${compliance}%</span></div>
+            <div style="font-size:10px;color:#888;margin-top:4px">(giorni con tutte le terapie somministrate / giorni totali)</div>
+            <div style="margin-top:6px">${therapies.map(t => `<div style="font-size:11px;padding:2px 0">${t.icon} ${t.name} — ${t.dose}</div>`).join('')}</div>
+          ` : '<div style="font-size:11px;color:#aaa">Nessuna terapia configurata</div>'}
+        </div>
+      </div>`;
+  }
+  function renderReport() {
+    const c = COLORS[reportBaby];
+    document.getElementById("modal-root").innerHTML = `<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">${BABIES.map(b => `<button class="pill ${reportBaby === b ? 'on' : 'off'}" style="${reportBaby === b ? 'color:' + COLORS[b].acc : 'background:' + COLORS[b].light + ';color:' + COLORS[b].acc}" data-baby="${b}">👶🏻 ${b}</button>`).join('')}</div>
+      <div id="report-content">${buildReport(reportBaby)}</div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="closeModal()">Chiudi</button>
+        <button class="btn-save" style="background:${c.grad}" onclick="window.print()">🖨️ Stampa</button>
+      </div>
+    </div></div>`;
+    // Attach pill switching via event delegation
+    document.querySelectorAll('.modal .pill').forEach(btn => {
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        reportBaby = this.dataset.baby;
+        renderReport();
+      };
+    });
+  }
+  renderReport();
+}
+// ─── TOAST ───
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg || '✅ Salvato!';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+// ─── TEMPERATURE ───
+function openTempModal(bn) {
+  const c=COLORS[bn], n=new Date(), h=n.getHours(), m=n.getMinutes();
+  const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);
+  const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const key=dk(state.selDate), existing=state.data[key]?.[bn]?.temperature;
+  const tVal=existing?String(existing.temp):'', tNote=existing?.note||'';
+  document.getElementById("modal-root").innerHTML=`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${existing?'Modifica':'Aggiungi'} temperatura — ${bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div><div class="form-label">Temperatura (°C)</div><input class="form-input big" type="number" inputmode="decimal" step="0.1" min="35" max="42" id="t-val" value="${tVal}" placeholder="es. 36.8" style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="t-note" value="${tNote}" placeholder="es. dopo il bagnetto..." style="margin-bottom:12px"><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitTemp('${bn}')">${existing?'Salva':'Aggiungi'} 🌡️</button></div></div></div>`;
+}
+async function submitTemp(bn) {
+  const temp=parseFloat(document.getElementById("t-val").value);
+  if(!temp||isNaN(temp)) return;
+  const h=parseInt(document.getElementById("f-h").value), m=parseInt(document.getElementById("f-m").value);
+  const key=dk(state.selDate);
+  if(!state.data[key]) state.data[key]={};
+  if(!state.data[key][bn]) state.data[key][bn]={};
+  state.data[key][bn].temperature={temp, time:ft(h,m), note:document.getElementById("t-note").value.trim()};
+  await saveData(); closeModal(); render();
+}
+async function delTemp(bn) {
+  const key=dk(state.selDate);
+  if(state.data[key]?.[bn]?.temperature) {
+    delete state.data[key][bn].temperature;
+    if(!Object.keys(state.data[key][bn]).length) delete state.data[key][bn];
+    if(!Object.keys(state.data[key]).length) delete state.data[key];
+    await saveData(); render();
+  }
+}
+function tempColor(t) { return t < 37.5 ? '#10B981' : t <= 38.5 ? '#F59E0B' : '#EF4444'; }
+// ─── WEEKLY SUMMARY ───
+function showWeeklySummary() {
+  const bn=state.baby, c=COLORS[bn], now=new Date();
+  let rows='';
+  let totMl=0,totFeeds=0,totDiapers=0,days=0;
+  for(let i=6;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+    const key=dk(d), bd=state.data[key]?.[bn];
+    const dayFeeds=bd?.feeds||[], dayDiapers=bd?.diapers||[];
+    const ml=dayFeeds.reduce((s,f)=>s+(f.ml||0),0);
+    const wt=bd?.weight?.kg||'—';
+    const tmp=bd?.temperature?.temp||'—';
+    const dayName=DAYNAMES[(d.getDay()+6)%7];
+    const hasData=dayFeeds.length||dayDiapers.length||bd?.weight||bd?.temperature;
+    if(hasData) days++;
+    totMl+=ml; totFeeds+=dayFeeds.length; totDiapers+=dayDiapers.length;
+    rows+=`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 4px;font-weight:700;font-size:10px">${dayName} ${d.getDate()}/${d.getMonth()+1}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${ml||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayFeeds.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayDiapers.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${wt}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${tmp}</td></tr>`;
+  }
+  const avgMl=days?Math.round(totMl/days):0, avgFeeds=days?(totFeeds/days).toFixed(1):0, avgDiapers=days?(totDiapers/days).toFixed(1):0;
+  document.getElementById("modal-root").innerHTML=`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">📅 Settimana — ${bn}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:'Nunito',sans-serif"><thead><tr style="border-bottom:2px solid ${c.pri}"><th style="padding:6px 4px;text-align:left;font-size:9px;color:#888">Giorno</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">ml</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">🍼</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">💩</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">kg</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">°C</th></tr></thead><tbody>${rows}<tr style="background:${c.light};font-weight:800"><td style="padding:6px 4px;font-size:10px">Media/gg</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgMl}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgFeeds}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgDiapers}</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td></tr></tbody></table></div><div style="margin-top:14px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`;
 }
 // ─── AUTH ───
 const APP_PASSWORD = "Ebby";
