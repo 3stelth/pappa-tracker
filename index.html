@@ -202,13 +202,23 @@ const THERAPIES = {
   Vittorio: [
     { id: "smartprevit", name: "Smart Previt", cat: "Multi-vitaminico", icon: "💊", dose: "1 ml/giorno", color: "#F59E0B" },
     { id: "ferrodue", name: "Ferrodue", cat: "Ferro", icon: "🩸", dose: "2 gocce/Kg fino al 6° mese", color: "#EF4444" },
-    { id: "aldactazide", name: "Aldactazide", cat: "Diuretico", icon: "💧", dose: "0,8 ml/giorno", color: "#3B82F6" }
+    { id: "aldactazide", name: "Aldactazide", cat: "Diuretico", icon: "💧", dose: "0,8 ml/giorno", color: "#3B82F6", doseHistory: [{ before: "2026-04-02", dose: "0,6 ml/giorno" }] }
   ]
 };
 const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
 let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local" };
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function getDose(t, dateStr, baby) {
+  const bn = baby || state.baby;
+  const overrides = state.data.doseOverrides?.[bn]?.[t.id];
+  if(overrides && overrides.length) {
+    const sorted = [...overrides].sort((a,b) => b.from.localeCompare(a.from));
+    for(const o of sorted) { if(dateStr >= o.from) return o.dose; }
+  }
+  if(t.doseHistory) { for(const h of t.doseHistory){ if(dateStr < h.before) return h.dose; } }
+  return t.dose;
+}
 function ft(h,m) { return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
 // ─── STORAGE (localStorage + Supabase sync) ───
 function loadLocal() {
@@ -338,7 +348,7 @@ function exportCSV() {
       (bd.diapers||[]).forEach(d=>rows.push([date,bn,"Pannolino",d.time,"","",d.dtype,d.color||"","","",d.note||""]));
       if(bd.weight)rows.push([date,bn,"Peso",bd.weight.time,bd.weight.kg,"","","","","",bd.weight.note||""]);
       if(bd.temperature)rows.push([date,bn,"Temperatura",bd.temperature.time,bd.temperature.temp,"","","","","",bd.temperature.note||""]);
-      if(bd.therapies)(THERAPIES[bn]||[]).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",t.dose]);});
+      if(bd.therapies)(THERAPIES[bn]||[]).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",getDose(t,date,bn)]);});
     });
   });
   const csv=BOM+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
@@ -460,7 +470,7 @@ function render() {
     const done=!!checks[t.id];
     return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
       <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${t.dose}</div></div>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key)} <span onclick="event.stopPropagation();openDoseModal('${state.baby}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:11px">✏️</span></div></div>
       ${done?'<span class="therapy-done-badge">Fatto</span>':''}
     </div>`;
   }).join("")}</div>`;
@@ -712,6 +722,22 @@ function showPediatricReport() {
     });
   }
   renderReport();
+}
+// ─── DOSE EDIT ───
+function openDoseModal(bn, tid) {
+  const t = (THERAPIES[bn]||[]).find(x=>x.id===tid); if(!t) return;
+  const c = COLORS[bn];
+  const currentDose = getDose(t, dk(new Date()), bn);
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${t.icon} Modifica dosaggio — ${t.name}</div><div class="form-label">Nuovo dosaggio</div><input class="form-input big" type="text" id="dose-val" value="${currentDose}" placeholder="es. 0,8 ml/giorno" style="margin-bottom:12px"><div style="font-size:10px;color:#888;margin-bottom:12px">La modifica si applica da oggi in avanti. I giorni precedenti mantengono il dosaggio attuale.</div><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitDose('${bn}','${tid}')">Salva</button></div></div></div>`);
+}
+async function submitDose(bn, tid) {
+  const val = document.getElementById("dose-val").value.trim();
+  if(!val) return;
+  if(!state.data.doseOverrides) state.data.doseOverrides = {};
+  if(!state.data.doseOverrides[bn]) state.data.doseOverrides[bn] = {};
+  if(!state.data.doseOverrides[bn][tid]) state.data.doseOverrides[bn][tid] = [];
+  state.data.doseOverrides[bn][tid].push({ from: dk(new Date()), dose: val });
+  await saveData(); closeModal(); render();
 }
 // ─── TOAST ───
 function showToast(msg) {
