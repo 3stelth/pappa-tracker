@@ -135,8 +135,8 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .weight-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; background: var(--card); border-radius: 14px; border: none; box-shadow: 0 1px 8px rgba(0,0,0,0.04); font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; color: #555; margin-top: 8px; transition: all 0.15s; }
 .weight-btn:active { transform: scale(0.97); }
 .weight-entry { background: var(--card); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 8px; border-left: 3px solid; margin-bottom: 6px; }
-.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px); background: #10B981; color: #fff; padding: 8px 20px; border-radius: 12px; font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; z-index: 300; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: transform 0.3s ease; pointer-events: none; }
-.toast.show { transform: translateX(-50%) translateY(0); }
+.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px); background: #10B981; color: #fff; padding: 8px 20px; border-radius: 12px; font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; z-index: 300; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: none; opacity: 0; visibility: hidden; }
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
 .lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
 .lock-icon { font-size: 64px; margin-bottom: 16px; }
 .lock-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
@@ -202,7 +202,7 @@ const THERAPIES = {
   Vittorio: [
     { id: "smartprevit", name: "Smart Previt", cat: "Multi-vitaminico", icon: "💊", dose: "1 ml/giorno", color: "#F59E0B" },
     { id: "ferrodue", name: "Ferrodue", cat: "Ferro", icon: "🩸", dose: "2 gocce/Kg fino al 6° mese", color: "#EF4444" },
-    { id: "aldactazide", name: "Aldactazide", cat: "Diuretico", icon: "💧", dose: "0,6 ml/giorno", color: "#3B82F6" }
+    { id: "aldactazide", name: "Aldactazide", cat: "Diuretico", icon: "💧", dose: "0,8 ml/giorno", color: "#3B82F6" }
   ]
 };
 const STORAGE_KEY = "pappatracker_data_v2";
