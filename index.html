@@ -459,7 +459,8 @@ function render() {
   h+=`<div class="content"><div class="content-title">🌡️ Temperatura ${state.baby} — ${dateLabel}</div>`;
   if(temperature) {
     const tc=tempColor(temperature.temp);
-    h+=`<div class="weight-entry" style="border-left-color:${tc}"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${temperature.time}</span><span class="entry-ml" style="color:${tc}">${temperature.temp}°C</span></div>${temperature.note?`<div class="entry-note">${temperature.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}')">✕</button></div>`;
+    const medHtml=temperature.medicine?`<div style="font-size:10px;color:#6366F1;font-weight:700;margin-top:2px">💊 ${temperature.medicine.name}${temperature.medicine.dose?' — '+temperature.medicine.dose:''}</div>`:'';
+    h+=`<div class="weight-entry" style="border-left-color:${tc}"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${temperature.time}</span><span class="entry-ml" style="color:${tc}">${temperature.temp}°C</span></div>${temperature.note?`<div class="entry-note">${temperature.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}')">✕</button></div>`;
   } else {
     h+=`<div class="empty">Nessuna misurazione</div>`;
   }
@@ -754,17 +755,24 @@ function openTempModal(bn) {
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   const key=dk(state.selDate), existing=state.data[key]?.[bn]?.temperature;
-  const tVal=existing?String(existing.temp):'', tNote=existing?.note||'';
-  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${existing?'Modifica':'Aggiungi'} temperatura — ${bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div><div class="form-label">Temperatura (°C)</div><input class="form-input big" type="number" inputmode="decimal" step="0.1" min="35" max="42" id="t-val" value="${tVal}" placeholder="es. 36.8" style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="t-note" value="${tNote}" placeholder="es. dopo il bagnetto..." style="margin-bottom:12px"><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitTemp('${bn}')">${existing?'Salva':'Aggiungi'} 🌡️</button></div></div></div>`);
+  const tVal=existing?String(existing.temp).replace('.',','):'', tNote=existing?.note||'';
+  const med=existing?.medicine||{};
+  const hasMed=med.name?'checked':'';
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${existing?'Modifica':'Aggiungi'} temperatura — ${bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div><div class="form-label">Temperatura (°C)</div><input class="form-input big" type="text" inputmode="decimal" id="t-val" value="${tVal}" placeholder="es. 37,5" style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="t-note" value="${tNote}" placeholder="es. dopo il bagnetto..." style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer" onclick="const c=document.getElementById('t-med-check');c.checked=!c.checked;document.getElementById('t-med-fields').style.display=c.checked?'block':'none'"><input type="checkbox" id="t-med-check" ${hasMed} style="width:16px;height:16px;cursor:pointer" onclick="event.stopPropagation();document.getElementById('t-med-fields').style.display=this.checked?'block':'none'"><span style="font-size:12px;font-weight:700">💊 Somministrato farmaco</span></div><div id="t-med-fields" style="display:${hasMed?'block':'none'};margin-bottom:12px"><div class="form-label">Nome farmaco</div><input class="form-input" id="t-med-name" value="${med.name||''}" placeholder="es. Tachipirina" style="margin-bottom:8px"><div class="form-label">Dosaggio</div><input class="form-input" id="t-med-dose" value="${med.dose||''}" placeholder="es. 5 gocce" style="margin-bottom:4px"></div><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitTemp('${bn}')">${existing?'Salva':'Aggiungi'} 🌡️</button></div></div></div>`);
 }
 async function submitTemp(bn) {
-  const temp=parseFloat(document.getElementById("t-val").value);
-  if(!temp||isNaN(temp)) return;
+  const temp=parseFloat(document.getElementById("t-val").value.replace(",","."));
+  if(!temp||isNaN(temp)||temp<35||temp>42) return;
   const h=parseInt(document.getElementById("f-h").value), m=parseInt(document.getElementById("f-m").value);
   const key=dk(state.selDate);
   if(!state.data[key]) state.data[key]={};
   if(!state.data[key][bn]) state.data[key][bn]={};
-  state.data[key][bn].temperature={temp, time:ft(h,m), note:document.getElementById("t-note").value.trim()};
+  const entry={temp, time:ft(h,m), note:document.getElementById("t-note").value.trim()};
+  const medName=document.getElementById("t-med-name").value.trim();
+  if(document.getElementById("t-med-check").checked && medName) {
+    entry.medicine={name:medName, dose:document.getElementById("t-med-dose").value.trim()};
+  }
+  state.data[key][bn].temperature=entry;
   await saveData(); closeModal(); render();
 }
 async function delTemp(bn) {
