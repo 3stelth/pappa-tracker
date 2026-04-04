@@ -222,7 +222,7 @@ function getDose(t, dateStr, baby) {
 function ft(h,m) { return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
 // ─── STORAGE (localStorage + Supabase sync) ───
 function loadLocal() {
-  try { const s = localStorage.getItem(STORAGE_KEY); if (s) state.data = JSON.parse(s); } catch(e) {}
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) state.data = JSON.parse(s); migrateTemperatures(); } catch(e) {}
 }
 function saveLocal() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); } catch(e) {}
@@ -260,6 +260,7 @@ async function syncFromCloud() {
     const rows = await r.json();
     if (rows.length > 0 && rows[0].data) {
       state.data = rows[0].data;
+      migrateTemperatures();
       saveLocal();
     }
     state.syncStatus = "ok"; render();
@@ -269,6 +270,18 @@ async function saveData() {
   saveLocal();
   await syncToCloud();
   showToast();
+}
+function migrateTemperatures() {
+  for(const key in state.data) {
+    if(key==='doseOverrides') continue;
+    for(const bn in state.data[key]) {
+      const bd=state.data[key][bn];
+      if(bd.temperature && !Array.isArray(bd.temperature)) {
+        bd.temperatures=[bd.temperature];
+        delete bd.temperature;
+      }
+    }
+  }
 }
 // ─── HELPERS ───
 function getBabyDay(bn, dateKey) {
@@ -347,7 +360,7 @@ function exportCSV() {
       (bd.feeds||[]).forEach(f=>rows.push([date,bn,"Poppata",f.time,f.ml,f.type,"","","","",f.note||""]));
       (bd.diapers||[]).forEach(d=>rows.push([date,bn,"Pannolino",d.time,"","",d.dtype,d.color||"","","",d.note||""]));
       if(bd.weight)rows.push([date,bn,"Peso",bd.weight.time,bd.weight.kg,"","","","","",bd.weight.note||""]);
-      if(bd.temperature)rows.push([date,bn,"Temperatura",bd.temperature.time,bd.temperature.temp,"","","","","",bd.temperature.note||""]);
+      (bd.temperatures||[]).forEach(t=>rows.push([date,bn,"Temperatura",t.time,t.temp,"","","","","",t.note||""]));
       if(bd.therapies)(THERAPIES[bn]||[]).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",getDose(t,date,bn)]);});
     });
   });
@@ -420,7 +433,7 @@ function render() {
       <div class="recap-line" style="font-size:9px"><span style="color:${getLastFeedAgo(bn).color}">🕐 Ultima: ${getLastFeedAgo(bn).text}</span></div>
       <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
       <div class="recap-line">⚖️ <b>${(state.data[key]?.[bn]?.weight?.kg||'—')}${state.data[key]?.[bn]?.weight?' kg':''}</b></div>
-      <div class="recap-line">🌡️ <b style="color:${state.data[key]?.[bn]?.temperature?tempColor(state.data[key][bn].temperature.temp):'inherit'}">${state.data[key]?.[bn]?.temperature?.temp||'—'}${state.data[key]?.[bn]?.temperature?'°C':''}</b></div>
+      <div class="recap-line">🌡️ <b style="color:${(state.data[key]?.[bn]?.temperatures||[]).length?tempColor(Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))):'inherit'}">${(state.data[key]?.[bn]?.temperatures||[]).length?Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))+'°C':'—'}</b>${(state.data[key]?.[bn]?.temperatures||[]).length>1?` <span class="sub">(${state.data[key][bn].temperatures.length})</span>`:''}</div>
       <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
     </div>`;
   }).join("")}</div></div>`;
@@ -455,15 +468,14 @@ function render() {
   }
   h+=`<button class="weight-btn" onclick="showWeightChart()">📈 Grafico Peso</button></div>`;
   // Temperature
-  const temperature = state.data[key]?.[state.baby]?.temperature;
+  const temperatures = state.data[key]?.[state.baby]?.temperatures || [];
   h+=`<div class="content"><div class="content-title">🌡️ Temperatura ${state.baby} — ${dateLabel}</div>`;
-  if(temperature) {
-    const tc=tempColor(temperature.temp);
-    const medHtml=temperature.medicine?`<div style="font-size:10px;color:#6366F1;font-weight:700;margin-top:2px">💊 ${temperature.medicine.name}${temperature.medicine.dose?' — '+temperature.medicine.dose:''}</div>`:'';
-    h+=`<div class="weight-entry" style="border-left-color:${tc};cursor:pointer" onclick="openTempModal('${state.baby}')"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${temperature.time}</span><span class="entry-ml" style="color:${tc}">${temperature.temp}°C</span></div>${temperature.note?`<div class="entry-note">${temperature.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}')">✕</button></div>`;
-  } else {
-    h+=`<div class="empty">Nessuna misurazione</div>`;
-  }
+  if(!temperatures.length) h+=`<div class="empty">Nessuna misurazione</div>`;
+  else temperatures.forEach((e,i)=>{
+    const tc=tempColor(e.temp);
+    const medHtml=e.medicine?`<div style="font-size:10px;color:#6366F1;font-weight:700;margin-top:2px">💊 ${e.medicine.name}${e.medicine.dose?' — '+e.medicine.dose:''}</div>`:'';
+    h+=`<div class="weight-entry" style="border-left-color:${tc};cursor:pointer" onclick="openTempModal('${state.baby}',${i})"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:${tc}">${e.temp}°C</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}',${i})">✕</button></div>`;
+  });
   h+=`</div>`;
   // Therapies
   const ts=THERAPIES[state.baby]||[], checks=state.data[key]?.[state.baby]?.therapies||{};
@@ -641,8 +653,8 @@ function showPediatricReport() {
     // Temperature
     let lastTemp = null;
     days.forEach(k => {
-      const t = state.data[k]?.[bn]?.temperature;
-      if (t) lastTemp = t;
+      const temps = state.data[k]?.[bn]?.temperatures||[];
+      if (temps.length) lastTemp = temps[temps.length-1];
     });
     // Therapy compliance
     const therapies = THERAPIES[bn] || [];
@@ -749,12 +761,15 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 // ─── TEMPERATURE ───
-function openTempModal(bn) {
+function openTempModal(bn, idx) {
+  state._editTempIdx = idx !== undefined ? idx : null;
   const c=COLORS[bn], n=new Date(), h=n.getHours(), m=n.getMinutes();
   const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);
-  const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
-  const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
-  const key=dk(state.selDate), existing=state.data[key]?.[bn]?.temperature;
+  const key=dk(state.selDate), existing = idx !== undefined ? (state.data[key]?.[bn]?.temperatures||[])[idx] : null;
+  const selH = existing ? parseInt(existing.time.split(":")[0]) : h;
+  const selM = existing ? parseInt(existing.time.split(":")[1]) : nearM;
+  const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===selH?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const mO=mins.map(i=>`<option value="${i}"${i===selM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   const tVal=existing?String(existing.temp).replace('.',','):'', tNote=existing?.note||'';
   const med=existing?.medicine||{};
   const hasMed=med.name?'checked':'';
@@ -767,20 +782,25 @@ async function submitTemp(bn) {
   const key=dk(state.selDate);
   if(!state.data[key]) state.data[key]={};
   if(!state.data[key][bn]) state.data[key][bn]={};
+  if(!state.data[key][bn].temperatures) state.data[key][bn].temperatures=[];
   const entry={temp, time:ft(h,m), note:document.getElementById("t-note").value.trim()};
   const medName=document.getElementById("t-med-name").value.trim();
   if(document.getElementById("t-med-check").checked && medName) {
     entry.medicine={name:medName, dose:document.getElementById("t-med-dose").value.trim()};
   }
-  state.data[key][bn].temperature=entry;
+  if(state._editTempIdx!==null&&state._editTempIdx!==undefined) state.data[key][bn].temperatures[state._editTempIdx]=entry;
+  else state.data[key][bn].temperatures.push(entry);
+  state.data[key][bn].temperatures.sort((a,b)=>a.time.localeCompare(b.time));
   await saveData(); closeModal(); render();
 }
-async function delTemp(bn) {
+async function delTemp(bn, idx) {
   const key=dk(state.selDate);
-  if(state.data[key]?.[bn]?.temperature) {
-    delete state.data[key][bn].temperature;
-    if(!Object.keys(state.data[key][bn]).length) delete state.data[key][bn];
-    if(!Object.keys(state.data[key]).length) delete state.data[key];
+  const temps=state.data[key]?.[bn]?.temperatures;
+  if(temps && temps[idx]!==undefined) {
+    temps.splice(idx,1);
+    if(!temps.length) delete state.data[key][bn].temperatures;
+    if(state.data[key][bn]&&!Object.keys(state.data[key][bn]).length) delete state.data[key][bn];
+    if(state.data[key]&&!Object.keys(state.data[key]).length) delete state.data[key];
     await saveData(); render();
   }
 }
@@ -801,9 +821,10 @@ function showWeeklySummary(offset) {
     const dayFeeds=bd?.feeds||[], dayDiapers=bd?.diapers||[];
     const ml=dayFeeds.reduce((s,f)=>s+(f.ml||0),0);
     const wt=bd?.weight?.kg||'—';
-    const tmp=bd?.temperature?.temp||'—';
+    const dayTemps=bd?.temperatures||[];
+    const tmp=dayTemps.length?Math.max(...dayTemps.map(t=>t.temp)):'—';
     const dayName=DAYNAMES[(d.getDay()+6)%7];
-    const hasData=dayFeeds.length||dayDiapers.length||bd?.weight||bd?.temperature;
+    const hasData=dayFeeds.length||dayDiapers.length||bd?.weight||dayTemps.length;
     if(hasData) days++;
     totMl+=ml; totFeeds+=dayFeeds.length; totDiapers+=dayDiapers.length;
     rows+=`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 4px;font-weight:700;font-size:10px">${dayName} ${d.getDate()}/${d.getMonth()+1}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${ml||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayFeeds.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayDiapers.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${wt}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${tmp}</td></tr>`;
