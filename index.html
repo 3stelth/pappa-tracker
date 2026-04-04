@@ -460,7 +460,7 @@ function render() {
   if(temperature) {
     const tc=tempColor(temperature.temp);
     const medHtml=temperature.medicine?`<div style="font-size:10px;color:#6366F1;font-weight:700;margin-top:2px">💊 ${temperature.medicine.name}${temperature.medicine.dose?' — '+temperature.medicine.dose:''}</div>`:'';
-    h+=`<div class="weight-entry" style="border-left-color:${tc}"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${temperature.time}</span><span class="entry-ml" style="color:${tc}">${temperature.temp}°C</span></div>${temperature.note?`<div class="entry-note">${temperature.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}')">✕</button></div>`;
+    h+=`<div class="weight-entry" style="border-left-color:${tc};cursor:pointer" onclick="openTempModal('${state.baby}')"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${temperature.time}</span><span class="entry-ml" style="color:${tc}">${temperature.temp}°C</span></div>${temperature.note?`<div class="entry-note">${temperature.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}')">✕</button></div>`;
   } else {
     h+=`<div class="empty">Nessuna misurazione</div>`;
   }
