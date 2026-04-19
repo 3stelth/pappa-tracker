@@ -132,6 +132,14 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .weight-legend { display: flex; justify-content: center; gap: 16px; margin-top: 10px; }
 .weight-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; }
 .weight-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.weight-range-row { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+.weight-range-btn { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #666; cursor: pointer; transition: all 0.15s; }
+.weight-range-btn.active { background: var(--gabriel-pri); color: #fff; border-color: var(--gabriel-pri); }
+.weight-range-btn:active { transform: scale(0.95); }
+.weight-chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+body.dark .weight-range-btn { background: #1e1e30; color: #ddd; border-color: #333; }
+body.dark .weight-range-btn.active { background: var(--gabriel-pri); color: #fff; }
+body.dark .weight-chart-canvas { background: #0f0f1a; }
 .weight-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; background: var(--card); border-radius: 14px; border: none; box-shadow: 0 1px 8px rgba(0,0,0,0.04); font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; color: #555; margin-top: 8px; transition: all 0.15s; }
 .weight-btn:active { transform: scale(0.97); }
 .weight-entry { background: var(--card); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 8px; border-left: 3px solid; margin-bottom: 6px; }
@@ -555,49 +563,103 @@ function getWeightHistory(bn) {
   });
   return points;
 }
-function showWeightChart() {
-  const gData=getWeightHistory("Gabriel"), vData=getWeightHistory("Vittorio");
-  if(!gData.length && !vData.length) { alert("Nessun dato peso registrato."); return; }
-  // Collect all dates
+let weightChartState = { range: '30', tooltip: null };
+function pickWeightPoint(baby, date, kg) {
+  weightChartState.tooltip = { baby, date, kg };
+  showWeightChart();
+}
+function closeWeightTooltip() {
+  if (weightChartState.tooltip) { weightChartState.tooltip = null; showWeightChart(); }
+}
+function showWeightChart(range) {
+  if (range !== undefined) { weightChartState.range = range; weightChartState.tooltip = null; }
+  const r = weightChartState.range, tooltip = weightChartState.tooltip;
+  const gDataAll = getWeightHistory("Gabriel"), vDataAll = getWeightHistory("Vittorio");
+  if (!gDataAll.length && !vDataAll.length) { alert("Nessun dato peso registrato."); return; }
+  // Filter by range
+  let cutoffKey = null;
+  if (r !== 'max') {
+    const days = parseInt(r);
+    const cutoff = new Date(Date.now() - days*86400000);
+    cutoffKey = dk(cutoff);
+  }
+  const gData = cutoffKey ? gDataAll.filter(p => p.date >= cutoffKey) : gDataAll;
+  const vData = cutoffKey ? vDataAll.filter(p => p.date >= cutoffKey) : vDataAll;
+  // Range toolbar
+  const ranges = [{k:'7',l:'7g'},{k:'30',l:'30g'},{k:'90',l:'90g'},{k:'max',l:'Max'}];
+  const toolbar = `<div class="weight-range-row">${ranges.map(rr => `<button class="weight-range-btn${r===rr.k?' active':''}" onclick="event.stopPropagation();showWeightChart('${rr.k}')">${rr.l}</button>`).join('')}</div>`;
+  const legend = `<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div></div>`;
+  const footer = `<div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div>`;
+  // Empty state
+  if (!gData.length && !vData.length) {
+    setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div>${toolbar}<div style="padding:40px 10px;text-align:center;color:#999;font-size:12px">Nessuna pesata nell'intervallo selezionato.</div>${footer}</div></div>`);
+    return;
+  }
+  // Collect all dates in filtered range
   const allDates=[...new Set([...gData.map(p=>p.date),...vData.map(p=>p.date)])].sort();
   const allKg=[...gData.map(p=>p.kg),...vData.map(p=>p.kg)];
   const minKg=Math.floor(Math.min(...allKg)*10)/10-0.2, maxKg=Math.ceil(Math.max(...allKg)*10)/10+0.2;
-  const W=420, H=260, pad={t:25,r:15,b:40,l:40};
+  const H=260, pad={t:25,r:15,b:40,l:40};
+  const W = r==='max' ? Math.max(420, 50*allDates.length+pad.l+pad.r) : 420;
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  function x(i){return pad.l+(i/(allDates.length-1||1))*cw;}
-  function y(kg){return pad.t+ch-(((kg-minKg)/(maxKg-minKg||1))*ch);}
-  let svg=`<svg viewBox="0 0 ${W} ${H}" class="weight-chart-canvas" xmlns="http://www.w3.org/2000/svg">`;
+  const xOf = (i) => pad.l+(i/(allDates.length-1||1))*cw;
+  const yOf = (kg) => pad.t+ch-(((kg-minKg)/(maxKg-minKg||1))*ch);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="weight-chart-canvas" style="min-width:${W}px" xmlns="http://www.w3.org/2000/svg">`;
+  // Background rect to close tooltip on tap
+  svg+=`<rect x="0" y="0" width="${W}" height="${H}" fill="transparent" onclick="event.stopPropagation();closeWeightTooltip()"/>`;
   // Grid
   const steps=5;
   for(let i=0;i<=steps;i++){
-    const val=minKg+((maxKg-minKg)/steps)*i, yy=y(val);
+    const val=minKg+((maxKg-minKg)/steps)*i, yy=yOf(val);
     svg+=`<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="#eee" stroke-width="1"/>`;
     svg+=`<text x="${pad.l-5}" y="${yy+3}" text-anchor="end" font-size="8" fill="#aaa" font-family="Nunito">${val.toFixed(1)}</text>`;
   }
   // Date labels
-  const maxLabels=Math.min(allDates.length,7), step=Math.max(1,Math.floor(allDates.length/maxLabels));
+  const maxLabels = r==='max' ? allDates.length : Math.min(allDates.length,7);
+  const labelStep=Math.max(1,Math.floor(allDates.length/maxLabels));
   allDates.forEach((d,i)=>{
-    if(i%step===0||i===allDates.length-1){
+    if(i%labelStep===0||i===allDates.length-1){
       const parts=d.split('-');
-      svg+=`<text x="${x(i)}" y="${H-pad.b+18}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${parts[2]}/${parts[1]}</text>`;
+      svg+=`<text x="${xOf(i)}" y="${H-pad.b+18}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${parts[2]}/${parts[1]}</text>`;
     }
   });
-  // Draw lines
-  function drawLine(data, color){
+  // Draw lines with smart labels
+  function drawLine(data, color, bn){
     if(data.length<1) return '';
     let path='', circles='';
-    data.forEach(p=>{
-      const i=allDates.indexOf(p.date), px=x(i), py=y(p.kg);
+    const showAllLabels = data.length <= 10;
+    const minP = data.reduce((a,b)=>a.kg<b.kg?a:b, data[0]);
+    const maxP = data.reduce((a,b)=>a.kg>b.kg?a:b, data[0]);
+    data.forEach((p, idx) => {
+      const i=allDates.indexOf(p.date), px=xOf(i), py=yOf(p.kg);
       if(!path) path=`M${px},${py}`; else path+=` L${px},${py}`;
-      circles+=`<circle cx="${px}" cy="${py}" r="4" fill="${color}" stroke="#fff" stroke-width="2"/>`;
-      circles+=`<text x="${px}" y="${py-8}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700" font-family="Nunito">${p.kg}</text>`;
+      circles+=`<circle cx="${px}" cy="${py}" r="6" fill="${color}" stroke="#fff" stroke-width="2" style="cursor:pointer" onclick="event.stopPropagation();pickWeightPoint('${bn}','${p.date}',${p.kg})"/>`;
+      const isKey = showAllLabels || idx===0 || idx===data.length-1 || p===minP || p===maxP;
+      if (isKey) {
+        circles+=`<text x="${px}" y="${py-10}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700" font-family="Nunito" style="pointer-events:none">${p.kg}</text>`;
+      }
     });
     return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${circles}`;
   }
-  svg+=drawLine(gData, COLORS.Gabriel.pri);
-  svg+=drawLine(vData, COLORS.Vittorio.pri);
+  svg+=drawLine(gData, COLORS.Gabriel.pri, 'Gabriel');
+  svg+=drawLine(vData, COLORS.Vittorio.pri, 'Vittorio');
+  // Tooltip
+  if (tooltip) {
+    const tdata = tooltip.baby === 'Gabriel' ? gData : vData;
+    const p = tdata.find(d => d.date === tooltip.date);
+    if (p) {
+      const i=allDates.indexOf(p.date), px=xOf(i), py=yOf(p.kg);
+      const parts=p.date.split('-');
+      const label=`${parts[2]}/${parts[1]}/${parts[0]} • ${p.kg} kg`;
+      const tw=label.length*5.5+14;
+      const tx=Math.max(pad.l, Math.min(W-pad.r-tw, px-tw/2));
+      const ty=Math.max(4, py-28);
+      svg+=`<g style="pointer-events:none"><rect x="${tx}" y="${ty}" width="${tw}" height="20" rx="6" fill="#1a1a2e" opacity="0.95"/><text x="${tx+tw/2}" y="${ty+13}" text-anchor="middle" font-size="10" fill="#fff" font-family="Nunito" font-weight="700">${label}</text></g>`;
+    }
+  }
   svg+=`</svg>`;
-  setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div>${svg}<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div></div><div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div></div></div>`);
+  const chartHtml = r==='max' ? `<div class="weight-chart-scroll">${svg}</div>` : svg;
+  setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div>${toolbar}${chartHtml}${legend}${footer}</div></div>`);
 }
 // ─── PEDIATRIC REPORT ───
 const BIRTH_DATE = new Date(2025, 11, 8);
