@@ -563,17 +563,28 @@ function getWeightHistory(bn) {
   });
   return points;
 }
-let weightChartState = { range: '30', tooltip: null };
-function pickWeightPoint(baby, date, kg) {
-  weightChartState.tooltip = { baby, date, kg };
-  showWeightChart();
+let weightChartState = { range: '30' };
+function pickWeightPoint(baby, date, kg, px, py) {
+  const g = document.getElementById('weight-tooltip');
+  if (!g) return;
+  const svg = g.ownerSVGElement;
+  const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+  const W = vb[2];
+  const pad = { l: 40, r: 15 };
+  const parts = date.split('-');
+  const label = `${parts[2]}/${parts[1]}/${parts[0]} • ${kg} kg`;
+  const tw = label.length * 5.5 + 14;
+  const tx = Math.max(pad.l, Math.min(W - pad.r - tw, px - tw/2));
+  const ty = Math.max(4, py - 28);
+  g.innerHTML = `<rect x="${tx}" y="${ty}" width="${tw}" height="20" rx="6" fill="#1a1a2e" opacity="0.95"/><text x="${tx+tw/2}" y="${ty+13}" text-anchor="middle" font-size="10" fill="#fff" font-family="Nunito" font-weight="700">${label}</text>`;
 }
 function closeWeightTooltip() {
-  if (weightChartState.tooltip) { weightChartState.tooltip = null; showWeightChart(); }
+  const g = document.getElementById('weight-tooltip');
+  if (g) g.innerHTML = '';
 }
 function showWeightChart(range) {
-  if (range !== undefined) { weightChartState.range = range; weightChartState.tooltip = null; }
-  const r = weightChartState.range, tooltip = weightChartState.tooltip;
+  if (range !== undefined) weightChartState.range = range;
+  const r = weightChartState.range;
   const gDataAll = getWeightHistory("Gabriel"), vDataAll = getWeightHistory("Vittorio");
   if (!gDataAll.length && !vDataAll.length) { alert("Nessun dato peso registrato."); return; }
   // Filter by range
@@ -589,6 +600,23 @@ function showWeightChart(range) {
   const ranges = [{k:'7',l:'7g'},{k:'30',l:'30g'},{k:'90',l:'90g'},{k:'max',l:'Max'}];
   const toolbar = `<div class="weight-range-row">${ranges.map(rr => `<button class="weight-range-btn${r===rr.k?' active':''}" onclick="event.stopPropagation();showWeightChart('${rr.k}')">${rr.l}</button>`).join('')}</div>`;
   const legend = `<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div></div>`;
+  // Delta (only for 7/30/90)
+  let deltaHtml = '';
+  if (r !== 'max') {
+    function deltaLine(data, color, name) {
+      if (data.length < 2) return '';
+      const first = data[0], last = data[data.length-1];
+      const diff = +(last.kg - first.kg).toFixed(2);
+      const sign = diff > 0 ? '+' : '';
+      const fmt = (n) => String(n).replace('.', ',');
+      return `<div style="font-size:11px;color:#555"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px"></span><b>${name}</b>: ${fmt(first.kg)} → ${fmt(last.kg)} kg <b style="color:${diff>=0?'#10B981':'#EF4444'}">(${sign}${fmt(diff)})</b></div>`;
+    }
+    const gLine = deltaLine(gData, COLORS.Gabriel.pri, 'Gabriel');
+    const vLine = deltaLine(vData, COLORS.Vittorio.pri, 'Vittorio');
+    if (gLine || vLine) {
+      deltaHtml = `<div style="margin-top:10px;padding:8px 10px;background:#f5f5fa;border-radius:10px"><div style="font-size:10px;color:#888;font-weight:700;margin-bottom:4px">Δ PESO (${r==='7'?'7 giorni':r==='30'?'30 giorni':'90 giorni'})</div>${gLine}${vLine}</div>`;
+    }
+  }
   const footer = `<div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div>`;
   // Empty state
   if (!gData.length && !vData.length) {
@@ -604,7 +632,10 @@ function showWeightChart(range) {
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
   const xOf = (i) => pad.l+(i/(allDates.length-1||1))*cw;
   const yOf = (kg) => pad.t+ch-(((kg-minKg)/(maxKg-minKg||1))*ch);
-  let svg=`<svg viewBox="0 0 ${W} ${H}" class="weight-chart-canvas" style="min-width:${W}px" xmlns="http://www.w3.org/2000/svg">`;
+  // Only set min-width when in Max mode to enable horizontal scroll.
+  // Otherwise viewBox + width:100% scales to container (fits mobile).
+  const svgStyle = r==='max' ? `style="min-width:${W}px"` : '';
+  let svg=`<svg viewBox="0 0 ${W} ${H}" class="weight-chart-canvas" ${svgStyle} xmlns="http://www.w3.org/2000/svg">`;
   // Background rect to close tooltip on tap
   svg+=`<rect x="0" y="0" width="${W}" height="${H}" fill="transparent" onclick="event.stopPropagation();closeWeightTooltip()"/>`;
   // Grid
@@ -623,43 +654,36 @@ function showWeightChart(range) {
       svg+=`<text x="${xOf(i)}" y="${H-pad.b+18}" text-anchor="middle" font-size="8" fill="#aaa" font-family="Nunito">${parts[2]}/${parts[1]}</text>`;
     }
   });
-  // Draw lines with smart labels
+  // Pre-compute positions per baby indexed by date, for anti-overlap label placement.
+  const gPosByDate = {}; gData.forEach(p => { gPosByDate[p.date] = p.kg; });
+  const vPosByDate = {}; vData.forEach(p => { vPosByDate[p.date] = p.kg; });
   function drawLine(data, color, bn){
     if(data.length<1) return '';
     let path='', circles='';
-    const showAllLabels = data.length <= 10;
-    const minP = data.reduce((a,b)=>a.kg<b.kg?a:b, data[0]);
-    const maxP = data.reduce((a,b)=>a.kg>b.kg?a:b, data[0]);
-    data.forEach((p, idx) => {
+    data.forEach((p) => {
       const i=allDates.indexOf(p.date), px=xOf(i), py=yOf(p.kg);
       if(!path) path=`M${px},${py}`; else path+=` L${px},${py}`;
-      circles+=`<circle cx="${px}" cy="${py}" r="6" fill="${color}" stroke="#fff" stroke-width="2" style="cursor:pointer" onclick="event.stopPropagation();pickWeightPoint('${bn}','${p.date}',${p.kg})"/>`;
-      const isKey = showAllLabels || idx===0 || idx===data.length-1 || p===minP || p===maxP;
-      if (isKey) {
-        circles+=`<text x="${px}" y="${py-10}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700" font-family="Nunito" style="pointer-events:none">${p.kg}</text>`;
+      circles+=`<circle cx="${px}" cy="${py}" r="6" fill="${color}" stroke="#fff" stroke-width="2" style="cursor:pointer" onclick="event.stopPropagation();pickWeightPoint('${bn}','${p.date}',${p.kg},${px},${py})"/>`;
+      // Anti-overlap: if both babies have a point on same date, higher-kg baby's label goes ABOVE, lower goes BELOW.
+      const otherKg = bn === 'Gabriel' ? vPosByDate[p.date] : gPosByDate[p.date];
+      let labelY;
+      if (otherKg !== undefined) {
+        // My kg higher than other → label above; otherwise below.
+        labelY = p.kg >= otherKg ? py - 10 : py + 15;
+      } else {
+        labelY = py - 10;
       }
+      circles+=`<text x="${px}" y="${labelY}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700" font-family="Nunito" style="pointer-events:none">${p.kg}</text>`;
     });
     return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${circles}`;
   }
   svg+=drawLine(gData, COLORS.Gabriel.pri, 'Gabriel');
   svg+=drawLine(vData, COLORS.Vittorio.pri, 'Vittorio');
-  // Tooltip
-  if (tooltip) {
-    const tdata = tooltip.baby === 'Gabriel' ? gData : vData;
-    const p = tdata.find(d => d.date === tooltip.date);
-    if (p) {
-      const i=allDates.indexOf(p.date), px=xOf(i), py=yOf(p.kg);
-      const parts=p.date.split('-');
-      const label=`${parts[2]}/${parts[1]}/${parts[0]} • ${p.kg} kg`;
-      const tw=label.length*5.5+14;
-      const tx=Math.max(pad.l, Math.min(W-pad.r-tw, px-tw/2));
-      const ty=Math.max(4, py-28);
-      svg+=`<g style="pointer-events:none"><rect x="${tx}" y="${ty}" width="${tw}" height="20" rx="6" fill="#1a1a2e" opacity="0.95"/><text x="${tx+tw/2}" y="${ty+13}" text-anchor="middle" font-size="10" fill="#fff" font-family="Nunito" font-weight="700">${label}</text></g>`;
-    }
-  }
+  // Empty tooltip group, populated on tap via DOM update (no re-render).
+  svg+=`<g id="weight-tooltip" style="pointer-events:none"></g>`;
   svg+=`</svg>`;
   const chartHtml = r==='max' ? `<div class="weight-chart-scroll">${svg}</div>` : svg;
-  setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div>${toolbar}${chartHtml}${legend}${footer}</div></div>`);
+  setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div>${toolbar}${chartHtml}${legend}${deltaHtml}${footer}</div></div>`);
 }
 // ─── PEDIATRIC REPORT ───
 const BIRTH_DATE = new Date(2025, 11, 8);
