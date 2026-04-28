@@ -563,7 +563,12 @@ function getWeightHistory(bn) {
   });
   return points;
 }
-let weightChartState = { range: '30' };
+let weightChartState = { range: '30', offset: 0 };
+function navWeightChart(delta) {
+  if (weightChartState.offset + delta < 0) return;
+  weightChartState.offset += delta;
+  showWeightChart();
+}
 function pickWeightPoint(baby, date, kg, px, py) {
   const g = document.getElementById('weight-tooltip');
   if (!g) return;
@@ -583,22 +588,43 @@ function closeWeightTooltip() {
   if (g) g.innerHTML = '';
 }
 function showWeightChart(range) {
-  if (range !== undefined) weightChartState.range = range;
-  const r = weightChartState.range;
+  if (range !== undefined) {
+    if (weightChartState.range !== range) weightChartState.offset = 0;
+    weightChartState.range = range;
+  }
+  const r = weightChartState.range, off = weightChartState.offset;
   const gDataAll = getWeightHistory("Gabriel"), vDataAll = getWeightHistory("Vittorio");
   if (!gDataAll.length && !vDataAll.length) { alert("Nessun dato peso registrato."); return; }
-  // Filter by range
-  let cutoffKey = null;
-  if (r !== 'max') {
-    const days = parseInt(r);
-    const cutoff = new Date(Date.now() - days*86400000);
-    cutoffKey = dk(cutoff);
+  // Compute window [startKey, endKey]
+  const now = new Date();
+  let startKey = null, endKey = null, navLabel = '';
+  if (r === '7') {
+    // Mon-Sun ISO weeks; offset 0 = current week
+    const todayDow = (now.getDay() + 6) % 7;
+    const monThis = new Date(now.getFullYear(), now.getMonth(), now.getDate() - todayDow);
+    const start = new Date(monThis.getFullYear(), monThis.getMonth(), monThis.getDate() - off*7);
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    startKey = dk(start); endKey = dk(end);
+    navLabel = `${start.getDate()}/${start.getMonth()+1} — ${end.getDate()}/${end.getMonth()+1}`;
+  } else if (r === '30') {
+    // Rolling 30-day window; offset 0 = today-29..today
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - off*30);
+    const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 29);
+    startKey = dk(start); endKey = dk(end);
+    navLabel = `${start.getDate()}/${start.getMonth()+1} — ${end.getDate()}/${end.getMonth()+1}`;
+  } else if (r === '90') {
+    const days = 90;
+    const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days-1));
+    startKey = dk(cutoff); endKey = dk(now);
   }
-  const gData = cutoffKey ? gDataAll.filter(p => p.date >= cutoffKey) : gDataAll;
-  const vData = cutoffKey ? vDataAll.filter(p => p.date >= cutoffKey) : vDataAll;
+  const inRange = (p) => (!startKey || p.date >= startKey) && (!endKey || p.date <= endKey);
+  const gData = r === 'max' ? gDataAll : gDataAll.filter(inRange);
+  const vData = r === 'max' ? vDataAll : vDataAll.filter(inRange);
+  // Nav row (only 7g and 30g)
+  const navHtml = (r === '7' || r === '30') ? `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px"><button onclick="event.stopPropagation();navWeightChart(1)" style="border:none;width:32px;height:32px;border-radius:8px;background:${COLORS.Gabriel.light};color:${COLORS.Gabriel.pri};font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">‹</button><span style="font-size:12px;font-weight:800;color:#555">${navLabel}</span><button onclick="event.stopPropagation();navWeightChart(-1)" style="border:none;width:32px;height:32px;border-radius:8px;background:${off===0?'#eee':COLORS.Gabriel.light};color:${off===0?'#ccc':COLORS.Gabriel.pri};font-size:16px;font-weight:700;cursor:pointer;font-family:inherit"${off===0?' disabled':''}>›</button></div>` : '';
   // Range toolbar
   const ranges = [{k:'7',l:'7g'},{k:'30',l:'30g'},{k:'90',l:'90g'},{k:'max',l:'Max'}];
-  const toolbar = `<div class="weight-range-row">${ranges.map(rr => `<button class="weight-range-btn${r===rr.k?' active':''}" onclick="event.stopPropagation();showWeightChart('${rr.k}')">${rr.l}</button>`).join('')}</div>`;
+  const toolbar = `${navHtml}<div class="weight-range-row">${ranges.map(rr => `<button class="weight-range-btn${r===rr.k?' active':''}" onclick="event.stopPropagation();showWeightChart('${rr.k}')">${rr.l}</button>`).join('')}</div>`;
   const legend = `<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div></div>`;
   // Delta (only for 7/30/90)
   let deltaHtml = '';
