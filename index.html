@@ -8,6 +8,7 @@
 <title>🍼 Pappa Tracker</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍼</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --gabriel-pri: #4A90D9; --gabriel-acc: #2D6CB4; --gabriel-light: #E8F1FB;
@@ -217,6 +218,7 @@ const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
 let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local" };
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function getDose(t, dateStr, baby) {
   const bn = baby || state.baby;
   const overrides = state.data.doseOverrides?.[bn]?.[t.id];
@@ -230,7 +232,7 @@ function getDose(t, dateStr, baby) {
 function ft(h,m) { return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
 // ─── STORAGE (localStorage + Supabase sync) ───
 function loadLocal() {
-  try { const s = localStorage.getItem(STORAGE_KEY); if (s) state.data = JSON.parse(s); migrateTemperatures(); } catch(e) {}
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) state.data = JSON.parse(s); migrateTemperatures(); addMissingIds(); } catch(e) {}
 }
 function saveLocal() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); } catch(e) {}
@@ -249,13 +251,104 @@ async function supaFetch(method, path, body) {
   });
   return r;
 }
+// Add UUID to existing array entries that lack one (retro-compat for cross-device merge).
+function addMissingIds() {
+  for (const dateKey in state.data) {
+    if (dateKey === 'doseOverrides') continue;
+    const dayData = state.data[dateKey];
+    if (!dayData || typeof dayData !== 'object') continue;
+    for (const bn in dayData) {
+      const bd = dayData[bn];
+      if (!bd || typeof bd !== 'object') continue;
+      ['feeds','diapers','temperatures'].forEach(arrKey => {
+        if (Array.isArray(bd[arrKey])) {
+          bd[arrKey].forEach(e => { if (e && !e.id) e.id = uid(); });
+        }
+      });
+    }
+  }
+}
+// Merge local state into remote, returning a new object. Local wins on conflicts.
+// - Array entries (feeds/diapers/temperatures): union by `id`, local entry wins on duplicate
+// - Single objects (weight): local wins if present
+// - therapies (object of bools): shallow merge, local keys win
+// - doseOverrides: union by `from` date
+function mergeData(local, remote) {
+  const merged = JSON.parse(JSON.stringify(remote || {}));
+  if (!local) return merged;
+  for (const dateKey in local) {
+    if (dateKey === 'doseOverrides') {
+      merged.doseOverrides = merged.doseOverrides || {};
+      const lDO = local.doseOverrides || {};
+      for (const bn in lDO) {
+        merged.doseOverrides[bn] = merged.doseOverrides[bn] || {};
+        for (const tid in lDO[bn]) {
+          const lArr = lDO[bn][tid] || [];
+          const rArr = merged.doseOverrides[bn][tid] || [];
+          const seen = new Set(rArr.map(o => o.from));
+          merged.doseOverrides[bn][tid] = [...rArr, ...lArr.filter(o => !seen.has(o.from))];
+        }
+      }
+      continue;
+    }
+    const lDay = local[dateKey];
+    if (!lDay || typeof lDay !== 'object') continue;
+    if (!merged[dateKey]) merged[dateKey] = {};
+    for (const bn in lDay) {
+      const lBd = lDay[bn] || {};
+      const rBd = merged[dateKey][bn] || {};
+      const out = { ...rBd };
+      ['feeds','diapers','temperatures'].forEach(arrKey => {
+        const lArr = Array.isArray(lBd[arrKey]) ? lBd[arrKey] : [];
+        const rArr = Array.isArray(rBd[arrKey]) ? rBd[arrKey] : [];
+        if (!lArr.length && !rArr.length) return;
+        const byId = {};
+        let i = 0;
+        rArr.forEach(e => { const k = e.id || `__r${i++}`; byId[k] = e; });
+        lArr.forEach(e => { const k = e.id || `__l${i++}`; byId[k] = e; }); // local wins
+        out[arrKey] = Object.values(byId).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+      });
+      if (lBd.weight) out.weight = lBd.weight;
+      else if (rBd.weight) out.weight = rBd.weight;
+      if (lBd.therapies || rBd.therapies) {
+        out.therapies = { ...(rBd.therapies||{}), ...(lBd.therapies||{}) };
+      }
+      merged[dateKey][bn] = out;
+    }
+  }
+  return merged;
+}
+// Old direct overwrite functions (kept for any future use, not called by saveData/initApp)
 async function syncToCloud() {
   if (!useSupabase()) return;
   try {
     state.syncStatus = "syncing"; render();
     await supaFetch("POST", "pappa_tracker_data", { id: "main", data: state.data });
     state.syncStatus = "ok"; render();
-    setTimeout(() => { state.syncStatus = "ok"; }, 2000);
+  } catch(e) { console.error("Sync error:", e); state.syncStatus = "error"; render(); }
+}
+// Read-merge-write sync. Fetches remote, merges with local (local wins), POSTs merged.
+async function syncToCloudMerged() {
+  if (!useSupabase()) {
+    saveLocal();
+    return;
+  }
+  try {
+    state.syncStatus = "syncing"; render();
+    let remote = {};
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/pappa_tracker_data?id=eq.main&select=data`, {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+      });
+      const rows = await r.json();
+      if (rows.length > 0 && rows[0].data) remote = rows[0].data;
+    } catch(fe) { console.error("Pre-save fetch failed:", fe); /* fallback: push local as-is */ }
+    state.data = mergeData(state.data, remote);
+    migrateTemperatures();
+    addMissingIds();
+    saveLocal();
+    await supaFetch("POST", "pappa_tracker_data", { id: "main", data: state.data });
+    state.syncStatus = "ok"; render();
   } catch(e) { console.error("Sync error:", e); state.syncStatus = "error"; render(); }
 }
 async function syncFromCloud() {
@@ -267,8 +360,10 @@ async function syncFromCloud() {
     });
     const rows = await r.json();
     if (rows.length > 0 && rows[0].data) {
-      state.data = rows[0].data;
+      // Merge remote into local instead of overwriting, so unsaved local edits survive.
+      state.data = mergeData(state.data, rows[0].data);
       migrateTemperatures();
+      addMissingIds();
       saveLocal();
     }
     state.syncStatus = "ok"; render();
@@ -276,7 +371,7 @@ async function syncFromCloud() {
 }
 async function saveData() {
   saveLocal();
-  await syncToCloud();
+  await syncToCloudMerged();
   showToast();
 }
 function migrateTemperatures() {
@@ -344,8 +439,14 @@ async function addEntry(entry) {
   if(!state.data[key]) state.data[key]={};
   if(!state.data[key][state.baby]) state.data[key][state.baby]={};
   if(!state.data[key][state.baby][sec]) state.data[key][state.baby][sec]=[];
-  if(state._editIdx!==null&&state._editIdx!==undefined) state.data[key][state.baby][sec][state._editIdx]=entry;
-  else state.data[key][state.baby][sec].push(entry);
+  if(state._editIdx!==null&&state._editIdx!==undefined) {
+    const existing = state.data[key][state.baby][sec][state._editIdx];
+    entry.id = existing && existing.id ? existing.id : uid();
+    state.data[key][state.baby][sec][state._editIdx]=entry;
+  } else {
+    if (!entry.id) entry.id = uid();
+    state.data[key][state.baby][sec].push(entry);
+  }
   state.data[key][state.baby][sec].sort((a,b)=>a.time.localeCompare(b.time));
   await saveData(); closeModal(); render();
 }
@@ -900,8 +1001,14 @@ async function submitTemp(bn) {
   if(document.getElementById("t-med-check").checked && medName) {
     entry.medicine={name:medName, dose:document.getElementById("t-med-dose").value.trim()};
   }
-  if(state._editTempIdx!==null&&state._editTempIdx!==undefined) state.data[key][bn].temperatures[state._editTempIdx]=entry;
-  else state.data[key][bn].temperatures.push(entry);
+  if(state._editTempIdx!==null&&state._editTempIdx!==undefined) {
+    const existing = state.data[key][bn].temperatures[state._editTempIdx];
+    entry.id = existing && existing.id ? existing.id : uid();
+    state.data[key][bn].temperatures[state._editTempIdx]=entry;
+  } else {
+    if (!entry.id) entry.id = uid();
+    state.data[key][bn].temperatures.push(entry);
+  }
   state.data[key][bn].temperatures.sort((a,b)=>a.time.localeCompare(b.time));
   await saveData(); closeModal(); render();
 }
@@ -977,10 +1084,46 @@ function checkPassword() {
     document.getElementById("lock-pwd").focus();
   }
 }
+let supaClient = null;
+let realtimeChannel = null;
+function initRealtime() {
+  if (!useSupabase() || !window.supabase || supaClient) return;
+  try {
+    supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    realtimeChannel = supaClient
+      .channel('pappa-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'pappa_tracker_data', filter: 'id=eq.main' },
+        (payload) => {
+          const row = payload && (payload.new || payload.record);
+          if (row && row.data) {
+            state.data = mergeData(state.data, row.data);
+            migrateTemperatures();
+            addMissingIds();
+            saveLocal();
+            render();
+          }
+        })
+      .subscribe();
+  } catch(e) { console.error("Realtime init error:", e); }
+}
+let lastFocusSync = 0;
+function onAppFocus() {
+  if (!isAuthenticated()) return;
+  // Throttle: avoid double fire (visibilitychange + focus often fire together)
+  const now = Date.now();
+  if (now - lastFocusSync < 1500) return;
+  lastFocusSync = now;
+  syncFromCloud();
+}
 function initApp() {
   loadLocal();
   render();
-  syncFromCloud();
+  syncFromCloud().then(() => initRealtime());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') onAppFocus();
+  });
+  window.addEventListener('focus', onAppFocus);
 }
 // ─── INIT ───
 if (isAuthenticated()) {
