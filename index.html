@@ -786,7 +786,7 @@ function buildWeightChartContent() {
   const allKg=[...gData.map(p=>p.kg),...vData.map(p=>p.kg)];
   const minKg=Math.floor(Math.min(...allKg)*10)/10-0.2, maxKg=Math.ceil(Math.max(...allKg)*10)/10+0.2;
   const H=260, pad={t:25,r:15,b:40,l:40};
-  const W = r==='max' ? Math.max(420, 50*allDates.length+pad.l+pad.r) : 420;
+  const W = r==='max' ? Math.max(420, 25*allDates.length+pad.l+pad.r) : 420;
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
   const xOf = (i) => pad.l+(i/(allDates.length-1||1))*cw;
   const yOf = (kg) => pad.t+ch-(((kg-minKg)/(maxKg-minKg||1))*ch);
