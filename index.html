@@ -232,7 +232,7 @@ function getDose(t, dateStr, baby) {
 function ft(h,m) { return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
 // ─── STORAGE (localStorage + Supabase sync) ───
 function loadLocal() {
-  try { const s = localStorage.getItem(STORAGE_KEY); if (s) state.data = JSON.parse(s); migrateTemperatures(); addMissingIds(); } catch(e) {}
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) state.data = JSON.parse(s); migrateTemperatures(); cleanDuplicates(); } catch(e) {}
 }
 function saveLocal() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); } catch(e) {}
@@ -251,25 +251,64 @@ async function supaFetch(method, path, body) {
   });
   return r;
 }
-// Add UUID to existing array entries that lack one (retro-compat for cross-device merge).
-function addMissingIds() {
+// DEPRECATED: do NOT call. Earlier version assigned random UUIDs to legacy entries,
+// which caused per-device divergent IDs and cross-device duplication. Kept as a
+// no-op so legacy code paths don't break.
+function addMissingIds() { /* no-op */ }
+// Build a stable key for one entry. If it has an id (assigned at creation time),
+// use that. Otherwise fall back to a content-based key so legacy entries match
+// across devices regardless of which device "saw" them first.
+function entryContentKey(e, kind) {
+  const t = e.time || '';
+  if (kind === 'feeds') return `${t}|${e.ml||''}|${e.type||''}`;
+  if (kind === 'diapers') return `${t}|${e.dtype||''}|${e.color||''}`;
+  if (kind === 'temperatures') return `${t}|${e.temp||''}`;
+  return t;
+}
+function entryMergeKey(e, kind) {
+  return e && e.id ? 'id:'+e.id : 'c:'+entryContentKey(e, kind);
+}
+// Remove duplicates created by previous buggy ID assignment. Two entries are
+// considered duplicates if they share the same content key (time + main fields).
+// Keep the first (preferring entries that already have an `id` so future merges
+// dedupe cleanly).
+function cleanDuplicates() {
   for (const dateKey in state.data) {
     if (dateKey === 'doseOverrides') continue;
-    const dayData = state.data[dateKey];
-    if (!dayData || typeof dayData !== 'object') continue;
-    for (const bn in dayData) {
-      const bd = dayData[bn];
+    const day = state.data[dateKey];
+    if (!day || typeof day !== 'object') continue;
+    for (const bn in day) {
+      const bd = day[bn];
       if (!bd || typeof bd !== 'object') continue;
       ['feeds','diapers','temperatures'].forEach(arrKey => {
-        if (Array.isArray(bd[arrKey])) {
-          bd[arrKey].forEach(e => { if (e && !e.id) e.id = uid(); });
+        if (!Array.isArray(bd[arrKey])) return;
+        // Deterministic sort across devices: entries with id come first, then by id
+        // ascending. This way every device picks the same surviving entry on a tie,
+        // so id-flapping doesn't keep regenerating the cloud row.
+        const sorted = bd[arrKey].slice().sort((a,b) => {
+          const aHasId = !!(a && a.id), bHasId = !!(b && b.id);
+          if (aHasId !== bHasId) return aHasId ? -1 : 1;
+          if (aHasId && bHasId) return String(a.id).localeCompare(String(b.id));
+          return 0;
+        });
+        const seen = {};
+        const out = [];
+        for (const e of sorted) {
+          if (!e) continue;
+          const k = entryContentKey(e, arrKey);
+          if (seen[k]) continue;
+          seen[k] = true;
+          out.push(e);
         }
+        out.sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+        bd[arrKey] = out;
       });
     }
   }
 }
 // Merge local state into remote, returning a new object. Local wins on conflicts.
-// - Array entries (feeds/diapers/temperatures): union by `id`, local entry wins on duplicate
+// - Array entries (feeds/diapers/temperatures): union by id when present, otherwise
+//   by content key (time + main fields). Local wins on duplicate.
 // - Single objects (weight): local wins if present
 // - therapies (object of bools): shallow merge, local keys win
 // - doseOverrides: union by `from` date
@@ -302,11 +341,10 @@ function mergeData(local, remote) {
         const lArr = Array.isArray(lBd[arrKey]) ? lBd[arrKey] : [];
         const rArr = Array.isArray(rBd[arrKey]) ? rBd[arrKey] : [];
         if (!lArr.length && !rArr.length) return;
-        const byId = {};
-        let i = 0;
-        rArr.forEach(e => { const k = e.id || `__r${i++}`; byId[k] = e; });
-        lArr.forEach(e => { const k = e.id || `__l${i++}`; byId[k] = e; }); // local wins
-        out[arrKey] = Object.values(byId).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+        const byKey = {};
+        rArr.forEach(e => { byKey[entryMergeKey(e, arrKey)] = e; });
+        lArr.forEach(e => { byKey[entryMergeKey(e, arrKey)] = e; }); // local wins
+        out[arrKey] = Object.values(byKey).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
       });
       if (lBd.weight) out.weight = lBd.weight;
       else if (rBd.weight) out.weight = rBd.weight;
@@ -345,7 +383,7 @@ async function syncToCloudMerged() {
     } catch(fe) { console.error("Pre-save fetch failed:", fe); /* fallback: push local as-is */ }
     state.data = mergeData(state.data, remote);
     migrateTemperatures();
-    addMissingIds();
+    cleanDuplicates();
     saveLocal();
     await supaFetch("POST", "pappa_tracker_data", { id: "main", data: state.data });
     state.syncStatus = "ok"; render();
@@ -363,7 +401,7 @@ async function syncFromCloud() {
       // Merge remote into local instead of overwriting, so unsaved local edits survive.
       state.data = mergeData(state.data, rows[0].data);
       migrateTemperatures();
-      addMissingIds();
+      cleanDuplicates();
       saveLocal();
     }
     state.syncStatus = "ok"; render();
@@ -1099,7 +1137,7 @@ function initRealtime() {
           if (row && row.data) {
             state.data = mergeData(state.data, row.data);
             migrateTemperatures();
-            addMissingIds();
+            cleanDuplicates();
             saveLocal();
             render();
           }
