@@ -93,6 +93,8 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--tx
 .entry-del { border: none; background: #fee; color: #e55; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; cursor: pointer; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
 .therapy-item { background: var(--card); border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); border-left: 3px solid; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; }
 .therapy-item.done { background: #F0FDF4; opacity: 0.85; }
+.therapy-item.ended { background: #f5f5f5; cursor: default; }
+body.dark .therapy-item.ended { background: #181822; }
 .therapy-check { width: 22px; height: 22px; border-radius: 7px; border: 2px solid #ddd; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; font-size: 13px; color: #fff; font-weight: 800; }
 .therapy-check.checked { background: var(--green); border-color: var(--green); }
 .therapy-name { font-weight: 800; font-size: 12px; }
@@ -211,9 +213,32 @@ const THERAPIES = {
   Vittorio: [
     { id: "smartprevit", name: "Smart Previt", cat: "Multi-vitaminico", icon: "💊", dose: "1 ml/giorno", color: "#F59E0B" },
     { id: "ferrodue", name: "Ferrodue", cat: "Ferro", icon: "🩸", dose: "2 gocce/Kg fino al 6° mese", color: "#EF4444" },
-    { id: "aldactazide", name: "Aldactazide", cat: "Diuretico", icon: "💧", dose: "0,8 ml/giorno", color: "#3B82F6", doseHistory: [{ before: "2026-04-02", dose: "0,6 ml/giorno" }] }
+    { id: "aldactazide", name: "Aldactazide", cat: "Diuretico", icon: "💧", dose: "0,8 ml/giorno", color: "#3B82F6", doseHistory: [{ before: "2026-04-02", dose: "0,6 ml/giorno" }], endedDate: "2026-06-11" }
   ]
 };
+// ─── THERAPY ACCESSORS (built-in + custom, minus deleted) ───
+// Built-in therapies live in THERAPIES. Custom ones the user adds are stored in
+// state.data.customTherapies[baby]; deletions (of built-in or custom) are recorded
+// as ids in state.data.hiddenTherapies[baby]. Both sync like the rest of state.data.
+function getTherapies(bn) {
+  const builtin = THERAPIES[bn] || [];
+  const custom = (state.data.customTherapies && state.data.customTherapies[bn]) || [];
+  const hidden = new Set((state.data.hiddenTherapies && state.data.hiddenTherapies[bn]) || []);
+  return [...builtin, ...custom].filter(t => t && !hidden.has(t.id));
+}
+// True if therapy is still active on the given date (no end date, or date <= end).
+function isTherapyActiveOn(t, dateKey) {
+  return !t.endedDate || dateKey <= t.endedDate;
+}
+// Therapies that count toward compliance / appear in history for a specific date.
+function getActiveTherapies(bn, dateKey) {
+  return getTherapies(bn).filter(t => isTherapyActiveOn(t, dateKey));
+}
+// Format YYYY-MM-DD -> DD.MM.YYYY
+function fmtDotDate(ymd) {
+  const [y,m,d] = ymd.split('-');
+  return `${d}.${m}.${y}`;
+}
 const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
 let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local" };
@@ -308,7 +333,7 @@ function applyTombstones(data, tombstones) {
     }
   }
   for (const dateKey in data) {
-    if (dateKey === 'doseOverrides' || dateKey === '_tombstones') continue;
+    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies') continue;
     const day = data[dateKey];
     if (!day || typeof day !== 'object') continue;
     for (const bn in day) {
@@ -348,7 +373,7 @@ function entryMergeKey(e, kind) {
 // dedupe cleanly).
 function cleanDuplicates() {
   for (const dateKey in state.data) {
-    if (dateKey === 'doseOverrides' || dateKey === '_tombstones') continue;
+    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies') continue;
     const day = state.data[dateKey];
     if (!day || typeof day !== 'object') continue;
     for (const bn in day) {
@@ -395,8 +420,26 @@ function mergeData(local, remote) {
   }
   // Union tombstones first so we can apply them after the union pass
   const mergedTombstones = mergeTombstoneArrays(local._tombstones, merged._tombstones);
+  // Custom therapies: union by therapy id (local wins on duplicate)
+  if (local.customTherapies) {
+    merged.customTherapies = merged.customTherapies || {};
+    for (const bn in local.customTherapies) {
+      const byId = {};
+      (merged.customTherapies[bn] || []).forEach(t => { if (t && t.id) byId[t.id] = t; });
+      (local.customTherapies[bn] || []).forEach(t => { if (t && t.id) byId[t.id] = t; });
+      merged.customTherapies[bn] = Object.values(byId);
+    }
+  }
+  // Hidden therapies: union of id arrays per baby
+  if (local.hiddenTherapies) {
+    merged.hiddenTherapies = merged.hiddenTherapies || {};
+    for (const bn in local.hiddenTherapies) {
+      const s = new Set([...(merged.hiddenTherapies[bn] || []), ...(local.hiddenTherapies[bn] || [])]);
+      merged.hiddenTherapies[bn] = [...s];
+    }
+  }
   for (const dateKey in local) {
-    if (dateKey === '_tombstones') continue;
+    if (dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies') continue;
     if (dateKey === 'doseOverrides') {
       merged.doseOverrides = merged.doseOverrides || {};
       const lDO = local.doseOverrides || {};
@@ -505,7 +548,7 @@ async function saveData() {
 }
 function migrateTemperatures() {
   for(const key in state.data) {
-    if(key==='doseOverrides' || key==='_tombstones') continue;
+    if(key==='doseOverrides' || key==='_tombstones' || key==='customTherapies' || key==='hiddenTherapies') continue;
     const day = state.data[key];
     if (!day || typeof day !== 'object' || Array.isArray(day)) continue;
     for(const bn in day) {
@@ -521,7 +564,7 @@ function migrateTemperatures() {
 // ─── HELPERS ───
 function getBabyDay(bn, dateKey) {
   const bd = state.data[dateKey]?.[bn];
-  const feeds = bd?.feeds || [], diapers = bd?.diapers || [], checks = bd?.therapies || {}, ts = THERAPIES[bn] || [];
+  const feeds = bd?.feeds || [], diapers = bd?.diapers || [], checks = bd?.therapies || {}, ts = getActiveTherapies(bn, dateKey);
   return { feeds, diapers, checks, therapies: ts, totalMl: feeds.reduce((s,f)=>s+(f.ml||0),0), totalDiapers: diapers.length, therapyDone: ts.filter(t=>checks[t.id]).length };
 }
 function getCalDays(y, mo) {
@@ -610,7 +653,7 @@ function exportCSV() {
       (bd.diapers||[]).forEach(d=>rows.push([date,bn,"Pannolino",d.time,"","",d.dtype,d.color||"","","",d.note||""]));
       if(bd.weight)rows.push([date,bn,"Peso",bd.weight.time,bd.weight.kg,"","","","","",bd.weight.note||""]);
       (bd.temperatures||[]).forEach(t=>rows.push([date,bn,"Temperatura",t.time,t.temp,"","","","","",t.note||""]));
-      if(bd.therapies)(THERAPIES[bn]||[]).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",getDose(t,date,bn)]);});
+      if(bd.therapies)getActiveTherapies(bn,date).forEach(t=>{if(bd.therapies[t.id]!==undefined)rows.push([date,bn,"Terapia","","","","","",t.name,bd.therapies[t.id]?"Sì":"No",getDose(t,date,bn)]);});
     });
   });
   const csv=BOM+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
@@ -727,15 +770,23 @@ function render() {
   });
   h+=`</div>`;
   // Therapies
-  const ts=THERAPIES[state.baby]||[], checks=state.data[key]?.[state.baby]?.therapies||{};
-  h+=`<div class="content"><div class="content-title">💊 Terapie ${state.baby} — ${dateLabel}</div>${ts.map(t=>{
+  const ts=getTherapies(state.baby), checks=state.data[key]?.[state.baby]?.therapies||{};
+  h+=`<div class="content"><div class="content-title" style="display:flex;align-items:center;justify-content:space-between">💊 Terapie ${state.baby} — ${dateLabel}<button onclick="event.stopPropagation();openAddTherapy('${state.baby}')" title="Aggiungi terapia" style="border:none;background:var(--${state.baby==='Gabriel'?'gabriel':'vittorio'}-light);color:${COLORS[state.baby].pri};width:26px;height:26px;border-radius:8px;font-size:18px;font-weight:800;line-height:1;cursor:pointer;font-family:inherit">+</button></div>${ts.map(t=>{
+    const ended = !!t.endedDate;
+    if (ended) {
+      return`<div class="therapy-item ended" style="border-left-color:#ccc">
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:#999">${t.name}</span><span class="therapy-cat" style="background:#eee;color:#999">${t.cat}</span></div><div class="therapy-dose" style="color:#aaa">📋 ${getDose(t,key)}</div><div style="font-size:9px;color:#aaa;margin-top:2px;font-style:italic">Somministrato l'ultimo giorno in data ${fmtDotDate(t.endedDate)}</div></div>
+      <button class="entry-del" onclick="event.stopPropagation();delTherapyDef('${state.baby}','${t.id}')">✕</button>
+    </div>`;
+    }
     const done=!!checks[t.id];
     return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
       <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
       <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key)} <span onclick="event.stopPropagation();openDoseModal('${state.baby}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:11px">✏️</span></div></div>
       ${done?'<span class="therapy-done-badge">Fatto</span>':''}
+      <button class="entry-del" onclick="event.stopPropagation();delTherapyDef('${state.baby}','${t.id}')">✕</button>
     </div>`;
-  }).join("")}</div>`;
+  }).join("")}${ts.length?'':'<div class="empty">Nessuna terapia. Premi + per aggiungerne una.</div>'}</div>`;
   document.getElementById("app").innerHTML=h;
 }
 // ─── MODAL ───
@@ -1103,17 +1154,16 @@ function showPediatricReport() {
       const temps = state.data[k]?.[bn]?.temperatures||[];
       if (temps.length) lastTemp = temps[temps.length-1];
     });
-    // Therapy compliance
-    const therapies = THERAPIES[bn] || [];
+    // Therapy compliance — per day, only therapies active on that day count.
+    const therapies = getTherapies(bn);
     let therapyTotal = 0, therapyDone = 0;
-    if (therapies.length) {
-      days.forEach(k => {
-        therapyTotal++;
-        const checks = state.data[k]?.[bn]?.therapies || {};
-        const allDone = therapies.every(t => checks[t.id]);
-        if (allDone) therapyDone++;
-      });
-    }
+    days.forEach(k => {
+      const act = getActiveTherapies(bn, k);
+      if (!act.length) return;
+      therapyTotal++;
+      const checks = state.data[k]?.[bn]?.therapies || {};
+      if (act.every(t => checks[t.id])) therapyDone++;
+    });
     const compliance = therapyTotal ? Math.round((therapyDone / therapyTotal) * 100) : null;
     // Period label
     const startDate = days[0].split('-').reverse().join('/');
@@ -1156,7 +1206,7 @@ function showPediatricReport() {
           ${therapies.length ? `
             <div class="report-stat"><span class="label">Compliance</span><span class="value ${compliance >= 80 ? 'report-ok' : compliance >= 50 ? '' : 'report-flag'}">${compliance}%</span></div>
             <div style="font-size:10px;color:#888;margin-top:4px">(giorni con tutte le terapie somministrate / giorni totali)</div>
-            <div style="margin-top:6px">${therapies.map(t => `<div style="font-size:11px;padding:2px 0">${t.icon} ${t.name} — ${t.dose}</div>`).join('')}</div>
+            <div style="margin-top:6px">${therapies.map(t => t.endedDate ? `<div style="font-size:11px;padding:2px 0;color:#aaa">${t.icon} ${t.name} — ${t.dose} <i>(somministrato l'ultimo giorno in data ${fmtDotDate(t.endedDate)})</i></div>` : `<div style="font-size:11px;padding:2px 0">${t.icon} ${t.name} — ${t.dose}</div>`).join('')}</div>
           ` : '<div style="font-size:11px;color:#aaa">Nessuna terapia configurata</div>'}
         </div>
       </div>`;
@@ -1185,7 +1235,7 @@ function showPediatricReport() {
 }
 // ─── DOSE EDIT ───
 function openDoseModal(bn, tid) {
-  const t = (THERAPIES[bn]||[]).find(x=>x.id===tid); if(!t) return;
+  const t = getTherapies(bn).find(x=>x.id===tid); if(!t) return;
   const c = COLORS[bn];
   const currentDose = getDose(t, dk(new Date()), bn);
   setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${t.icon} Modifica dosaggio — ${t.name}</div><div class="form-label">Nuovo dosaggio</div><input class="form-input big" type="text" id="dose-val" value="${currentDose}" placeholder="es. 0,8 ml/giorno" style="margin-bottom:12px"><div style="font-size:10px;color:#888;margin-bottom:12px">La modifica si applica da oggi in avanti. I giorni precedenti mantengono il dosaggio attuale.</div><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitDose('${bn}','${tid}')">Salva</button></div></div></div>`);
@@ -1198,6 +1248,46 @@ async function submitDose(bn, tid) {
   if(!state.data.doseOverrides[bn][tid]) state.data.doseOverrides[bn][tid] = [];
   state.data.doseOverrides[bn][tid].push({ from: dk(new Date()), dose: val });
   await saveData(); closeModal(); render();
+}
+// ─── ADD / DELETE THERAPY ───
+const THERAPY_ICONS = ['💊','💧','🩸','🧪','💉','🌿','🍼','🩹','😴','🦴'];
+const THERAPY_COLORS = [['#3B82F6','Blu'],['#EF4444','Rosso'],['#F59E0B','Arancio'],['#10B981','Verde'],['#8B5CF6','Viola'],['#EC4899','Rosa'],['#14B8A6','Turchese']];
+function openAddTherapy(bn) {
+  const c = COLORS[bn];
+  const iconOpts = THERAPY_ICONS.map((ic,i)=>`<option value="${ic}"${i===0?' selected':''}>${ic}</option>`).join('');
+  const colorOpts = THERAPY_COLORS.map(([col,name],i)=>`<option value="${col}"${i===0?' selected':''}>${name}</option>`).join('');
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">➕ Aggiungi terapia — ${bn}</div>
+    <div class="form-label">Nome *</div><input class="form-input big" type="text" id="t-name" placeholder="es. Vitamina D" style="margin-bottom:10px">
+    <div class="form-label">Categoria</div><input class="form-input" type="text" id="t-cat" placeholder="es. Vitamina" style="margin-bottom:10px">
+    <div class="form-label">Dosaggio</div><input class="form-input" type="text" id="t-dose" placeholder="es. 3 gocce/giorno" style="margin-bottom:10px">
+    <div class="form-row"><div style="flex:1"><div class="form-label">Icona</div><select class="form-select" id="t-icon" style="width:100%">${iconOpts}</select></div><div style="flex:1"><div class="form-label">Colore</div><select class="form-select" id="t-color" style="width:100%">${colorOpts}</select></div></div>
+    <div class="form-actions" style="margin-top:14px"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitAddTherapy('${bn}')">Aggiungi 💊</button></div>
+  </div></div>`);
+}
+async function submitAddTherapy(bn) {
+  const name = document.getElementById('t-name').value.trim();
+  if (!name) return;
+  const therapy = {
+    id: uid(),
+    name,
+    cat: document.getElementById('t-cat').value.trim() || 'Terapia',
+    icon: document.getElementById('t-icon').value || '💊',
+    dose: document.getElementById('t-dose').value.trim() || '—',
+    color: document.getElementById('t-color').value || COLORS[bn].pri
+  };
+  if (!state.data.customTherapies) state.data.customTherapies = {};
+  if (!state.data.customTherapies[bn]) state.data.customTherapies[bn] = [];
+  state.data.customTherapies[bn].push(therapy);
+  await saveData(); closeModal(); render();
+}
+async function delTherapyDef(bn, tid) {
+  const t = getTherapies(bn).find(x => x.id === tid);
+  const name = t ? t.name : 'questa terapia';
+  if (!confirm(`Eliminare la terapia "${name}"?\nLo storico dei giorni già registrati resta invariato.`)) return;
+  if (!state.data.hiddenTherapies) state.data.hiddenTherapies = {};
+  if (!state.data.hiddenTherapies[bn]) state.data.hiddenTherapies[bn] = [];
+  if (!state.data.hiddenTherapies[bn].includes(tid)) state.data.hiddenTherapies[bn].push(tid);
+  await saveData(); render();
 }
 // ─── TOAST ───
 function showToast(msg) {
