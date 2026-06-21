@@ -961,24 +961,35 @@ function buildToday() {
   return h;
 }
 // ── TRENDS VIEW ──
-// Weight gain over the last N days: last point vs the most recent point on/before (lastDate - N).
-function weightDeltaDays(bn, days) {
+// Compact Italian date for the last weigh-in, e.g. "18 giu" (year appended only when not current).
+function fmtNiceDate(ymd) {
+  const [y,m,d] = ymd.split('-').map(Number);
+  return d + ' ' + MONTHS[m-1].slice(0,3).toLowerCase() + (y !== new Date().getFullYear() ? ' ' + y : '');
+}
+// Weight gain looking back up to maxDays from today: latest weigh-in vs the OLDEST
+// weigh-in still inside the window. Returns {delta, days} where days is how many days
+// ago that reference weigh-in actually was (so the label is honest — e.g. "5 giorni"
+// even if the window is 7). Returns null when there's no second weigh-in in the window.
+function weightDeltaDays(bn, maxDays) {
   const hist = getWeightHistory(bn);
   if (hist.length < 2) return null;
   const last = hist[hist.length-1];
-  const [y,m,d] = last.date.split('-').map(Number);
-  const cutKey = dk(new Date(y, m-1, d-days));
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cutKey = dk(new Date(today.getFullYear(), today.getMonth(), today.getDate()-maxDays));
   let ref = null;
-  for (const p of hist) { if (p.date <= cutKey) ref = p; else break; }
-  if (!ref) ref = hist[0];
-  if (ref.date === last.date) return null;
-  return +(last.kg - ref.kg).toFixed(2);
+  for (const p of hist) { if (p.date >= cutKey && p.date < last.date) { ref = p; break; } }
+  if (!ref) return null;
+  const [ry,rm,rd] = ref.date.split('-').map(Number);
+  const days = Math.round((today - new Date(ry, rm-1, rd)) / 86400000);
+  return { delta: +(last.kg - ref.kg).toFixed(2), days };
 }
+// "1 giorno" / "N giorni"
+function dayLabel(n) { return n + (n===1 ? ' giorno' : ' giorni'); }
 function buildTrends() {
   const G=COLORS.Gabriel, V=COLORS.Vittorio;
   const histG=getWeightHistory("Gabriel"), histV=getWeightHistory("Vittorio");
-  const lastG=histG.length?histG[histG.length-1].kg:null;
-  const lastV=histV.length?histV[histV.length-1].kg:null;
+  const lastG=histG.length?histG[histG.length-1]:null;
+  const lastV=histV.length?histV[histV.length-1]:null;
   const fmtKg = n => n==null ? '—' : String(n).replace('.',',');
   const fmtDelta = n => n==null ? '—' : (n>=0?'+':'')+String(n).replace('.',',')+' kg';
   const dCol = n => n==null ? 'var(--hint)' : n>=0 ? 'var(--green)' : 'var(--red)';
@@ -991,9 +1002,9 @@ function buildTrends() {
     const d7=weightDeltaDays(bn,7), d30=weightDeltaDays(bn,30);
     h+=`<div class="recap-card" style="--cardgrad:${col.grad}">
       <div class="recap-name" style="color:${col.pri}">${bn}</div>
-      <div style="font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:1px 0 7px">${last!=null?fmtKg(last)+' <span style="font-size:12px;color:var(--sub);font-weight:600">kg</span>':'—'}</div>
-      <div class="recap-line"><span class="sub">7 giorni</span> <b style="margin-left:auto;color:${dCol(d7)}">${fmtDelta(d7)}</b></div>
-      <div class="recap-line"><span class="sub">30 giorni</span> <b style="margin-left:auto;color:${dCol(d30)}">${fmtDelta(d30)}</b></div>
+      <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin:1px 0 8px"><span style="font-size:24px;font-weight:700;letter-spacing:-0.02em">${last?fmtKg(last.kg)+' <span style="font-size:12px;color:var(--sub);font-weight:600">kg</span>':'—'}</span>${last?`<span style="font-size:11px;color:var(--hint);font-weight:500">${fmtNiceDate(last.date)}</span>`:''}</div>
+      <div class="recap-line"><span class="sub">${d7?dayLabel(d7.days):'7 giorni'}</span> <b style="margin-left:auto;color:${dCol(d7&&d7.delta)}">${fmtDelta(d7&&d7.delta)}</b></div>
+      <div class="recap-line"><span class="sub">${d30?dayLabel(d30.days):'30 giorni'}</span> <b style="margin-left:auto;color:${dCol(d30&&d30.delta)}">${fmtDelta(d30&&d30.delta)}</b></div>
     </div>`;
   });
   h+=`</div></div>`;
