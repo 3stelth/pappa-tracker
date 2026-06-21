@@ -7,171 +7,222 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>🍼 Pappa Tracker</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍼</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
-  --gabriel-pri: #4A90D9; --gabriel-acc: #2D6CB4; --gabriel-light: #E8F1FB;
-  --vittorio-pri: #14B8A6; --vittorio-acc: #0D9488; --vittorio-light: #E6FAF7;
-  --bg: #F6F7FB; --card: #fff; --txt: #1a1a2e; --sub: #888; --border: #eee;
-  --green: #10B981; --green-light: #DCFCE7; --red: #EF4444; --red-light: #FEF2F2;
+  --gabriel-pri: #3B82F6; --gabriel-acc: #2563EB; --gabriel-light: #E8F1FE; --gabriel-2: #60A5FA;
+  --vittorio-pri: #14B8A6; --vittorio-acc: #0D9488; --vittorio-light: #E2FBF6; --vittorio-2: #2DD4BF;
+  --accent: #3B82F6; --accent-2: #60A5FA; --accent-acc: #2563EB;
+  --grad: linear-gradient(135deg,#60A5FA,#3B82F6);
+  --bg-0: #EAF0FB; --bg-1: #E2E9F6;
+  --txt: #0C1222; --sub: #5C6678; --hint: #98A0B2;
+  --glass: rgba(255,255,255,0.55); --glass-2: rgba(255,255,255,0.40); --glass-strong: rgba(255,255,255,0.80); --solid: #F7FAFE;
+  --glass-brd: rgba(255,255,255,0.80); --glass-brd-2: rgba(255,255,255,0.45);
+  --hair: rgba(12,18,34,0.09);
+  --shadow: 0 12px 36px rgba(22,32,72,0.13); --shadow-sm: 0 4px 16px rgba(22,32,72,0.08);
+  --green: #10B981; --green-light: rgba(16,185,129,0.15);
+  --red: #F43F5E; --red-light: rgba(244,63,94,0.13);
+  --amber: #F59E0B; --amber-light: rgba(245,158,11,0.16);
+  --blur: 20px; --blur-strong: 30px;
+  --r-lg: 26px; --r-md: 18px; --r-sm: 13px;
+  --tab-h: 76px;
 }
 body.dark {
-  --bg: #0f0f1a; --card: #1e1e30; --txt: #e0e0e0; --sub: #888; --border: #333;
-  --green-light: #064e3b; --red-light: #450a0a;
+  --bg-0: #060812; --bg-1: #0A0E1C;
+  --txt: #EAEDF7; --sub: #99A1B7; --hint: #69708A;
+  --glass: rgba(26,31,52,0.52); --glass-2: rgba(22,27,46,0.40); --glass-strong: rgba(28,34,58,0.82); --solid: #1B2238;
+  --glass-brd: rgba(255,255,255,0.14); --glass-brd-2: rgba(255,255,255,0.07);
+  --hair: rgba(255,255,255,0.09);
+  --shadow: 0 16px 44px rgba(0,0,0,0.55); --shadow-sm: 0 6px 22px rgba(0,0,0,0.42);
+  --green-light: rgba(16,185,129,0.20);
+  --red-light: rgba(244,63,94,0.22);
+  --amber-light: rgba(245,158,11,0.24);
 }
-body.dark .cal-head { color: #666; }
-body.dark .cal-day { color: #ccc; }
-body.dark .cal-day.other { color: #444; }
-body.dark .empty { color: #555; }
-body.dark .entry-note { color: #666; }
-body.dark .recap-line b { color: #ccc; }
-body.dark .form-input, body.dark .form-select { background: #2a2a3e; color: #e0e0e0; border-color: #444; }
-body.dark .modal { background: #1e1e30; }
-body.dark .chip { background: #2a2a3e; color: #aaa; border-color: #444; }
-body.dark .quickadd-popup { background: #1e1e30; }
-body.dark .quickadd-btn { background: #2a2a3e; color: #ccc; }
-body.dark .weight-chart-modal { background: #1e1e30; }
-body.dark .lock-screen { background: #0f0f1a; }
-body.dark .lock-title { color: #e0e0e0; }
-body.dark .lock-input { background: #1e1e30; color: #e0e0e0; border-color: #444; }
-body.dark .btn-cancel { background: #2a2a3e; color: #aaa; border-color: #444; }
-body.dark .therapy-item { background: var(--card); }
-body.dark .therapy-item.done { background: #0a2e1a; }
-body.dark .entry-del { background: #3a1a1a; }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--txt); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
-.header { padding: 22px 16px 14px; border-radius: 0 0 24px 24px; color: #fff; position: sticky; top: 0; z-index: 30; overflow: hidden; }
-.header::after { content: ''; position: absolute; top: -20px; right: -20px; width: 90px; height: 90px; border-radius: 50%; background: rgba(255,255,255,0.08); }
-.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; position: relative; z-index: 1; }
-.app-title { font-size: 19px; font-weight: 800; }
-.app-sub { font-size: 10px; opacity: 0.8; }
-.header-btns { display: flex; gap: 5px; }
-.header-btns button { background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 9px; padding: 3px 7px; border-radius: 7px; cursor: pointer; font-weight: 600; font-family: inherit; }
-.pills { display: flex; gap: 6px; margin-bottom: 8px; position: relative; z-index: 1; }
-.pill { flex: 1; padding: 8px 0; border: none; border-radius: 12px; font-size: 12px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.25s; white-space: nowrap; }
-.pill.off { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); }
-.pill.on { background: #fff; box-shadow: 0 3px 12px rgba(0,0,0,0.12); transform: scale(1.02); }
-.tabs { display: flex; gap: 4px; position: relative; z-index: 1; }
-.tab { flex: 1; padding: 8px 0; border: none; border-radius: 12px; font-size: 11px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.25s; white-space: nowrap; }
-.tab.off { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); }
-.tab.on { background: rgba(255,255,255,0.95); box-shadow: 0 3px 12px rgba(0,0,0,0.12); }
-.cal-wrap { padding: 10px 12px 0; }
-.cal { background: var(--card); border-radius: 16px; padding: 10px; box-shadow: 0 1px 12px rgba(0,0,0,0.04); }
-.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.cal-nav button { border: none; width: 28px; height: 28px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 700; font-family: inherit; }
-.cal-nav span { font-weight: 700; font-size: 13px; }
-.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; text-align: center; }
-.cal-head { font-size: 9px; font-weight: 700; color: #aaa; padding: 2px 0; }
-.cal-day { border: none; width: 100%; aspect-ratio: 1; border-radius: 9px; font-size: 11px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: transparent; font-family: 'Nunito', sans-serif; font-weight: 600; transition: all 0.15s; }
-.cal-day.other { color: #ccc; }
-.cal-dots { display: flex; gap: 1.5px; }
-.cal-dot { width: 3px; height: 3px; border-radius: 50%; }
-.recap-section { padding: 10px 12px 0; }
-.recap-label { font-size: 11px; font-weight: 800; color: #888; margin-bottom: 6px; }
-.recap-row { display: flex; gap: 8px; }
-.recap-card { flex: 1; background: var(--card); border-radius: 14px; padding: 9px 11px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); border-top: 3px solid; }
-.recap-name { font-size: 11px; font-weight: 800; margin-bottom: 5px; }
-.recap-line { display: flex; align-items: center; gap: 4px; font-size: 10px; margin-bottom: 2px; }
-.recap-line b { font-weight: 700; color: #444; }
-.recap-line .sub { font-size: 9px; color: #aaa; }
-.therapy-badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
-.therapy-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 5px; }
+html { background: var(--bg-0); }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif; color: var(--txt); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: calc(var(--tab-h) + 28px); letter-spacing: -0.01em; }
+b, .num { font-variant-numeric: tabular-nums; }
+/* ── Ambient background field (the signature: orbs glow in the active baby's color) ── */
+.bg-field { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: radial-gradient(130% 100% at 50% -10%, var(--bg-1), var(--bg-0) 70%); pointer-events: none; }
+.orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55; transition: background 0.8s ease; will-change: transform; }
+body.dark .orb { opacity: 0.42; filter: blur(70px); }
+.orb-a { width: 320px; height: 320px; top: -90px; left: -70px; background: var(--accent); animation: float-a 22s ease-in-out infinite; }
+.orb-b { width: 280px; height: 280px; top: 26%; right: -110px; background: var(--accent-2); animation: float-b 26s ease-in-out infinite; }
+.orb-c { width: 360px; height: 360px; bottom: -130px; left: 30%; background: var(--accent); opacity: 0.32; animation: float-c 30s ease-in-out infinite; }
+@keyframes float-a { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,50px)} }
+@keyframes float-b { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-50px,40px)} }
+@keyframes float-c { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-40px)} }
+/* ── Glass header ── */
+.header { padding: max(16px,env(safe-area-inset-top)) 16px 14px; position: sticky; top: 0; z-index: 30; background: var(--glass); -webkit-backdrop-filter: blur(var(--blur-strong)) saturate(170%); backdrop-filter: blur(var(--blur-strong)) saturate(170%); border-bottom: 1px solid var(--glass-brd-2); }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.app-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 7px; }
+.app-sub { font-size: 11px; color: var(--sub); font-weight: 500; margin-top: 1px; }
+.header-btns { display: flex; gap: 6px; align-items: center; }
+.header-btns button { background: var(--glass-2); border: 1px solid var(--glass-brd-2); color: var(--txt); font-size: 15px; width: 34px; height: 34px; padding: 0; border-radius: 11px; cursor: pointer; font-weight: 600; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.15s, background 0.2s; }
+.header-btns button:active { transform: scale(0.9); }
+/* ── Segmented control (baby switch) ── */
+.pills { display: flex; gap: 4px; padding: 4px; background: var(--glass-2); border: 1px solid var(--glass-brd-2); border-radius: 15px; }
+.pill { flex: 1; padding: 9px 0; border: none; border-radius: 11px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.3s cubic-bezier(.4,1.3,.5,1); white-space: nowrap; color: var(--sub); background: transparent; letter-spacing: -0.01em; }
+.pill.on { color: #fff; background: var(--grad); box-shadow: 0 6px 16px -4px var(--accent); transform: translateY(-0.5px); }
+.tabs { display: flex; gap: 4px; }
+.tab { flex: 1; padding: 8px 0; border: none; border-radius: 11px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.25s; white-space: nowrap; background: var(--glass-2); color: var(--sub); }
+.tab.on { background: var(--glass-strong); color: var(--txt); }
+/* ── Bottom tab bar ── */
+.tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: min(480px,100%); z-index: 90; display: flex; padding: 9px 10px calc(9px + env(safe-area-inset-bottom)); gap: 4px; background: var(--glass); -webkit-backdrop-filter: blur(var(--blur-strong)) saturate(170%); backdrop-filter: blur(var(--blur-strong)) saturate(170%); border-top: 1px solid var(--glass-brd-2); }
+.tabbar-btn { flex: 1; border: none; background: transparent; cursor: pointer; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 0; color: var(--hint); border-radius: 13px; transition: color 0.2s, transform 0.15s; }
+.tabbar-btn svg { width: 23px; height: 23px; stroke-width: 1.7; }
+.tabbar-btn span { font-size: 10px; font-weight: 600; letter-spacing: -0.01em; }
+.tabbar-btn.on { color: var(--accent); }
+.tabbar-btn:active { transform: scale(0.9); }
+.fab-wrap { position: fixed; bottom: calc(var(--tab-h) + 16px); right: max(16px,calc(50% - 232px)); z-index: 95; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.fab-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 11px; }
+.fab-action { display: inline-flex; align-items: center; gap: 10px; border: none; background: transparent; cursor: pointer; font-family: inherit; padding: 0; opacity: 0; transform: translateY(14px) scale(.92); pointer-events: none; transition: opacity .25s ease, transform .28s cubic-bezier(.32,1.25,.4,1); }
+.fab-wrap.open .fab-action { opacity: 1; transform: none; pointer-events: auto; }
+.fab-wrap.open .fab-action:nth-child(1){ transition-delay:.12s }
+.fab-wrap.open .fab-action:nth-child(2){ transition-delay:.08s }
+.fab-wrap.open .fab-action:nth-child(3){ transition-delay:.04s }
+.fab-wrap.open .fab-action:nth-child(4){ transition-delay:0s }
+.fab-action-label { background: var(--solid); border: 1px solid var(--glass-brd); padding: 8px 13px; border-radius: 13px; font-size: 13px; font-weight: 600; color: var(--txt); box-shadow: var(--shadow-sm); white-space: nowrap; }
+.fab-action-ic { width: 46px; height: 46px; border-radius: 15px; background: var(--solid); border: 1px solid var(--glass-brd); display: inline-flex; align-items: center; justify-content: center; font-size: 21px; box-shadow: var(--shadow-sm); }
+.fab-add { width: 56px; height: 56px; border-radius: 19px; background: var(--grad); color: #fff; border: none; cursor: pointer; box-shadow: 0 10px 28px -6px var(--accent); display: flex; align-items: center; justify-content: center; transition: transform .3s cubic-bezier(.4,1.3,.5,1); }
+.fab-add .plus { display: inline-block; font-size: 30px; line-height: 1; transition: transform .3s cubic-bezier(.4,1.3,.5,1); }
+.fab-wrap.open .fab-add .plus { transform: rotate(45deg); }
+.fab-add:active { transform: scale(.9); }
+.fab-overlay { position: fixed; inset: 0; z-index: 94; background: transparent; }
+/* ── Cards & surfaces ── */
+.cal-wrap { padding: 12px 14px 0; }
+.cal { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(160%); backdrop-filter: blur(var(--blur)) saturate(160%); border: 1px solid var(--glass-brd); border-radius: var(--r-md); padding: 13px; box-shadow: var(--shadow-sm); }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-nav button { border: none; width: 30px; height: 30px; border-radius: 10px; font-size: 15px; cursor: pointer; font-weight: 700; font-family: inherit; background: var(--accent-soft,var(--glass-2)); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; }
+.cal-nav span { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; text-align: center; }
+.cal-head { font-size: 10px; font-weight: 700; color: var(--hint); padding: 3px 0; text-transform: uppercase; letter-spacing: 0.03em; }
+.cal-day { border: none; width: 100%; aspect-ratio: 1; border-radius: 12px; font-size: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: transparent; font-family: inherit; font-weight: 600; color: var(--txt); transition: all 0.18s; }
+.cal-day.other { color: var(--hint); opacity: 0.5; }
+.cal-dots { display: flex; gap: 2px; }
+.cal-dot { width: 4px; height: 4px; border-radius: 50%; }
+.recap-section { padding: 14px 14px 0; }
+.recap-label { font-size: 13px; font-weight: 700; color: var(--txt); margin-bottom: 9px; letter-spacing: -0.01em; }
+.recap-row { display: flex; gap: 10px; }
+.recap-card { flex: 1; min-width: 0; background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(160%); backdrop-filter: blur(var(--blur)) saturate(160%); border: 1px solid var(--glass-brd); border-radius: var(--r-md); padding: 13px 13px 12px; box-shadow: var(--shadow-sm); position: relative; }
+.recap-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--r-md) var(--r-md) 0 0; background: var(--cardgrad,var(--grad)); }
+.recap-name { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; letter-spacing: -0.01em; }
+.recap-line { display: flex; align-items: center; gap: 5px; font-size: 12px; margin-bottom: 4px; color: var(--sub); }
+.recap-line b { font-weight: 700; color: var(--txt); }
+.recap-line .sub { font-size: 10px; color: var(--hint); }
+.therapy-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.therapy-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px; }
 .therapy-badge.done { background: var(--green-light); color: var(--green); }
 .therapy-badge.pending { background: var(--red-light); color: var(--red); }
-.content { padding: 10px 12px 0; }
-.content-title { font-size: 12px; font-weight: 800; color: #555; margin-bottom: 6px; }
-.empty { background: var(--card); border-radius: 14px; padding: 20px 16px; text-align: center; color: #bbb; font-size: 11px; box-shadow: 0 1px 8px rgba(0,0,0,0.03); }
-.entry { background: var(--card); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 8px; border-left: 3px solid; margin-bottom: 6px; cursor: pointer; }
-.entry-icon { font-size: 16px; flex-shrink: 0; }
+.content { padding: 16px 14px 0; }
+.content-title { font-size: 13px; font-weight: 700; color: var(--txt); margin-bottom: 9px; letter-spacing: -0.01em; }
+.empty { background: var(--glass-2); border: 1px solid var(--glass-brd-2); border-radius: var(--r-md); padding: 22px 16px; text-align: center; color: var(--hint); font-size: 13px; font-weight: 500; }
+.entry { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 11px 13px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 11px; margin-bottom: 8px; cursor: pointer; transition: transform 0.15s; position: relative; }
+.entry::before { content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--accent); }
+.entry:active { transform: scale(0.99); }
+.entry-icon { font-size: 19px; flex-shrink: 0; }
 .entry-body { flex: 1; min-width: 0; }
-.entry-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.entry-time { font-weight: 800; font-size: 12px; }
-.entry-ml { font-size: 11px; font-weight: 700; }
-.entry-tag { font-size: 8px; padding: 1px 5px; border-radius: 5px; font-weight: 700; }
-.entry-note { font-size: 9px; color: #999; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.entry-del { border: none; background: #fee; color: #e55; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; cursor: pointer; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
-.therapy-item { background: var(--card); border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); border-left: 3px solid; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; }
-.therapy-item.done { background: #F0FDF4; opacity: 0.85; }
-.therapy-item.ended { background: #f5f5f5; cursor: default; }
-body.dark .therapy-item.ended { background: #181822; }
-.therapy-check { width: 22px; height: 22px; border-radius: 7px; border: 2px solid #ddd; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; font-size: 13px; color: #fff; font-weight: 800; }
+.entry-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.entry-time { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.entry-ml { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.entry-tag { font-size: 9px; padding: 2px 7px; border-radius: 7px; font-weight: 700; }
+.entry-note { font-size: 11px; color: var(--hint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-del { border: none; background: var(--red-light); color: var(--red); width: 26px; height: 26px; border-radius: 9px; font-size: 12px; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; transition: transform 0.15s; }
+.entry-del:active { transform: scale(0.85); }
+.therapy-item { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 12px 13px; box-shadow: var(--shadow-sm); margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.15s; position: relative; }
+.therapy-item::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--titem,var(--accent)); }
+.therapy-item:active { transform: scale(0.99); }
+.therapy-item.done { background: var(--green-light); }
+.therapy-item.done::before { background: var(--green); }
+.therapy-item.ended { opacity: 0.6; cursor: default; }
+.therapy-item.ended::before { background: var(--hint); }
+.therapy-check { width: 26px; height: 26px; border-radius: 9px; border: 2px solid var(--hair); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; font-size: 15px; color: #fff; font-weight: 800; }
 .therapy-check.checked { background: var(--green); border-color: var(--green); }
-.therapy-name { font-weight: 800; font-size: 12px; }
-.therapy-name.checked { text-decoration: line-through; color: #999; }
-.therapy-cat { font-size: 8px; padding: 1px 5px; border-radius: 5px; font-weight: 700; }
-.therapy-dose { font-size: 9px; color: #888; margin-top: 1px; }
-.therapy-done-badge { font-size: 8px; font-weight: 700; color: var(--green); background: var(--green-light); padding: 2px 5px; border-radius: 5px; }
-.fab { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 50%; color: #fff; border: none; font-size: 26px; font-weight: 300; cursor: pointer; box-shadow: 0 5px 20px rgba(0,0,0,0.25); z-index: 100; display: flex; align-items: center; justify-content: center; }
-.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
-.modal { background: #fff; border-radius: 20px 20px 0 0; padding: 18px 16px 28px; width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+.therapy-name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+.therapy-name.checked { text-decoration: line-through; color: var(--hint); }
+.therapy-cat { font-size: 9px; padding: 2px 7px; border-radius: 7px; font-weight: 700; }
+.therapy-dose { font-size: 11px; color: var(--sub); margin-top: 2px; }
+.therapy-done-badge { font-size: 9px; font-weight: 700; color: var(--green); background: var(--green-light); padding: 3px 7px; border-radius: 7px; }
+.fab { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 50%; color: #fff; border: none; font-size: 26px; font-weight: 300; cursor: pointer; box-shadow: var(--shadow); z-index: 100; display: flex; align-items: center; justify-content: center; }
+/* ── Modals ── */
+.modal-bg { position: fixed; inset: 0; background: rgba(8,10,22,0.45); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: flex-end; justify-content: center; animation: fade 0.25s ease; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.modal { background: var(--glass-strong); -webkit-backdrop-filter: blur(var(--blur-strong)) saturate(180%); backdrop-filter: blur(var(--blur-strong)) saturate(180%); border: 1px solid var(--glass-brd); border-bottom: none; border-radius: 28px 28px 0 0; padding: 14px 18px calc(28px + env(safe-area-inset-bottom)); width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; animation: slideUp 0.34s cubic-bezier(.32,1.1,.4,1); color: var(--txt); }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.modal-handle { width: 36px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 12px; }
-.modal-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; }
-.form-label { font-size: 10px; font-weight: 700; color: #888; margin-bottom: 4px; display: block; }
-.form-row { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; }
-.form-select { flex: 1; padding: 8px; border-radius: 10px; border: 2px solid var(--border); font-size: 15px; font-weight: 700; background: #fafafa; text-align: center; font-family: 'Nunito', sans-serif; }
-.form-input { width: 100%; padding: 8px 12px; border-radius: 10px; border: 2px solid var(--border); font-size: 14px; font-family: 'Nunito', sans-serif; outline: none; transition: border 0.2s; }
-.form-input:focus { border-color: var(--gabriel-pri); }
-.form-input.big { font-size: 16px; font-weight: 700; }
-.chips { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-.chip { padding: 7px 13px; border: 2px solid #ddd; border-radius: 10px; background: #fff; color: #666; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: 'Nunito', sans-serif; }
-.chip.on { border-color: var(--gabriel-pri); background: var(--gabriel-pri); color: #fff; }
-.form-actions { display: flex; gap: 8px; margin-top: 4px; }
-.btn-cancel { flex: 1; padding: 11px; border-radius: 12px; border: 2px solid var(--border); background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; color: #888; font-family: 'Nunito', sans-serif; }
-.btn-save { flex: 2; padding: 11px; border-radius: 12px; border: none; color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,0.15); font-family: 'Nunito', sans-serif; }
-.sync-status { font-size: 8px; padding: 2px 6px; border-radius: 6px; font-weight: 700; }
+.modal-handle { width: 38px; height: 5px; background: var(--hair); border-radius: 3px; margin: 0 auto 14px; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.02em; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--sub); margin-bottom: 6px; display: block; }
+.form-row { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+.form-select { flex: 1; padding: 11px; border-radius: var(--r-sm); border: 1px solid var(--glass-brd-2); font-size: 16px; font-weight: 600; background: var(--glass-2); color: var(--txt); text-align: center; font-family: inherit; }
+.form-input { width: 100%; padding: 12px 14px; border-radius: var(--r-sm); border: 1px solid var(--glass-brd-2); font-size: 16px; font-family: inherit; outline: none; transition: border 0.2s, box-shadow 0.2s; background: var(--glass-2); color: var(--txt); }
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft,rgba(59,130,246,0.18)); }
+.form-input.big { font-size: 22px; font-weight: 700; }
+.form-input::placeholder { color: var(--hint); }
+.chips { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.chip { padding: 9px 15px; border: 1px solid var(--glass-brd-2); border-radius: var(--r-sm); background: var(--glass-2); color: var(--sub); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.chip.on { border-color: transparent; background: var(--grad); color: #fff; box-shadow: 0 5px 14px -4px var(--accent); }
+.form-actions { display: flex; gap: 10px; margin-top: 6px; }
+.btn-cancel { flex: 1; padding: 13px; border-radius: var(--r-sm); border: 1px solid var(--glass-brd-2); background: var(--glass-2); font-size: 15px; font-weight: 600; cursor: pointer; color: var(--sub); font-family: inherit; transition: transform 0.15s; }
+.btn-cancel:active { transform: scale(0.97); }
+.btn-save { flex: 2; padding: 13px; border-radius: var(--r-sm); border: none; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-sm); font-family: inherit; transition: transform 0.15s; }
+.btn-save:active { transform: scale(0.97); }
+.sync-status { font-size: 11px; padding: 5px 9px; border-radius: 10px; font-weight: 600; display: inline-flex; align-items: center; height: 34px; }
 .sync-ok { background: var(--green-light); color: var(--green); }
 .sync-err { background: var(--red-light); color: var(--red); }
-.sync-wait { background: #FEF3C7; color: #D97706; }
-.quickadd-popup { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 6px; z-index: 50; display: flex; flex-direction: column; gap: 3px; }
-.quickadd-btn { border: none; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif; background: #f5f5f5; transition: all 0.15s; white-space: nowrap; text-align: left; width: 100%; }
-.quickadd-btn:active { transform: scale(0.95); }
+.sync-wait { background: var(--amber-light); color: var(--amber); }
+.quickadd-popup { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--glass-strong); -webkit-backdrop-filter: blur(var(--blur-strong)); backdrop-filter: blur(var(--blur-strong)); border: 1px solid var(--glass-brd); border-radius: var(--r-md); box-shadow: var(--shadow); padding: 7px; z-index: 50; display: flex; flex-direction: column; gap: 4px; animation: pop 0.2s ease; }
+@keyframes pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.quickadd-btn { border: none; padding: 11px 13px; border-radius: var(--r-sm); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; background: var(--glass-2); color: var(--txt); transition: all 0.15s; white-space: nowrap; text-align: left; width: 100%; }
+.quickadd-btn:active { transform: scale(0.96); }
 .quickadd-overlay { position: fixed; inset: 0; z-index: 40; }
-.weight-chart-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.weight-chart-modal { background: #fff; border-radius: 20px; padding: 18px 14px; width: 100%; max-width: 460px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s ease; }
-.weight-chart-title { font-size: 15px; font-weight: 800; margin-bottom: 12px; text-align: center; }
-.weight-chart-canvas { width: 100%; border-radius: 12px; background: #fafafa; }
-.weight-legend { display: flex; justify-content: center; gap: 16px; margin-top: 10px; }
-.weight-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; }
-.weight-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.weight-range-row { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
-.weight-range-btn { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #666; cursor: pointer; transition: all 0.15s; }
-.weight-range-btn.active { background: var(--gabriel-pri); color: #fff; border-color: var(--gabriel-pri); }
+.weight-chart-bg { position: fixed; inset: 0; background: rgba(8,10,22,0.5); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fade 0.25s ease; }
+.weight-chart-modal { background: var(--glass-strong); -webkit-backdrop-filter: blur(var(--blur-strong)) saturate(180%); backdrop-filter: blur(var(--blur-strong)) saturate(180%); border: 1px solid var(--glass-brd); border-radius: var(--r-lg); padding: 20px 16px; width: 100%; max-width: 460px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.34s cubic-bezier(.32,1.1,.4,1); color: var(--txt); }
+.weight-chart-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; text-align: center; letter-spacing: -0.02em; }
+.weight-chart-canvas { width: 100%; border-radius: var(--r-md); background: var(--glass-2); }
+.weight-legend { display: flex; justify-content: center; gap: 18px; margin-top: 12px; }
+.weight-legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.weight-legend-dot { width: 11px; height: 11px; border-radius: 50%; }
+.weight-range-row { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+.weight-range-btn { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--glass-brd-2); background: var(--glass-2); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--sub); cursor: pointer; transition: all 0.15s; }
+.weight-range-btn.active { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 5px 14px -4px var(--accent); }
 .weight-range-btn:active { transform: scale(0.95); }
 .weight-chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-body.dark .weight-range-btn { background: #1e1e30; color: #ddd; border-color: #333; }
-body.dark .weight-range-btn.active { background: var(--gabriel-pri); color: #fff; }
-body.dark .weight-chart-canvas { background: #0f0f1a; }
-.weight-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; background: var(--card); border-radius: 14px; border: none; box-shadow: 0 1px 8px rgba(0,0,0,0.04); font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; color: #555; margin-top: 8px; transition: all 0.15s; }
-.weight-btn:active { transform: scale(0.97); }
-.weight-entry { background: var(--card); border-radius: 12px; padding: 8px 10px; box-shadow: 0 1px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 8px; border-left: 3px solid; margin-bottom: 6px; }
-.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px); background: #10B981; color: #fff; padding: 8px 20px; border-radius: 12px; font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; z-index: 300; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: none; opacity: 0; visibility: hidden; }
+.weight-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 13px; background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border-radius: var(--r-md); border: 1px solid var(--glass-brd); box-shadow: var(--shadow-sm); font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; color: var(--txt); margin-top: 10px; transition: transform 0.15s; }
+.weight-btn:active { transform: scale(0.98); }
+.weight-entry { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 11px 13px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 11px; margin-bottom: 8px; position: relative; }
+.weight-entry::before { content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--accent); }
+.toast { position: fixed; bottom: calc(var(--tab-h) + 18px); left: 50%; transform: translateX(-50%) translateY(120px); background: rgba(16,185,129,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; padding: 11px 22px; border-radius: 15px; font-size: 14px; font-weight: 700; font-family: inherit; z-index: 300; box-shadow: 0 10px 28px rgba(16,185,129,0.4); transition: transform 0.34s cubic-bezier(.32,1.1,.4,1), opacity 0.3s ease; pointer-events: none; opacity: 0; visibility: hidden; }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
-.lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
-.lock-icon { font-size: 64px; margin-bottom: 16px; }
-.lock-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
-.lock-sub { font-size: 12px; color: #888; margin-bottom: 24px; }
-.lock-input { width: 100%; max-width: 260px; padding: 12px 16px; border-radius: 14px; border: 2px solid #ddd; font-size: 16px; font-family: 'Nunito', sans-serif; font-weight: 700; text-align: center; outline: none; transition: border 0.2s; }
-.lock-input:focus { border-color: #4A90D9; }
-.lock-btn { margin-top: 14px; width: 100%; max-width: 260px; padding: 12px; border-radius: 14px; border: none; background: linear-gradient(135deg,#4A90D9,#2D6CB4); color: #fff; font-size: 14px; font-weight: 800; font-family: 'Nunito', sans-serif; cursor: pointer; box-shadow: 0 4px 15px rgba(74,144,217,0.3); }
-.lock-error { color: #EF4444; font-size: 11px; font-weight: 700; margin-top: 8px; min-height: 16px; }
-.report-section { margin-bottom: 16px; }
-.report-section h3 { font-size: 13px; font-weight: 800; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #eee; }
-.report-stat { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
-.report-stat .label { color: #888; }
+.lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; text-align: center; }
+.lock-icon { font-size: 72px; margin-bottom: 18px; filter: drop-shadow(0 8px 24px rgba(59,130,246,0.35)); }
+.lock-title { font-size: 28px; font-weight: 700; color: var(--txt); margin-bottom: 6px; letter-spacing: -0.03em; }
+.lock-sub { font-size: 14px; color: var(--sub); margin-bottom: 28px; font-weight: 500; }
+.lock-input { width: 100%; max-width: 280px; padding: 14px 18px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur)); font-size: 17px; font-family: inherit; font-weight: 600; text-align: center; outline: none; transition: border 0.2s, box-shadow 0.2s; color: var(--txt); }
+.lock-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+.lock-btn { margin-top: 16px; width: 100%; max-width: 280px; padding: 14px; border-radius: var(--r-md); border: none; background: var(--grad); color: #fff; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: 0 10px 28px -6px var(--accent); transition: transform 0.15s; }
+.lock-btn:active { transform: scale(0.97); }
+.lock-error { color: var(--red); font-size: 13px; font-weight: 600; margin-top: 10px; min-height: 18px; }
+.report-section { margin-bottom: 18px; }
+.report-section h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--hair); letter-spacing: -0.01em; }
+.report-stat { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
+.report-stat .label { color: var(--sub); }
 .report-stat .value { font-weight: 700; }
-.report-flag { color: #EF4444; font-weight: 700; font-size: 11px; }
-.report-ok { color: #10B981; font-weight: 700; font-size: 11px; }
+.report-flag { color: var(--red); font-weight: 700; font-size: 13px; }
+.report-ok { color: var(--green); font-weight: 700; font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { *, .orb { animation: none !important; transition: none !important; } }
 @media print {
+  .bg-field, .tabbar, .fab-add { display: none !important; }
   body > *:not(#modal-root) { display: none !important; }
-  .modal-bg { position: static !important; background: none !important; }
-  .modal { border-radius: 0 !important; max-height: none !important; box-shadow: none !important; }
+  .modal-bg { position: static !important; background: none !important; backdrop-filter: none !important; }
+  .modal { border-radius: 0 !important; max-height: none !important; box-shadow: none !important; background: #fff !important; backdrop-filter: none !important; }
   .btn-cancel, .modal-handle { display: none !important; }
 }
 </style>
 </head>
 <body>
+<div class="bg-field"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span></div>
 <div id="app"></div>
 <div id="modal-root"></div>
 <div id="toast" class="toast"></div>
@@ -200,8 +251,8 @@ const BABIES = ["Gabriel", "Vittorio"];
 const FEED_TYPES = ["Formula", "Materno"];
 const DIAPER_TYPES = ["Cacca", "Pipì", "Entrambi"];
 const COLORS = {
-  Gabriel: { pri: "#4A90D9", acc: "#2D6CB4", light: "#E8F1FB", grad: "linear-gradient(135deg,#4A90D9,#2D6CB4)" },
-  Vittorio: { pri: "#14B8A6", acc: "#0D9488", light: "#E6FAF7", grad: "linear-gradient(135deg,#14B8A6,#0D9488)" }
+  Gabriel: { pri: "#3B82F6", acc: "#2563EB", light: "#E8F1FE", grad: "linear-gradient(135deg,#60A5FA,#3B82F6)", g2: "#60A5FA" },
+  Vittorio: { pri: "#14B8A6", acc: "#0D9488", light: "#E2FBF6", grad: "linear-gradient(135deg,#2DD4BF,#14B8A6)", g2: "#2DD4BF" }
 };
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const DAYNAMES = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
@@ -265,7 +316,7 @@ function dayBeforeKey(ymd) {
 }
 const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
-let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false };
+let state = { data: {}, baby: "Gabriel", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false };
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function getDose(t, dateStr, baby) {
@@ -735,136 +786,256 @@ function closeQuickAdd() {
   render();
 }
 // ─── RENDER ───
+// hex -> rgba helper for soft accent fills
+function hexA(hex, a) {
+  const n = (hex||'#000').replace('#',''); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
 function render() {
-  const c=COLORS[state.baby], key=dk(state.selDate), todayK=dk(new Date());
-  const isToday=key===todayK, dateLabel=isToday?"Oggi":`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
-  const sec=state.tab==="feed"?"feeds":"diapers";
-  const entries=state.tab!=="therapy"?(state.data[key]?.[state.baby]?.[sec]||[]):[];
-  const vm=state.viewMonth, calDays=state.calExpanded?getCalDays(vm.getFullYear(),vm.getMonth()):getWeekDays(state.selDate);
-  // Sync indicator
+  const view = state.view || 'today';
+  const c = COLORS[state.baby];
+  // Drive the ambient orbs + all accents from the active baby's color (signature).
+  const rs = document.body.style;
+  rs.setProperty('--accent', c.pri);
+  rs.setProperty('--accent-2', c.g2 || c.pri);
+  rs.setProperty('--accent-acc', c.acc);
+  rs.setProperty('--grad', c.grad);
+  rs.setProperty('--accent-soft', hexA(c.pri, 0.15));
+  const dark = document.body.classList.contains('dark');
   const syncBadge = useSupabase() ? (
-    state.syncStatus==="ok" ? '<span class="sync-status sync-ok">☁️ Sync</span>' :
+    state.syncStatus==="ok" ? '<span class="sync-status sync-ok">☁️</span>' :
     state.syncStatus==="syncing" ? '<span class="sync-status sync-wait">⏳</span>' :
     state.syncStatus==="error" ? '<span class="sync-status sync-err">⚠️</span>' :
-    '<span class="sync-status sync-wait">📱 Local</span>'
-  ) : '<span class="sync-status sync-wait">📱 Local</span>';
-  let h = `<div class="header" style="background:${c.grad}">
+    '<span class="sync-status sync-wait">📱</span>'
+  ) : '<span class="sync-status sync-wait">📱</span>';
+  let h = `<div class="header">
     <div class="header-top">
-      <div><div class="app-title">🍼 Pappa Tracker</div><div class="app-sub">Gabriel & Vittorio</div></div>
-      <div class="header-btns">${syncBadge}<button onclick="toggleDark()">${document.body.classList.contains('dark')?'☀️':'🌙'}</button><button onclick="showPediatricReport()">📋</button><button onclick="exportCSV()">📊 Export</button><button onclick="resetAll()" style="opacity:.7">Reset</button></div>
+      <div><div class="app-title">🍼 Pappa Tracker</div><div class="app-sub">Gabriel &amp; Vittorio</div></div>
+      <div class="header-btns">${syncBadge}<button onclick="toggleDark()" aria-label="Cambia tema">${dark?'☀️':'🌙'}</button></div>
     </div>
-    <div class="pills">${BABIES.map(b=>`<button class="pill ${state.baby===b?'on':'off'}" style="${state.baby===b?`color:${COLORS[b].acc}`:''}" onclick="state.baby='${b}';render()">👶🏻 ${b}</button>`).join("")}</div>
+    ${view==='today'?`<div class="pills">${BABIES.map(b=>`<button class="pill ${state.baby===b?'on':'off'}" onclick="state.baby='${b}';render()">${b}</button>`).join("")}</div>`:''}
   </div>`;
+  if (view==='today') h += buildToday();
+  else if (view==='trends') h += buildTrends();
+  else if (view==='report') h += buildReportView();
+  else if (view==='settings') h += buildSettings();
+  if (view==='today') h += `${state.fabOpen?'<div class="fab-overlay" onclick="toggleFab()"></div>':''}<div class="fab-wrap${state.fabOpen?' open':''}">
+    <div class="fab-actions">
+      <button class="fab-action" onclick="fabPick('temp')"><span class="fab-action-label">Temperatura</span><span class="fab-action-ic">🌡️</span></button>
+      <button class="fab-action" onclick="fabPick('weight')"><span class="fab-action-label">Peso</span><span class="fab-action-ic">⚖️</span></button>
+      <button class="fab-action" onclick="fabPick('diaper')"><span class="fab-action-label">Pannolino</span><span class="fab-action-ic">💩</span></button>
+      <button class="fab-action" onclick="fabPick('feed')"><span class="fab-action-label">Poppata</span><span class="fab-action-ic">🍼</span></button>
+    </div>
+    <button class="fab-add" onclick="toggleFab()" aria-label="Aggiungi"><span class="plus">+</span></button>
+  </div>`;
+  h += buildTabbar(view);
+  document.getElementById("app").innerHTML = h;
+}
+// ── TAB BAR ──
+function buildTabbar(view) {
+  const items = [
+    { k:'today',    l:'Oggi',      svg:'<path d="M5 12l7-7 7 7"/><path d="M6.5 10.5V19h11v-8.5"/>' },
+    { k:'trends',   l:'Andamenti', svg:'<path d="M4 17l5-5 3.5 3L20 7"/><circle cx="20" cy="7" r="1.4"/>' },
+    { k:'report',   l:'Report',    svg:'<rect x="5.5" y="3.5" width="13" height="17" rx="2.5"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/>' },
+    { k:'settings', l:'Opzioni',   svg:'<circle cx="8" cy="8" r="2.3"/><circle cx="16" cy="16" r="2.3"/><path d="M11 8h9M4 8h2M4 16h7M19 16h1"/>' }
+  ];
+  return `<div class="tabbar">${items.map(it=>`<button class="tabbar-btn ${view===it.k?'on':''}" onclick="setView('${it.k}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${it.svg}</svg><span>${it.l}</span></button>`).join('')}</div>`;
+}
+function setView(v) { state.view = v; state.fabOpen = false; window.scrollTo({top:0,behavior:'smooth'}); render(); }
+function toggleFab() { state.fabOpen = !state.fabOpen; render(); }
+function fabPick(action) { state.fabOpen = false; quickAddAction(state.baby, action); }
+// ── TODAY VIEW ──
+function buildToday() {
+  const c=COLORS[state.baby], key=dk(state.selDate), todayK=dk(new Date());
+  const isToday=key===todayK, dateLabel=isToday?"Oggi":`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
+  const vm=state.viewMonth, calDays=state.calExpanded?getCalDays(vm.getFullYear(),vm.getMonth()):getWeekDays(state.selDate);
+  let h='';
   // Calendar — collapsed (current week) or expanded (full month)
   let calNav;
   if (state.calExpanded) {
     calNav = `<div class="cal-nav">
-      <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()-1});render()">‹</button>
+      <button onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()-1});render()">‹</button>
       <span>${MONTHS[vm.getMonth()]} ${vm.getFullYear()}</span>
       <div style="display:flex;gap:6px;align-items:center">
-        <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()+1});render()">›</button>
-        <button title="Comprimi" style="background:${c.light};color:${c.pri}" onclick="state.calExpanded=false;render()">✕</button>
+        <button onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()+1});render()">›</button>
+        <button title="Comprimi" onclick="state.calExpanded=false;render()">✕</button>
       </div>
     </div>`;
   } else {
     const ws=calDays[0].date, we=calDays[6].date;
     const wLabel=`${ws.getDate()}/${ws.getMonth()+1} – ${we.getDate()}/${we.getMonth()+1}`;
     calNav = `<div class="cal-nav">
-      <button style="background:${c.light};color:${c.pri}" onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()-7});render()">‹</button>
+      <button onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()-7});render()">‹</button>
       <span>${wLabel}</span>
       <div style="display:flex;gap:6px;align-items:center">
-        <button style="background:${c.light};color:${c.pri}" onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()+7});render()">›</button>
-        <button title="Espandi" style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},1);state.calExpanded=true;render()">⤢</button>
+        <button onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()+7});render()">›</button>
+        <button title="Espandi" onclick="state.viewMonth=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},1);state.calExpanded=true;render()">⤢</button>
       </div>
     </div>`;
   }
   h+=`<div class="cal-wrap"><div class="cal">${calNav}<div class="cal-grid">${DAYNAMES.map(d=>`<div class="cal-head">${d}</div>`).join("")}${calDays.map(day=>{
     const k2=dk(day.date),isSel=k2===dk(state.selDate),isTod=k2===todayK,hd=hasData(day.date);
-    const bg=isSel?c.grad:isTod?c.light:"transparent",col=isSel?"#fff":!day.cur?"#ccc":isTod?c.pri:"#333";
-    return`<button class="cal-day${!day.cur?' other':''}" style="background:${bg};color:${col};${isSel?'font-weight:800':''}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#4A90D9"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#14B8A6"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
+    let st='';
+    if(isSel) st='background:var(--grad);color:#fff;font-weight:700;box-shadow:0 5px 14px -4px var(--accent)';
+    else if(isTod) st='background:var(--accent-soft);color:var(--accent);font-weight:700';
+    return`<button class="cal-day${!day.cur?' other':''}" style="${st}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#3B82F6"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#2DD4BF"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
   }).join("")}</div></div></div>`;
   // Recap
-  h+=`<div class="recap-section"><div class="recap-label">📊 Riepilogo — ${dateLabel}</div><div class="recap-row">${BABIES.map(bn=>{
+  h+=`<div class="recap-section"><div class="recap-label">Riepilogo · ${dateLabel}</div><div class="recap-row">${BABIES.map(bn=>{
     const d=getBabyDay(bn,key),bc=COLORS[bn];
-    return`<div class="recap-card" style="border-top-color:${bc.pri};${bn!==state.baby?'opacity:.7':''};position:relative">
-      <div class="recap-name" style="color:${bc.acc};cursor:pointer" onclick="showQuickAdd('${bn}',event)">👶🏻 ${bn} <span style="font-size:9px;opacity:0.5">＋</span></div>
+    return`<div class="recap-card" style="--cardgrad:${bc.grad};${bn!==state.baby?'opacity:.62':''}">
+      <div class="recap-name" style="color:${bc.pri};cursor:pointer" onclick="showQuickAdd('${bn}',event)">${bn} <span style="font-size:13px;opacity:0.55;font-weight:400">＋</span></div>
       ${quickAddBaby===bn?`<div class="quickadd-overlay" onclick="closeQuickAdd()"></div><div class="quickadd-popup"><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','feed')">🍼 Poppata</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','diaper')">💩 Pannolino</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','weight')">⚖️ Peso</button><button class="quickadd-btn" onclick="event.stopPropagation();quickAddAction('${bn}','temp')">🌡️ Temperatura</button></div>`:''}
       <div class="recap-line">🍼 <b>${d.totalMl} ml</b> <span class="sub">(${d.feeds.length})</span></div>
-      <div class="recap-line" style="font-size:9px"><span style="color:${getLastFeedAgo(bn).color}">🕐 Ultima: ${getLastFeedAgo(bn).text}</span></div>
+      <div class="recap-line" style="font-size:10px"><span style="color:${getLastFeedAgo(bn).color}">🕐 ${getLastFeedAgo(bn).text}</span></div>
       <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
       <div class="recap-line">⚖️ <b>${(state.data[key]?.[bn]?.weight?.kg||'—')}${state.data[key]?.[bn]?.weight?' kg':''}</b></div>
       <div class="recap-line">🌡️ <b style="color:${(state.data[key]?.[bn]?.temperatures||[]).length?tempColor(Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))):'inherit'}">${(state.data[key]?.[bn]?.temperatures||[]).length?Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))+'°C':'—'}</b>${(state.data[key]?.[bn]?.temperatures||[]).length>1?` <span class="sub">(${state.data[key][bn].temperatures.length})</span>`:''}</div>
       <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
     </div>`;
   }).join("")}</div></div>`;
-  h+=`<div style="padding:4px 12px 0"><button class="weight-btn" onclick="showWeeklySummary()">📅 Riepilogo Settimanale</button></div>`;
-  // Therapies (moved up, right under the weekly summary button for quick access)
+  // Therapies
   const ts=getTherapies(state.baby), checks=state.data[key]?.[state.baby]?.therapies||{};
-  h+=`<div class="content"><div class="content-title" style="display:flex;align-items:center;justify-content:space-between">💊 Terapie ${state.baby} — ${dateLabel}<button onclick="event.stopPropagation();openAddTherapy('${state.baby}')" title="Aggiungi terapia" style="border:none;background:var(--${state.baby==='Gabriel'?'gabriel':'vittorio'}-light);color:${COLORS[state.baby].pri};width:26px;height:26px;border-radius:8px;font-size:18px;font-weight:800;line-height:1;cursor:pointer;font-family:inherit">+</button></div>${ts.map(t=>{
+  h+=`<div class="content"><div class="content-title" style="display:flex;align-items:center;justify-content:space-between">💊 Terapie · ${dateLabel}<button onclick="event.stopPropagation();openAddTherapy('${state.baby}')" title="Aggiungi terapia" style="border:none;background:var(--accent-soft);color:var(--accent);width:28px;height:28px;border-radius:9px;font-size:19px;font-weight:600;line-height:1;cursor:pointer;font-family:inherit">+</button></div>${ts.map(t=>{
     const endDate = therapyEndDate(t, state.baby);
     const isEndedView = endDate && key > endDate;
     const isSkipped = therapySkippedOn(t.id, state.baby, key);
     if (isEndedView) {
-      return`<div class="therapy-item ended" style="border-left-color:#ccc">
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:#999">${t.name}</span><span class="therapy-cat" style="background:#eee;color:#999">${t.cat}</span></div><div class="therapy-dose" style="color:#aaa">📋 ${getDose(t,key)}</div><div style="font-size:9px;color:#aaa;margin-top:2px;font-style:italic">Somministrato l'ultimo giorno in data ${fmtDotDate(endDate)}</div></div>
-      <button class="entry-del" title="Ripristina terapia" onclick="event.stopPropagation();restoreTherapy('${state.baby}','${t.id}')" style="background:#eef;color:#66a">↺</button>
+      return`<div class="therapy-item ended">
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:var(--hint)">${t.name}</span><span class="therapy-cat" style="background:var(--glass-2);color:var(--hint)">${t.cat}</span></div><div class="therapy-dose" style="color:var(--hint)">📋 ${getDose(t,key)}</div><div style="font-size:10px;color:var(--hint);margin-top:3px;font-style:italic">Somministrato l'ultimo giorno il ${fmtDotDate(endDate)}</div></div>
+      <button class="entry-del" title="Ripristina terapia" onclick="event.stopPropagation();restoreTherapy('${state.baby}','${t.id}')" style="background:var(--accent-soft);color:var(--accent)">↺</button>
     </div>`;
     }
     if (isSkipped) {
-      return`<div class="therapy-item ended" style="border-left-color:#ccc">
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:#999">${t.name}</span><span class="therapy-cat" style="background:#eee;color:#999">${t.cat}</span></div><div style="font-size:9px;color:#aaa;margin-top:2px;font-style:italic">Rimossa per questo giorno</div></div>
-      <button class="entry-del" title="Ripristina per questo giorno" onclick="event.stopPropagation();unskipTherapyDay('${state.baby}','${t.id}')" style="background:#eef;color:#66a">↺</button>
+      return`<div class="therapy-item ended">
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:var(--hint)">${t.name}</span><span class="therapy-cat" style="background:var(--glass-2);color:var(--hint)">${t.cat}</span></div><div style="font-size:10px;color:var(--hint);margin-top:3px;font-style:italic">Rimossa per questo giorno</div></div>
+      <button class="entry-del" title="Ripristina per questo giorno" onclick="event.stopPropagation();unskipTherapyDay('${state.baby}','${t.id}')" style="background:var(--accent-soft);color:var(--accent)">↺</button>
     </div>`;
     }
     const done=!!checks[t.id];
-    return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
+    return`<div class="therapy-item${done?' done':''}" style="--titem:${t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
       <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key)} <span onclick="event.stopPropagation();openDoseModal('${state.baby}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:11px">✏️</span></div></div>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${hexA(t.color,0.16)};color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key)} <span onclick="event.stopPropagation();openDoseModal('${state.baby}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:12px">✏️</span></div></div>
       ${done?'<span class="therapy-done-badge">Fatto</span>':''}
       <button class="entry-del" onclick="event.stopPropagation();openDeleteTherapy('${state.baby}','${t.id}')">✕</button>
     </div>`;
-  }).join("")}${ts.length?'':'<div class="empty">Nessuna terapia. Premi + per aggiungerne una.</div>'}</div>`;
-  // Content - All sections
+  }).join("")}${ts.length?'':'<div class="empty">Nessuna terapia. Tocca + per aggiungerne una.</div>'}</div>`;
   // Feeds
   const feeds = state.data[key]?.[state.baby]?.feeds || [];
-  h+=`<div class="content"><div class="content-title">🍼 Poppate ${state.baby} — ${dateLabel}</div>`;
+  h+=`<div class="content"><div class="content-title">🍼 Poppate · ${dateLabel}</div>`;
   if(!feeds.length) h+=`<div class="empty">Nessuna poppata</div>`;
   else feeds.forEach((e,i)=>{
     const eI=e.type==="Materno"?"🤱":"🍼";
-    const tBg=e.type==="Formula"?"#E8F1FB":"#FFF0E8",tC=e.type==="Formula"?"#4A90D9":"#D97B4A";
-    h+=`<div class="entry" style="border-left-color:${c.pri}" onclick="state.tab='feed';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:${c.acc}">${e.ml}ml</span><span class="entry-tag" style="background:${tBg};color:${tC}">${e.type}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='feed';delEntry(${i})">✕</button></div>`;
+    const tBg=e.type==="Formula"?"rgba(59,130,246,0.16)":"rgba(245,158,11,0.18)",tC=e.type==="Formula"?"#3B82F6":"#D97706";
+    h+=`<div class="entry" onclick="state.tab='feed';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:var(--accent)">${e.ml} ml</span><span class="entry-tag" style="background:${tBg};color:${tC}">${e.type}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='feed';delEntry(${i})">✕</button></div>`;
   });
   h+=`</div>`;
   // Diapers
   const diapers = state.data[key]?.[state.baby]?.diapers || [];
-  h+=`<div class="content"><div class="content-title">💩 Pannolini ${state.baby} — ${dateLabel}</div>`;
+  h+=`<div class="content"><div class="content-title">💩 Pannolini · ${dateLabel}</div>`;
   if(!diapers.length) h+=`<div class="empty">Nessun cambio</div>`;
   else diapers.forEach((e,i)=>{
     const eI=e.dtype==="Cacca"?"💩":e.dtype==="Pipì"?"💧":"💩💧";
-    h+=`<div class="entry" style="border-left-color:${c.pri}" onclick="state.tab='diaper';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-tag" style="background:#F5F0FB;color:#8B6FA8">${e.dtype}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${e.color?`<div class="entry-note">Colore: ${e.color}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='diaper';delEntry(${i})">✕</button></div>`;
+    h+=`<div class="entry" onclick="state.tab='diaper';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-tag" style="background:rgba(167,139,207,0.2);color:#9F7AEA">${e.dtype}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${e.color?`<div class="entry-note">Colore: ${e.color}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='diaper';delEntry(${i})">✕</button></div>`;
   });
   h+=`</div>`;
   // Weight
   const weight = state.data[key]?.[state.baby]?.weight;
-  h+=`<div class="content"><div class="content-title">⚖️ Peso ${state.baby} — ${dateLabel}</div>`;
+  h+=`<div class="content"><div class="content-title">⚖️ Peso · ${dateLabel}</div>`;
   if(weight) {
-    h+=`<div class="weight-entry" style="border-left-color:${c.pri}"><div class="entry-icon">⚖️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${weight.time}</span><span class="entry-ml" style="color:${c.acc}">${weight.kg} kg</span></div>${weight.note?`<div class="entry-note">${weight.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delWeight('${state.baby}')">✕</button></div>`;
+    h+=`<div class="weight-entry"><div class="entry-icon">⚖️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${weight.time}</span><span class="entry-ml" style="color:var(--accent)">${weight.kg} kg</span></div>${weight.note?`<div class="entry-note">${weight.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delWeight('${state.baby}')">✕</button></div>`;
   } else {
     h+=`<div class="empty">Nessuna pesata</div>`;
   }
-  h+=`<button class="weight-btn" onclick="showWeightChart()">📈 Grafico Peso</button></div>`;
+  h+=`</div>`;
   // Temperature
   const temperatures = state.data[key]?.[state.baby]?.temperatures || [];
-  h+=`<div class="content"><div class="content-title">🌡️ Temperatura ${state.baby} — ${dateLabel}</div>`;
+  h+=`<div class="content"><div class="content-title">🌡️ Temperatura · ${dateLabel}</div>`;
   if(!temperatures.length) h+=`<div class="empty">Nessuna misurazione</div>`;
   else temperatures.forEach((e,i)=>{
     const tc=tempColor(e.temp);
-    const medHtml=e.medicine?`<div style="font-size:10px;color:#6366F1;font-weight:700;margin-top:2px">💊 ${e.medicine.name}${e.medicine.dose?' — '+e.medicine.dose:''}</div>`:'';
-    h+=`<div class="weight-entry" style="border-left-color:${tc};cursor:pointer" onclick="openTempModal('${state.baby}',${i})"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:${tc}">${e.temp}°C</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}',${i})">✕</button></div>`;
+    const medHtml=e.medicine?`<div style="font-size:11px;color:#818CF8;font-weight:700;margin-top:3px">💊 ${e.medicine.name}${e.medicine.dose?' — '+e.medicine.dose:''}</div>`:'';
+    h+=`<div class="weight-entry" style="--accent:${tc};cursor:pointer" onclick="openTempModal('${state.baby}',${i})"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:${tc}">${e.temp}°C</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}',${i})">✕</button></div>`;
   });
   h+=`</div>`;
-  document.getElementById("app").innerHTML=h;
+  return h;
 }
+// ── TRENDS VIEW ──
+// Weight gain over the last N days: last point vs the most recent point on/before (lastDate - N).
+function weightDeltaDays(bn, days) {
+  const hist = getWeightHistory(bn);
+  if (hist.length < 2) return null;
+  const last = hist[hist.length-1];
+  const [y,m,d] = last.date.split('-').map(Number);
+  const cutKey = dk(new Date(y, m-1, d-days));
+  let ref = null;
+  for (const p of hist) { if (p.date <= cutKey) ref = p; else break; }
+  if (!ref) ref = hist[0];
+  if (ref.date === last.date) return null;
+  return +(last.kg - ref.kg).toFixed(2);
+}
+function buildTrends() {
+  const G=COLORS.Gabriel, V=COLORS.Vittorio;
+  const histG=getWeightHistory("Gabriel"), histV=getWeightHistory("Vittorio");
+  const lastG=histG.length?histG[histG.length-1].kg:null;
+  const lastV=histV.length?histV[histV.length-1].kg:null;
+  const fmtKg = n => n==null ? '—' : String(n).replace('.',',');
+  const fmtDelta = n => n==null ? '—' : (n>=0?'+':'')+String(n).replace('.',',')+' kg';
+  const dCol = n => n==null ? 'var(--hint)' : n>=0 ? 'var(--green)' : 'var(--red)';
+  let h=`<div class="content"><div class="content-title">📈 Andamento peso</div>`;
+  // Inline interactive chart: range selector (Mobile/30/60/90/Max) + chart + legend, both babies
+  h+=`<div class="cal" style="padding:12px">${buildWeightChartContent(true)}</div>`;
+  // Per-baby stat cards: last weight + 7/30-day gain
+  h+=`<div class="recap-row" style="margin-top:12px">`;
+  [['Gabriel',G,lastG],['Vittorio',V,lastV]].forEach(([bn,col,last])=>{
+    const d7=weightDeltaDays(bn,7), d30=weightDeltaDays(bn,30);
+    h+=`<div class="recap-card" style="--cardgrad:${col.grad}">
+      <div class="recap-name" style="color:${col.pri}">${bn}</div>
+      <div style="font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:1px 0 7px">${last!=null?fmtKg(last)+' <span style="font-size:12px;color:var(--sub);font-weight:600">kg</span>':'—'}</div>
+      <div class="recap-line"><span class="sub">7 giorni</span> <b style="margin-left:auto;color:${dCol(d7)}">${fmtDelta(d7)}</b></div>
+      <div class="recap-line"><span class="sub">30 giorni</span> <b style="margin-left:auto;color:${dCol(d30)}">${fmtDelta(d30)}</b></div>
+    </div>`;
+  });
+  h+=`</div></div>`;
+  // Weekly summary inline (own baby selector — the table is per-baby)
+  h+=buildWeeklyInline();
+  return h;
+}
+function buildWeeklyInline() {
+  const bn = state.trendsBaby || 'Gabriel';
+  const c = COLORS[bn];
+  const parts = buildWeeklySummaryParts(bn);
+  let h = `<div class="content"><div class="content-title">📅 Riepilogo settimanale</div>`;
+  h += `<div class="pills" style="margin-bottom:11px">${BABIES.map(b=>`<button class="pill ${bn===b?'on':'off'}"${bn===b?` style="background:${COLORS[b].grad}"`:''} onclick="setTrendsWeeklyBaby('${b}')">${b}</button>`).join("")}</div>`;
+  h += `<div class="cal" style="padding:13px">`;
+  h += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><button onclick="navWeeklyTrends(1)" style="border:none;width:30px;height:30px;border-radius:10px;background:${hexA(c.pri,0.15)};color:${c.pri};font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">‹</button><span style="font-size:13px;font-weight:700">${parts.label}</span><button onclick="navWeeklyTrends(-1)"${parts.isCurrentWeek?' disabled':''} style="border:none;width:30px;height:30px;border-radius:10px;background:${parts.isCurrentWeek?'var(--glass-2)':hexA(c.pri,0.15)};color:${parts.isCurrentWeek?'var(--hint)':c.pri};font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">›</button></div>`;
+  h += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:inherit">${parts.tableInner}</table></div>`;
+  h += `</div></div>`;
+  return h;
+}
+function setTrendsWeeklyBaby(bn) { state.trendsBaby = bn; render(); }
+function navWeeklyTrends(delta) { weeklyOffset += delta; if (weeklyOffset < 0) weeklyOffset = 0; render(); }
+// ── REPORT VIEW ──
+function buildReportView() {
+  let h=`<div class="content"><div class="content-title">📋 Report &amp; dati</div>`;
+  h+=`<button class="weight-btn" onclick="showPediatricReport()">📋&nbsp;&nbsp;Report per il pediatra</button>`;
+  h+=`<button class="weight-btn" onclick="exportCSV()">📊&nbsp;&nbsp;Esporta tutto in CSV</button>`;
+  h+=`<div style="text-align:center;color:var(--hint);font-size:12px;margin-top:14px;line-height:1.6">Il report riassume gli ultimi 7 giorni<br>ed è pronto per la stampa.</div>`;
+  h+=`</div>`;
+  return h;
+}
+// ── SETTINGS VIEW ──
+function buildSettings() {
+  const dark=document.body.classList.contains('dark');
+  let h=`<div class="content"><div class="content-title">⚙️ Opzioni</div>`;
+  h+=`<button class="weight-btn" onclick="toggleDark()">${dark?'☀️&nbsp;&nbsp;Tema chiaro':'🌙&nbsp;&nbsp;Tema scuro'}</button>`;
+  h+=`<button class="weight-btn" onclick="syncFromCloud()">☁️&nbsp;&nbsp;Sincronizza adesso</button>`;
+  h+=`<button class="weight-btn" style="color:var(--red)" onclick="resetAll()">🗑️&nbsp;&nbsp;Cancella tutti i dati</button>`;
+  h+=`<div style="text-align:center;color:var(--hint);font-size:12px;margin-top:18px;line-height:1.7">🍼 Pappa Tracker<br>Gabriel &amp; Vittorio</div>`;
+  h+=`</div>`;
+  return h;
+}
+// (Il menu rapido del + è gestito dallo speed-dial: toggleFab / fabPick)
 // ─── MODAL ───
 function openAdd(){
   state._editIdx=null;const n=new Date();showModal(n.getHours(),n.getMinutes(),"","Formula","","Cacca","","");
@@ -937,7 +1108,7 @@ function navWeightChart(delta) {
   if (weightChartState.range === 'mobile' || weightChartState.range === 'max') return;
   if (weightChartState.offset + delta < 0) return;
   weightChartState.offset += delta;
-  showWeightChart();
+  render();
 }
 // Build the universe of dates that have at least one weight measurement.
 // Used by the Mobile filter to populate the cascading "Mese/Anno" + "Giorno" dropdowns.
@@ -971,7 +1142,7 @@ function setMobileMacro(side, ym) {
     [weightChartState.mobileFrom, weightChartState.mobileTo] =
       [weightChartState.mobileTo, weightChartState.mobileFrom];
   }
-  showWeightChart();
+  render();
 }
 function setMobileDay(side, ymd) {
   if (side === 'from') weightChartState.mobileFrom = ymd;
@@ -981,7 +1152,7 @@ function setMobileDay(side, ymd) {
     [weightChartState.mobileFrom, weightChartState.mobileTo] =
       [weightChartState.mobileTo, weightChartState.mobileFrom];
   }
-  showWeightChart();
+  render();
 }
 function buildMobilePicker() {
   const u = getWeightDateUniverse();
@@ -1027,7 +1198,7 @@ function closeWeightTooltip() {
   if (g) g.innerHTML = '';
 }
 // Build full inner content (toolbar + chart-or-empty + legend + delta + footer).
-function buildWeightChartContent() {
+function buildWeightChartContent(inline) {
   const r = weightChartState.range, off = weightChartState.offset;
   const gDataAll = getWeightHistory("Gabriel"), vDataAll = getWeightHistory("Vittorio");
   // Compute window [startKey, endKey]
@@ -1060,11 +1231,11 @@ function buildWeightChartContent() {
   const gData = r === 'max' ? gDataAll : gDataAll.filter(inRange);
   const vData = r === 'max' ? vDataAll : vDataAll.filter(inRange);
   // Nav row: rolling-window filters (30/60/90); Mobile and Max have no arrows.
-  const navHtml = (r === '30' || r === '60' || r === '90') ? `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px"><button onclick="event.stopPropagation();navWeightChart(1)" style="border:none;width:32px;height:32px;border-radius:8px;background:${COLORS.Gabriel.light};color:${COLORS.Gabriel.pri};font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">‹</button><span style="font-size:12px;font-weight:800;color:#555">${navLabel}</span><button onclick="event.stopPropagation();navWeightChart(-1)" style="border:none;width:32px;height:32px;border-radius:8px;background:${off===0?'#eee':COLORS.Gabriel.light};color:${off===0?'#ccc':COLORS.Gabriel.pri};font-size:16px;font-weight:700;cursor:pointer;font-family:inherit"${off===0?' disabled':''}>›</button></div>` : '';
+  const navHtml = (r === '30' || r === '60' || r === '90') ? `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px"><button onclick="event.stopPropagation();navWeightChart(1)" style="border:none;width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">‹</button><span style="font-size:13px;font-weight:700;color:var(--txt)">${navLabel}</span><button onclick="event.stopPropagation();navWeightChart(-1)" style="border:none;width:32px;height:32px;border-radius:10px;background:${off===0?'var(--glass-2)':'var(--accent-soft)'};color:${off===0?'var(--hint)':'var(--accent)'};font-size:16px;font-weight:700;cursor:pointer;font-family:inherit"${off===0?' disabled':''}>›</button></div>` : '';
   // Range toolbar — Mobile replaces 7g; 60g added between 30g and 90g.
   const ranges = [{k:'mobile',l:'Mobile'},{k:'30',l:'30g'},{k:'60',l:'60g'},{k:'90',l:'90g'},{k:'max',l:'Max'}];
   const mobilePicker = r === 'mobile' ? buildMobilePicker() : '';
-  const toolbar = `${navHtml}<div class="weight-range-row">${ranges.map(rr => `<button class="weight-range-btn${r===rr.k?' active':''}" onclick="event.stopPropagation();showWeightChart('${rr.k}')">${rr.l}</button>`).join('')}</div>${mobilePicker}`;
+  const toolbar = `${navHtml}<div class="weight-range-row">${ranges.map(rr => `<button class="weight-range-btn${r===rr.k?' active':''}" onclick="event.stopPropagation();setWeightRange('${rr.k}')">${rr.l}</button>`).join('')}</div>${mobilePicker}`;
   const legend = `<div class="weight-legend"><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Gabriel.pri}"></div>Gabriel</div><div class="weight-legend-item"><div class="weight-legend-dot" style="background:${COLORS.Vittorio.pri}"></div>Vittorio</div></div>`;
   // Delta (only for 7/30/90)
   let deltaHtml = '';
@@ -1087,7 +1258,7 @@ function buildWeightChartContent() {
       deltaHtml = `<div style="margin-top:10px;padding:8px 10px;background:#f5f5fa;border-radius:10px"><div style="font-size:10px;color:#888;font-weight:700;margin-bottom:4px">Δ PESO (${deltaLabel})</div>${gLine}${vLine}</div>`;
     }
   }
-  const footer = `<div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div>`;
+  const footer = inline ? '' : `<div style="margin-top:10px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div>`;
   // Empty state
   if (!gData.length && !vData.length) {
     return `${toolbar}<div style="padding:40px 10px;text-align:center;color:#999;font-size:12px">Nessuna pesata nell'intervallo selezionato.</div>${legend}${footer}`;
@@ -1143,18 +1314,13 @@ function buildWeightChartContent() {
   svg+=`<g id="weight-tooltip" style="pointer-events:none"></g>`;
   svg+=`</svg>`;
   const chartHtml = r==='max' ? `<div class="weight-chart-scroll">${svg}</div>` : svg;
-  return `${toolbar}${chartHtml}${legend}${deltaHtml}${footer}`;
+  return `${toolbar}${chartHtml}${legend}${inline?'':deltaHtml}${footer}`;
 }
-function showWeightChart(range) {
+// Range/Mobile changes update the inline Andamenti chart by re-rendering the page.
+function setWeightRange(range) {
   if (range !== undefined) {
     if (weightChartState.range !== range) weightChartState.offset = 0;
     weightChartState.range = range;
-  }
-  // Sanity check: at least one data point exists somewhere (only on first open call)
-  const existing = document.getElementById('wc-content');
-  if (!existing) {
-    const gDataAll = getWeightHistory("Gabriel"), vDataAll = getWeightHistory("Vittorio");
-    if (!gDataAll.length && !vDataAll.length) { alert("Nessun dato peso registrato."); return; }
   }
   // Initialize Mobile range defaults (first time the user picks Mobile)
   if (weightChartState.range === 'mobile' &&
@@ -1165,13 +1331,7 @@ function showWeightChart(range) {
       weightChartState.mobileTo = u.sorted[u.sorted.length - 1];
     }
   }
-  const inner = buildWeightChartContent();
-  if (existing) {
-    // Partial DOM update — no flash
-    existing.innerHTML = inner;
-    return;
-  }
-  setModal(`<div class="weight-chart-bg" onclick="closeModal()"><div class="weight-chart-modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="weight-chart-title">📈 Grafico Peso</div><div id="wc-content">${inner}</div></div></div>`);
+  render();
 }
 // ─── PEDIATRIC REPORT ───
 const BIRTH_DATE = new Date(2025, 11, 8);
@@ -1473,8 +1633,9 @@ function navWeeklySummary(delta) {
   renderWeeklySummary();
 }
 // Build inner HTML pieces (label, table rows + averages, prev/next button states)
-function buildWeeklySummaryParts() {
-  const bn=state.baby, c=COLORS[bn], now=new Date();
+function buildWeeklySummaryParts(bn) {
+  bn = bn || state.baby;
+  const c=COLORS[bn], now=new Date();
   const todayDow=(now.getDay()+6)%7;
   const monThisWeek=new Date(now.getFullYear(),now.getMonth(),now.getDate()-todayDow);
   const startDate=new Date(monThisWeek.getFullYear(),monThisWeek.getMonth(),monThisWeek.getDate()-weeklyOffset*7);
