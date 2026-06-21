@@ -798,6 +798,32 @@ function render() {
     </div>`;
   }).join("")}</div></div>`;
   h+=`<div style="padding:4px 12px 0"><button class="weight-btn" onclick="showWeeklySummary()">📅 Riepilogo Settimanale</button></div>`;
+  // Therapies (moved up, right under the weekly summary button for quick access)
+  const ts=getTherapies(state.baby), checks=state.data[key]?.[state.baby]?.therapies||{};
+  h+=`<div class="content"><div class="content-title" style="display:flex;align-items:center;justify-content:space-between">💊 Terapie ${state.baby} — ${dateLabel}<button onclick="event.stopPropagation();openAddTherapy('${state.baby}')" title="Aggiungi terapia" style="border:none;background:var(--${state.baby==='Gabriel'?'gabriel':'vittorio'}-light);color:${COLORS[state.baby].pri};width:26px;height:26px;border-radius:8px;font-size:18px;font-weight:800;line-height:1;cursor:pointer;font-family:inherit">+</button></div>${ts.map(t=>{
+    const endDate = therapyEndDate(t, state.baby);
+    const isEndedView = endDate && key > endDate;
+    const isSkipped = therapySkippedOn(t.id, state.baby, key);
+    if (isEndedView) {
+      return`<div class="therapy-item ended" style="border-left-color:#ccc">
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:#999">${t.name}</span><span class="therapy-cat" style="background:#eee;color:#999">${t.cat}</span></div><div class="therapy-dose" style="color:#aaa">📋 ${getDose(t,key)}</div><div style="font-size:9px;color:#aaa;margin-top:2px;font-style:italic">Somministrato l'ultimo giorno in data ${fmtDotDate(endDate)}</div></div>
+      <button class="entry-del" title="Ripristina terapia" onclick="event.stopPropagation();restoreTherapy('${state.baby}','${t.id}')" style="background:#eef;color:#66a">↺</button>
+    </div>`;
+    }
+    if (isSkipped) {
+      return`<div class="therapy-item ended" style="border-left-color:#ccc">
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:#999">${t.name}</span><span class="therapy-cat" style="background:#eee;color:#999">${t.cat}</span></div><div style="font-size:9px;color:#aaa;margin-top:2px;font-style:italic">Rimossa per questo giorno</div></div>
+      <button class="entry-del" title="Ripristina per questo giorno" onclick="event.stopPropagation();unskipTherapyDay('${state.baby}','${t.id}')" style="background:#eef;color:#66a">↺</button>
+    </div>`;
+    }
+    const done=!!checks[t.id];
+    return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
+      <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key)} <span onclick="event.stopPropagation();openDoseModal('${state.baby}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:11px">✏️</span></div></div>
+      ${done?'<span class="therapy-done-badge">Fatto</span>':''}
+      <button class="entry-del" onclick="event.stopPropagation();openDeleteTherapy('${state.baby}','${t.id}')">✕</button>
+    </div>`;
+  }).join("")}${ts.length?'':'<div class="empty">Nessuna terapia. Premi + per aggiungerne una.</div>'}</div>`;
   // Content - All sections
   // Feeds
   const feeds = state.data[key]?.[state.baby]?.feeds || [];
@@ -837,32 +863,6 @@ function render() {
     h+=`<div class="weight-entry" style="border-left-color:${tc};cursor:pointer" onclick="openTempModal('${state.baby}',${i})"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:${tc}">${e.temp}°C</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}',${i})">✕</button></div>`;
   });
   h+=`</div>`;
-  // Therapies
-  const ts=getTherapies(state.baby), checks=state.data[key]?.[state.baby]?.therapies||{};
-  h+=`<div class="content"><div class="content-title" style="display:flex;align-items:center;justify-content:space-between">💊 Terapie ${state.baby} — ${dateLabel}<button onclick="event.stopPropagation();openAddTherapy('${state.baby}')" title="Aggiungi terapia" style="border:none;background:var(--${state.baby==='Gabriel'?'gabriel':'vittorio'}-light);color:${COLORS[state.baby].pri};width:26px;height:26px;border-radius:8px;font-size:18px;font-weight:800;line-height:1;cursor:pointer;font-family:inherit">+</button></div>${ts.map(t=>{
-    const endDate = therapyEndDate(t, state.baby);
-    const isEndedView = endDate && key > endDate;
-    const isSkipped = therapySkippedOn(t.id, state.baby, key);
-    if (isEndedView) {
-      return`<div class="therapy-item ended" style="border-left-color:#ccc">
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:#999">${t.name}</span><span class="therapy-cat" style="background:#eee;color:#999">${t.cat}</span></div><div class="therapy-dose" style="color:#aaa">📋 ${getDose(t,key)}</div><div style="font-size:9px;color:#aaa;margin-top:2px;font-style:italic">Somministrato l'ultimo giorno in data ${fmtDotDate(endDate)}</div></div>
-      <button class="entry-del" title="Ripristina terapia" onclick="event.stopPropagation();restoreTherapy('${state.baby}','${t.id}')" style="background:#eef;color:#66a">↺</button>
-    </div>`;
-    }
-    if (isSkipped) {
-      return`<div class="therapy-item ended" style="border-left-color:#ccc">
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:#999">${t.name}</span><span class="therapy-cat" style="background:#eee;color:#999">${t.cat}</span></div><div style="font-size:9px;color:#aaa;margin-top:2px;font-style:italic">Rimossa per questo giorno</div></div>
-      <button class="entry-del" title="Ripristina per questo giorno" onclick="event.stopPropagation();unskipTherapyDay('${state.baby}','${t.id}')" style="background:#eef;color:#66a">↺</button>
-    </div>`;
-    }
-    const done=!!checks[t.id];
-    return`<div class="therapy-item${done?' done':''}" style="border-left-color:${done?'var(--green)':t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
-      <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:14px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${t.color}18;color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key)} <span onclick="event.stopPropagation();openDoseModal('${state.baby}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:11px">✏️</span></div></div>
-      ${done?'<span class="therapy-done-badge">Fatto</span>':''}
-      <button class="entry-del" onclick="event.stopPropagation();openDeleteTherapy('${state.baby}','${t.id}')">✕</button>
-    </div>`;
-  }).join("")}${ts.length?'':'<div class="empty">Nessuna terapia. Premi + per aggiungerne una.</div>'}</div>`;
   document.getElementById("app").innerHTML=h;
 }
 // ─── MODAL ───
