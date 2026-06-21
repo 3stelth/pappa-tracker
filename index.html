@@ -265,7 +265,7 @@ function dayBeforeKey(ymd) {
 }
 const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
-let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local" };
+let state = { data: {}, baby: "Gabriel", tab: "feed", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false };
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function getDose(t, dateStr, baby) {
@@ -618,6 +618,14 @@ function getCalDays(y, mo) {
   while(days.length%7){const n=days.length-start-last.getDate()+1;days.push({date:new Date(y,mo+1,n),cur:false});}
   return days;
 }
+// Mon-Sun week (Italian) containing the given date.
+function getWeekDays(d) {
+  const dow = (d.getDay()+6)%7; // 0=Mon .. 6=Sun
+  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate()-dow);
+  const days = [];
+  for(let i=0;i<7;i++) days.push({date:new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i),cur:true});
+  return days;
+}
 function hasData(d) {
   const dd=state.data[dk(d)]; if(!dd) return {};
   return { feed:BABIES.some(b=>dd[b]?.feeds?.length>0), diaper:BABIES.some(b=>dd[b]?.diapers?.length>0), therapy:BABIES.some(b=>dd[b]?.therapies&&Object.values(dd[b].therapies).some(v=>v)) };
@@ -732,7 +740,7 @@ function render() {
   const isToday=key===todayK, dateLabel=isToday?"Oggi":`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
   const sec=state.tab==="feed"?"feeds":"diapers";
   const entries=state.tab!=="therapy"?(state.data[key]?.[state.baby]?.[sec]||[]):[];
-  const vm=state.viewMonth, calDays=getCalDays(vm.getFullYear(),vm.getMonth());
+  const vm=state.viewMonth, calDays=state.calExpanded?getCalDays(vm.getFullYear(),vm.getMonth()):getWeekDays(state.selDate);
   // Sync indicator
   const syncBadge = useSupabase() ? (
     state.syncStatus==="ok" ? '<span class="sync-status sync-ok">☁️ Sync</span>' :
@@ -747,12 +755,30 @@ function render() {
     </div>
     <div class="pills">${BABIES.map(b=>`<button class="pill ${state.baby===b?'on':'off'}" style="${state.baby===b?`color:${COLORS[b].acc}`:''}" onclick="state.baby='${b}';render()">👶🏻 ${b}</button>`).join("")}</div>
   </div>`;
-  // Calendar
-  h+=`<div class="cal-wrap"><div class="cal"><div class="cal-nav">
-    <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()-1});render()">‹</button>
-    <span>${MONTHS[vm.getMonth()]} ${vm.getFullYear()}</span>
-    <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()+1});render()">›</button>
-  </div><div class="cal-grid">${DAYNAMES.map(d=>`<div class="cal-head">${d}</div>`).join("")}${calDays.map(day=>{
+  // Calendar — collapsed (current week) or expanded (full month)
+  let calNav;
+  if (state.calExpanded) {
+    calNav = `<div class="cal-nav">
+      <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()-1});render()">‹</button>
+      <span>${MONTHS[vm.getMonth()]} ${vm.getFullYear()}</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()+1});render()">›</button>
+        <button title="Comprimi" style="background:${c.light};color:${c.pri}" onclick="state.calExpanded=false;render()">✕</button>
+      </div>
+    </div>`;
+  } else {
+    const ws=calDays[0].date, we=calDays[6].date;
+    const wLabel=`${ws.getDate()}/${ws.getMonth()+1} – ${we.getDate()}/${we.getMonth()+1}`;
+    calNav = `<div class="cal-nav">
+      <button style="background:${c.light};color:${c.pri}" onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()-7});render()">‹</button>
+      <span>${wLabel}</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button style="background:${c.light};color:${c.pri}" onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()+7});render()">›</button>
+        <button title="Espandi" style="background:${c.light};color:${c.pri}" onclick="state.viewMonth=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},1);state.calExpanded=true;render()">⤢</button>
+      </div>
+    </div>`;
+  }
+  h+=`<div class="cal-wrap"><div class="cal">${calNav}<div class="cal-grid">${DAYNAMES.map(d=>`<div class="cal-head">${d}</div>`).join("")}${calDays.map(day=>{
     const k2=dk(day.date),isSel=k2===dk(state.selDate),isTod=k2===todayK,hd=hasData(day.date);
     const bg=isSel?c.grad:isTod?c.light:"transparent",col=isSel?"#fff":!day.cur?"#ccc":isTod?c.pri:"#333";
     return`<button class="cal-day${!day.cur?' other':''}" style="background:${bg};color:${col};${isSel?'font-weight:800':''}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#4A90D9"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#14B8A6"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
