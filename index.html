@@ -966,21 +966,24 @@ function fmtNiceDate(ymd) {
   const [y,m,d] = ymd.split('-').map(Number);
   return d + ' ' + MONTHS[m-1].slice(0,3).toLowerCase() + (y !== new Date().getFullYear() ? ' ' + y : '');
 }
-// Weight gain looking back up to maxDays from today: latest weigh-in vs the OLDEST
-// weigh-in still inside the window. Returns {delta, days} where days is how many days
-// ago that reference weigh-in actually was (so the label is honest — e.g. "5 giorni"
-// even if the window is 7). Returns null when there's no second weigh-in in the window.
+// Gain between the latest weigh-in and an earlier reference one. Looks back up to
+// maxDays from the LAST weigh-in and takes the oldest weigh-in inside that window
+// (so the interval is the largest available, capped at maxDays); if none falls in
+// the window, falls back to the immediately preceding weigh-in so the card is never
+// empty. Returns {delta, days} where days is the real interval between the two
+// weigh-ins. Returns null only when there are fewer than two weigh-ins.
 function weightDeltaDays(bn, maxDays) {
   const hist = getWeightHistory(bn);
   if (hist.length < 2) return null;
   const last = hist[hist.length-1];
-  const today = new Date(); today.setHours(0,0,0,0);
-  const cutKey = dk(new Date(today.getFullYear(), today.getMonth(), today.getDate()-maxDays));
+  const [ly,lm,ld] = last.date.split('-').map(Number);
+  const lastDate = new Date(ly, lm-1, ld);
+  const cutKey = dk(new Date(ly, lm-1, ld-maxDays));
   let ref = null;
   for (const p of hist) { if (p.date >= cutKey && p.date < last.date) { ref = p; break; } }
-  if (!ref) return null;
+  if (!ref) ref = hist[hist.length-2];
   const [ry,rm,rd] = ref.date.split('-').map(Number);
-  const days = Math.round((today - new Date(ry, rm-1, rd)) / 86400000);
+  const days = Math.round((lastDate - new Date(ry, rm-1, rd)) / 86400000);
   return { delta: +(last.kg - ref.kg).toFixed(2), days };
 }
 // "1 giorno" / "N giorni"
