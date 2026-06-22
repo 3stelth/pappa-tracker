@@ -117,6 +117,9 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .recap-line { display: flex; align-items: center; gap: 5px; font-size: 12px; margin-bottom: 4px; color: var(--sub); }
 .recap-line b { font-weight: 700; color: var(--txt); }
 .recap-line .sub { font-size: 10px; color: var(--hint); }
+.recap-period { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.recap-period .sub { font-size: 14px; font-weight: 700; color: var(--txt); }
+.recap-range { font-size: 9px; font-weight: 500; color: var(--hint); opacity: 0.7; letter-spacing: 0; }
 .therapy-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .therapy-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px; }
 .therapy-badge.done { background: var(--green-light); color: var(--green); }
@@ -959,8 +962,8 @@ function fmtNiceDate(ymd) {
 // maxDays from the LAST weigh-in and takes the oldest weigh-in inside that window
 // (so the interval is the largest available, capped at maxDays); if none falls in
 // the window, falls back to the immediately preceding weigh-in so the card is never
-// empty. Returns {delta, days} where days is the real interval between the two
-// weigh-ins. Returns null only when there are fewer than two weigh-ins.
+// empty. Returns {delta, days, from, to} where days is the real interval between
+// the two weigh-ins and from/to are their dates. Returns null when <2 weigh-ins.
 function weightDeltaDays(bn, maxDays) {
   const hist = getWeightHistory(bn);
   if (hist.length < 2) return null;
@@ -973,10 +976,19 @@ function weightDeltaDays(bn, maxDays) {
   if (!ref) ref = hist[hist.length-2];
   const [ry,rm,rd] = ref.date.split('-').map(Number);
   const days = Math.round((lastDate - new Date(ry, rm-1, rd)) / 86400000);
-  return { delta: +(last.kg - ref.kg).toFixed(2), days };
+  return { delta: +(last.kg - ref.kg).toFixed(2), days, from: ref.date, to: last.date };
 }
 // "1 giorno" / "N giorni"
 function dayLabel(n) { return n + (n===1 ? ' giorno' : ' giorni'); }
+// Compact Italian date range, e.g. "11–15 giu" (month collapsed when shared; year only when not current).
+function fmtRange(from, to) {
+  const [fy,fm,fd] = from.split('-').map(Number);
+  const [ty,tm,td] = to.split('-').map(Number);
+  const yNow = new Date().getFullYear();
+  const mon = m => MONTHS[m-1].slice(0,3).toLowerCase();
+  if (fy===ty && fm===tm) return fd+'–'+td+' '+mon(tm)+(ty!==yNow?' '+ty:'');
+  return fd+' '+mon(fm)+(fy!==yNow?' '+fy:'')+' – '+td+' '+mon(tm)+(ty!==yNow?' '+ty:'');
+}
 function buildTrends() {
   const G=COLORS.Gabriel, V=COLORS.Vittorio;
   const histG=getWeightHistory("Gabriel"), histV=getWeightHistory("Vittorio");
@@ -995,8 +1007,8 @@ function buildTrends() {
     h+=`<div class="recap-card" style="--cardgrad:${col.grad}">
       <div class="recap-name" style="color:${col.pri}">${bn}</div>
       <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin:1px 0 8px"><span style="font-size:24px;font-weight:700;letter-spacing:-0.02em">${last?fmtKg(last.kg)+' <span style="font-size:12px;color:var(--sub);font-weight:600">kg</span>':'—'}</span>${last?`<span style="font-size:11px;color:var(--hint);font-weight:500">${fmtNiceDate(last.date)}</span>`:''}</div>
-      <div class="recap-line"><span class="sub">${d7?dayLabel(d7.days):'7 giorni'}</span> <b style="margin-left:auto;color:${dCol(d7&&d7.delta)}">${fmtDelta(d7&&d7.delta)}</b></div>
-      <div class="recap-line"><span class="sub">${d30?dayLabel(d30.days):'30 giorni'}</span> <b style="margin-left:auto;color:${dCol(d30&&d30.delta)}">${fmtDelta(d30&&d30.delta)}</b></div>
+      <div class="recap-line"><span class="recap-period"><span class="sub">${d7?dayLabel(d7.days):'7 giorni'}</span>${d7?`<span class="recap-range">${fmtRange(d7.from,d7.to)}</span>`:''}</span> <b style="margin-left:auto;color:${dCol(d7&&d7.delta)}">${fmtDelta(d7&&d7.delta)}</b></div>
+      <div class="recap-line"><span class="recap-period"><span class="sub">${d30?dayLabel(d30.days):'30 giorni'}</span>${d30?`<span class="recap-range">${fmtRange(d30.from,d30.to)}</span>`:''}</span> <b style="margin-left:auto;color:${dCol(d30&&d30.delta)}">${fmtDelta(d30&&d30.delta)}</b></div>
     </div>`;
   });
   h+=`</div></div>`;
