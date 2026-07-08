@@ -152,6 +152,9 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .goal-slot.next { opacity: 1; border-style: solid; border-color: var(--slotcol); box-shadow: 0 0 0 1px var(--slotcol) inset; }
 .goal-slot.done { background: var(--green-light); }
 .goal-slot.done::before { background: var(--green); }
+.goal-slot.leftover { background: var(--red-light); }
+.goal-slot.leftover::before { background: var(--red); }
+.goal-warn { color: var(--red); font-weight: 900; margin-right: 2px; }
 .goal-slot-idx { font-size: 10px; font-weight: 800; color: var(--slotcol,var(--accent)); }
 .goal-slot-main { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .goal-slot-time { font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -395,7 +398,7 @@ function tombstoneKey(t) {
 function addTombstone(t) {
   const ts = getTombstones();
   const k = tombstoneKey(t);
-  const entry = { kind: t.kind, dateKey: t.dateKey, baby: t.baby, id: t.id, deletedAt: Date.now() };
+  const entry = { kind: t.kind, dateKey: t.dateKey, baby: t.baby, id: t.id, ck: t.ck, deletedAt: Date.now() };
   const idx = ts.findIndex(x => tombstoneKey(x) === k);
   if (idx >= 0) ts[idx] = entry;
   else ts.push(entry);
@@ -404,6 +407,17 @@ function cleanupTombstones() {
   if (!Array.isArray(state.data._tombstones)) return;
   const now = Date.now();
   state.data._tombstones = state.data._tombstones.filter(t => (now - (t.deletedAt||0)) < TOMBSTONE_TTL_MS);
+  if (!state.data._tombstones.length) delete state.data._tombstones;
+}
+// Quando si (ri)aggiunge una voce, rimuovi i tombstone che la colpirebbero per id o
+// per chiave-contenuto: un inserimento esplicito "revoca" una cancellazione precedente.
+function clearEntryTombstones(kind, dateKey, baby, entry) {
+  if (!Array.isArray(state.data._tombstones)) return;
+  const ck = entryContentKey(entry, kind);
+  state.data._tombstones = state.data._tombstones.filter(t =>
+    !(t && t.kind===kind && t.dateKey===dateKey && t.baby===baby &&
+      ((t.id && entry.id && t.id===entry.id) || (t.ck && t.ck===ck)))
+  );
   if (!state.data._tombstones.length) delete state.data._tombstones;
 }
 function mergeTombstoneArrays(a, b) {
@@ -421,15 +435,16 @@ function mergeTombstoneArrays(a, b) {
 function applyTombstones(data, tombstones) {
   if (!data || !tombstones || !tombstones.length) return;
   const idTombs = {};      // `${kind}|${dateKey}|${baby}` -> Set of ids
+  const ckTombs = {};      // `${kind}|${dateKey}|${baby}` -> Set of content keys (fallback per id divergenti/assenti)
   const weightTombs = {};  // `${dateKey}|${baby}` -> deletedAt
   for (const t of tombstones) {
     if (!t || !t.kind) continue;
     if (t.kind === 'weight') {
       weightTombs[`${t.dateKey}|${t.baby}`] = t.deletedAt || 0;
-    } else if (t.id) {
+    } else {
       const pk = `${t.kind}|${t.dateKey}|${t.baby}`;
-      if (!idTombs[pk]) idTombs[pk] = new Set();
-      idTombs[pk].add(t.id);
+      if (t.id) { if (!idTombs[pk]) idTombs[pk] = new Set(); idTombs[pk].add(t.id); }
+      if (t.ck) { if (!ckTombs[pk]) ckTombs[pk] = new Set(); ckTombs[pk].add(t.ck); }
     }
   }
   for (const dateKey in data) {
@@ -441,9 +456,15 @@ function applyTombstones(data, tombstones) {
       if (!bd || typeof bd !== 'object') continue;
       ['feeds','diapers','temperatures'].forEach(arrKey => {
         if (!Array.isArray(bd[arrKey])) return;
-        const tombSet = idTombs[`${arrKey}|${dateKey}|${bn}`];
-        if (!tombSet || !tombSet.size) return;
-        bd[arrKey] = bd[arrKey].filter(e => !(e && e.id && tombSet.has(e.id)));
+        const pk = `${arrKey}|${dateKey}|${bn}`;
+        const idSet = idTombs[pk], ckSet = ckTombs[pk];
+        if ((!idSet || !idSet.size) && (!ckSet || !ckSet.size)) return;
+        bd[arrKey] = bd[arrKey].filter(e => {
+          if (!e) return false;
+          if (idSet && e.id && idSet.has(e.id)) return false;
+          if (ckSet && ckSet.has(entryContentKey(e, arrKey))) return false;
+          return true;
+        });
         if (!bd[arrKey].length) delete bd[arrKey];
       });
       const wts = weightTombs[`${dateKey}|${bn}`];
@@ -751,6 +772,7 @@ async function addEntry(entry) {
     state.data[key][state.baby][sec].push(entry);
   }
   state.data[key][state.baby][sec].sort((a,b)=>a.time.localeCompare(b.time));
+  clearEntryTombstones(sec, key, state.baby, entry);
   await saveData(); closeModal(); render();
 }
 async function delEntry(idx) {
@@ -760,7 +782,7 @@ async function delEntry(idx) {
   const removed = arr[idx];
   // Ensure id exists so the tombstone can target it across devices.
   if (!removed.id) removed.id = uid();
-  addTombstone({ kind: sec, dateKey: key, baby: state.baby, id: removed.id });
+  addTombstone({ kind: sec, dateKey: key, baby: state.baby, id: removed.id, ck: entryContentKey(removed, sec) });
   arr.splice(idx,1);
   if(!arr.length) delete state.data[key][state.baby][sec];
   if(state.data[key][state.baby]&&!Object.keys(state.data[key][state.baby]).length) delete state.data[key][state.baby];
@@ -1124,6 +1146,14 @@ async function setGoalMeals(n){
 }
 // Target per pasto: media giornaliera / n. pasti, arrotondato a multipli di 5 ml. 0 se manca la media.
 function goalPerMeal(bn,n){ const a=avgDailyMl(bn); return a>0?Math.round(a/n/5)*5:0; }
+// Intervallo consigliato tra i pasti (minuti) per n pasti nell'arco delle 24h, sullo slot da 15.
+function goalMealInterval(n){ return Math.round((1440/n)/15)*15; }
+// Somma minuti a un orario "HH:MM" (con wrap su 24h), restituisce "HH:MM".
+function addMinutesToTime(hhmm, addMin){
+  const p=(hhmm||'0:0').split(':').map(Number);
+  let tot=(p[0]*60+p[1]+addMin)%1440; if(tot<0) tot+=1440;
+  return ft(Math.floor(tot/60), tot%60);
+}
 // Scrive una poppata sul bambino indicato, sul giorno selezionato, senza toccare state.baby/state.tab.
 async function addPlannedFeed(bn, feed){
   const key=dk(state.selDate);
@@ -1133,6 +1163,7 @@ async function addPlannedFeed(bn, feed){
   if(!feed.id) feed.id=uid();
   state.data[key][bn].feeds.push(feed);
   state.data[key][bn].feeds.sort((a,b)=>a.time.localeCompare(b.time));
+  clearEntryTombstones('feeds', key, bn, feed);
   await saveData(); closeModal(); render();
 }
 function editPlannedSlot(bn, idx){ state.baby=bn; state.tab='feed'; openEdit(idx); }
@@ -1172,32 +1203,44 @@ function buildGoals(){
   </div>`;
   h+=`<div class="goal-grid">`;
   BABIES.forEach(bn=>{
-    const col=COLORS[bn], per=goalPerMeal(bn,n);
+    const col=COLORS[bn];
     const feeds=state.data[key]?.[bn]?.feeds||[];
     const done=feeds.length;
+    const dailyTarget=avgDailyMl(bn);                    // media giornaliera prefissata (obiettivo del giorno)
+    const consumedSoFar=feeds.reduce((s,x)=>s+(x.ml||0),0);
+    const remainingSlots=Math.max(0, n-done);
+    // Ricalcolo quantità: il residuo per arrivare all'obiettivo diviso i pasti rimasti (multipli di 5).
+    const remainingPer=(dailyTarget>0 && remainingSlots>0)?Math.max(0,Math.round((dailyTarget-consumedSoFar)/remainingSlots/5)*5):0;
+    // Ricalcolo orari: ancorati all'ultimo pasto consumato, spaziati dell'intervallo per n pasti.
+    const interval=goalMealInterval(n);
+    const anchor=done>0?feeds[done-1].time:null;
     h+=`<div><div class="goal-col-head" style="color:${col.pri}">${bn}</div>`;
     for(let j=1;j<=n;j++){
       if(j<=done){
         const f=feeds[j-1];
-        const left=(f.planned&&f.leftover>0)?`<div class="goal-left-badge">avanzati ${f.leftover} ml</div>`:'';
-        h+=`<div class="goal-slot done" style="--slotcol:${col.pri}" onclick="editPlannedSlot('${bn}',${j-1})">
-          <div class="goal-slot-idx"><span class="goal-check">✓</span>${j}° pasto</div>
-          <div class="goal-slot-main"><span class="goal-slot-time">${f.time}</span><span class="goal-slot-ml" style="color:${col.pri}">${f.ml} ml</span></div>
-          ${left}
+        const hasLeft=f.planned&&f.leftover>0;
+        const cls=hasLeft?'leftover':'done';
+        const mlCol=hasLeft?'var(--red)':col.pri;
+        const leftBadge=hasLeft?`<div class="goal-left-badge">avanzati ${f.leftover} ml</div>`:'';
+        h+=`<div class="goal-slot ${cls}" style="--slotcol:${col.pri}" onclick="editPlannedSlot('${bn}',${j-1})">
+          <div class="goal-slot-idx"><span class="${hasLeft?'goal-warn':'goal-check'}">${hasLeft?'⚠':'✓'}</span>${j}° pasto</div>
+          <div class="goal-slot-main"><span class="goal-slot-time">${f.time}</span><span class="goal-slot-ml" style="color:${mlCol}">${f.ml} ml</span></div>
+          ${leftBadge}
         </div>`;
       } else {
         const isNext=(j===done+1);
-        const label=per>0?`≈ ${per} ml`:'imposta media';
-        h+=`<div class="goal-slot pending${isNext?' next':''}" style="--slotcol:${col.pri}" onclick="openGoalMeal('${bn}',${j},${per})">
+        const sTime=anchor?addMinutesToTime(anchor, interval*(j-done)):null;
+        const qLabel=dailyTarget>0?`≈ ${remainingPer} ml`:'imposta media';
+        const timeHtml=sTime?`<span class="goal-slot-time" style="opacity:.7;font-weight:600">${sTime}</span>`:'';
+        h+=`<div class="goal-slot pending${isNext?' next':''}" style="--slotcol:${col.pri}" onclick="openGoalMeal('${bn}',${j},${remainingPer})">
           <div class="goal-slot-idx">${j}° pasto${isNext?' · prossimo':''}</div>
-          <div class="goal-slot-main"><span class="goal-slot-ml" style="color:${col.pri}">${label}</span></div>
+          <div class="goal-slot-main">${timeHtml}<span class="goal-slot-ml" style="color:${col.pri}">${qLabel}</span></div>
         </div>`;
       }
     }
-    const tot=feeds.reduce((s,x)=>s+(x.ml||0),0);
-    const goalTot=per>0?`${per*n} ml`:'—';
+    const goalTot=dailyTarget>0?`${dailyTarget} ml`:'—';
     const extra=done>n?` · +${done-n} extra`:'';
-    h+=`<div class="goal-summary">Fatti ${Math.min(done,n)}/${n}${extra}<br>${tot} ml / obiettivo ${goalTot}</div>`;
+    h+=`<div class="goal-summary">Fatti ${Math.min(done,n)}/${n}${extra}<br>${consumedSoFar} ml / obiettivo ${goalTot}</div>`;
     h+=`</div>`;
   });
   h+=`</div>`; // goal-grid
