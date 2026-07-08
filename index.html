@@ -161,6 +161,7 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .goal-slot-ml { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .goal-slot-sub { font-size: 10px; color: var(--hint); margin-top: 1px; }
 .goal-left-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--red); background: var(--red-light); padding: 1px 6px; border-radius: 6px; margin-top: 3px; }
+.goal-more-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--green); background: var(--green-light); padding: 1px 6px; border-radius: 6px; margin-top: 3px; }
 .goal-check { color: var(--green); font-weight: 900; margin-right: 2px; }
 .goal-summary { font-size: 10px; color: var(--sub); text-align: center; margin-top: 4px; font-weight: 600; }
 .goal-preview { font-size: 12px; font-weight: 700; color: var(--txt); margin: 2px 0 12px; }
@@ -1148,12 +1149,6 @@ async function setGoalMeals(n){
 function goalPerMeal(bn,n){ const a=avgDailyMl(bn); return a>0?Math.round(a/n/5)*5:0; }
 // Intervallo consigliato tra i pasti (minuti) per n pasti nell'arco delle 24h, sullo slot da 15.
 function goalMealInterval(n){ return Math.round((1440/n)/15)*15; }
-// Somma minuti a un orario "HH:MM" (con wrap su 24h), restituisce "HH:MM".
-function addMinutesToTime(hhmm, addMin){
-  const p=(hhmm||'0:0').split(':').map(Number);
-  let tot=(p[0]*60+p[1]+addMin)%1440; if(tot<0) tot+=1440;
-  return ft(Math.floor(tot/60), tot%60);
-}
 // Scrive una poppata sul bambino indicato, sul giorno selezionato, senza toccare state.baby/state.tab.
 async function addPlannedFeed(bn, feed){
   const key=dk(state.selDate);
@@ -1214,24 +1209,33 @@ function buildGoals(){
     // Ricalcolo orari: ancorati all'ultimo pasto consumato, spaziati dell'intervallo per n pasti.
     const interval=goalMealInterval(n);
     const anchor=done>0?feeds[done-1].time:null;
+    const anchorMin=anchor?(parseInt(anchor.split(':')[0])*60+parseInt(anchor.split(':')[1])):null;
     h+=`<div><div class="goal-col-head" style="color:${col.pri}">${bn}</div>`;
     for(let j=1;j<=n;j++){
       if(j<=done){
         const f=feeds[j-1];
         const hasLeft=f.planned&&f.leftover>0;
+        const hasMore=f.planned&&f.extra>0;
         const cls=hasLeft?'leftover':'done';
         const mlCol=hasLeft?'var(--red)':col.pri;
-        const leftBadge=hasLeft?`<div class="goal-left-badge">avanzati ${f.leftover} ml</div>`:'';
+        const badge=hasLeft?`<div class="goal-left-badge">avanzati ${f.leftover} ml</div>`
+                  :hasMore?`<div class="goal-more-badge">+${f.extra} ml in più</div>`:'';
         h+=`<div class="goal-slot ${cls}" style="--slotcol:${col.pri}" onclick="editPlannedSlot('${bn}',${j-1})">
           <div class="goal-slot-idx"><span class="${hasLeft?'goal-warn':'goal-check'}">${hasLeft?'⚠':'✓'}</span>${j}° pasto</div>
           <div class="goal-slot-main"><span class="goal-slot-time">${f.time}</span><span class="goal-slot-ml" style="color:${mlCol}">${f.ml} ml</span></div>
-          ${leftBadge}
+          ${badge}
         </div>`;
       } else {
         const isNext=(j===done+1);
-        const sTime=anchor?addMinutesToTime(anchor, interval*(j-done)):null;
+        // Orari ancorati all'ultimo pasto; la programmazione si ferma a mezzanotte (oltre = giorno dopo).
+        let timeHtml='';
+        if(anchorMin!=null){
+          const raw=anchorMin+interval*(j-done);
+          timeHtml = raw<1440
+            ? `<span class="goal-slot-time" style="opacity:.7;font-weight:600">${ft(Math.floor(raw/60),raw%60)}</span>`
+            : `<span class="goal-slot-time" style="opacity:.55;font-weight:600">🌙 domani</span>`;
+        }
         const qLabel=dailyTarget>0?`≈ ${remainingPer} ml`:'imposta media';
-        const timeHtml=sTime?`<span class="goal-slot-time" style="opacity:.7;font-weight:600">${sTime}</span>`:'';
         h+=`<div class="goal-slot pending${isNext?' next':''}" style="--slotcol:${col.pri}" onclick="openGoalMeal('${bn}',${j},${remainingPer})">
           <div class="goal-slot-idx">${j}° pasto${isNext?' · prossimo':''}</div>
           <div class="goal-slot-main">${timeHtml}<span class="goal-slot-ml" style="color:${col.pri}">${qLabel}</span></div>
@@ -1257,12 +1261,13 @@ function openGoalMeal(bn, slot, target){
     ? `<div class="goal-preview">Obiettivo: <span style="color:${c.acc}">${target} ml</span></div>
        <div class="form-label">Quanto ha mangiato?</div>
        <div class="chips" id="gm-mode-chips" style="margin-bottom:12px">
-         <button class="chip on" data-val="all" onclick="goalModeToggle('all')">✅ Tutto</button>
-         <button class="chip" data-val="left" onclick="goalModeToggle('left')">✏️ Ha avanzato</button>
+         <button class="chip on" data-val="all" onclick="goalModeToggle('all',${target})">✅ Tutto</button>
+         <button class="chip" data-val="left" onclick="goalModeToggle('left',${target})">➖ Ha avanzato</button>
+         <button class="chip" data-val="more" onclick="goalModeToggle('more',${target})">➕ Di più</button>
        </div>
-       <div id="gm-left-wrap" style="display:none">
-         <div class="form-label">ml avanzati</div>
-         <input class="form-input big" type="number" inputmode="numeric" id="gm-left" placeholder="es. 20" oninput="goalUpdatePreview(${target})" style="margin-bottom:8px">
+       <div id="gm-adj-wrap" style="display:none">
+         <div class="form-label" id="gm-adj-label">ml avanzati</div>
+         <input class="form-input big" type="number" inputmode="numeric" id="gm-adj" placeholder="es. 20" oninput="goalUpdatePreview(${target})" style="margin-bottom:8px">
          <div class="goal-preview" id="gm-preview">Preso: <span style="color:${c.acc}">${target} ml</span></div>
        </div>`
     : `<div class="form-label">Quantità (ml)</div>
@@ -1279,29 +1284,42 @@ function openGoalMeal(bn, slot, target){
     <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitGoalMeal('${bn}',${slot},${target})">Conferma 🍼</button></div>
   </div></div>`);
 }
-function goalModeToggle(mode){
+function goalModeToggle(mode, target){
   pickChip('gm-mode-chips',mode);
-  const w=document.getElementById('gm-left-wrap');
-  if(w) w.style.display=mode==='left'?'block':'none';
+  const wrap=document.getElementById('gm-adj-wrap');
+  const label=document.getElementById('gm-adj-label');
+  const inp=document.getElementById('gm-adj');
+  if(mode==='all'){ if(wrap) wrap.style.display='none'; }
+  else {
+    if(wrap) wrap.style.display='block';
+    if(label) label.textContent = mode==='more' ? 'ml in più' : 'ml avanzati';
+    if(inp) inp.value='';
+    goalUpdatePreview(target);
+  }
 }
 function goalUpdatePreview(target){
-  const left=parseInt(document.getElementById('gm-left').value)||0;
-  const taken=Math.max(0,target-left);
+  const mode=getChip('gm-mode-chips')||'all';
+  const v=parseInt(document.getElementById('gm-adj')?.value)||0;
+  let taken=target;
+  if(mode==='left') taken=Math.max(0,target-v);
+  else if(mode==='more') taken=target+v;
   const p=document.getElementById('gm-preview');
   if(p) p.innerHTML=`Preso: <span style="color:var(--accent-acc)">${taken} ml</span>`;
 }
 function submitGoalMeal(bn, slot, target){
   const h=parseInt(document.getElementById('gm-h').value), m=parseInt(document.getElementById('gm-m').value), time=ft(h,m);
-  let consumed, leftover=0;
+  let consumed, leftover=0, extra=0;
   if(target>0){
     const mode=getChip('gm-mode-chips')||'all';
-    leftover=mode==='left'?(parseInt(document.getElementById('gm-left').value)||0):0;
-    consumed=Math.max(0,target-leftover);
+    const v=parseInt(document.getElementById('gm-adj')?.value)||0;
+    if(mode==='left'){ leftover=v; consumed=Math.max(0,target-v); }
+    else if(mode==='more'){ extra=v; consumed=target+v; }
+    else { consumed=target; }
   } else {
     consumed=parseInt(document.getElementById('gm-ml').value)||0;
   }
   if(!consumed||isNaN(consumed)) return;
-  addPlannedFeed(bn, { time, ml:consumed, type:getChip('gm-type-chips')||'Formula', note:document.getElementById('gm-note').value.trim(), planned:true, target, leftover });
+  addPlannedFeed(bn, { time, ml:consumed, type:getChip('gm-type-chips')||'Formula', note:document.getElementById('gm-note').value.trim(), planned:true, target, leftover, extra });
 }
 // ─── MODAL ───
 function openAdd(){
