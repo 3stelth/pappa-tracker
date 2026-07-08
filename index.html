@@ -141,6 +141,26 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .entry-note { font-size: 11px; color: var(--hint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .entry-del { border: none; background: var(--red-light); color: var(--red); width: 26px; height: 26px; border-radius: 9px; font-size: 12px; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; transition: transform 0.15s; }
 .entry-del:active { transform: scale(0.85); }
+/* ── Goals (Obiettivi) ── */
+.goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.goal-col-head { font-size: 13px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.01em; text-align: center; }
+.goal-slot { position: relative; background: var(--glass); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 9px 10px 9px 14px; margin-bottom: 7px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.15s; overflow: hidden; }
+.goal-slot::before { content: ''; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 3px; background: var(--slotcol,var(--accent)); }
+.goal-slot:active { transform: scale(0.98); }
+.goal-slot.pending { border-style: dashed; opacity: 0.72; background: var(--glass-2); }
+.goal-slot.pending::before { opacity: 0.4; }
+.goal-slot.next { opacity: 1; border-style: solid; border-color: var(--slotcol); box-shadow: 0 0 0 1px var(--slotcol) inset; }
+.goal-slot.done { background: var(--green-light); }
+.goal-slot.done::before { background: var(--green); }
+.goal-slot-idx { font-size: 10px; font-weight: 800; color: var(--slotcol,var(--accent)); }
+.goal-slot-main { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.goal-slot-time { font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+.goal-slot-ml { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.goal-slot-sub { font-size: 10px; color: var(--hint); margin-top: 1px; }
+.goal-left-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--red); background: var(--red-light); padding: 1px 6px; border-radius: 6px; margin-top: 3px; }
+.goal-check { color: var(--green); font-weight: 900; margin-right: 2px; }
+.goal-summary { font-size: 10px; color: var(--sub); text-align: center; margin-top: 4px; font-weight: 600; }
+.goal-preview { font-size: 12px; font-weight: 700; color: var(--txt); margin: 2px 0 12px; }
 .therapy-item { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 12px 13px; box-shadow: var(--shadow-sm); margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.15s; position: relative; }
 .therapy-item::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--titem,var(--accent)); }
 .therapy-item:active { transform: scale(0.99); }
@@ -413,7 +433,7 @@ function applyTombstones(data, tombstones) {
     }
   }
   for (const dateKey in data) {
-    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips') continue;
+    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals') continue;
     const day = data[dateKey];
     if (!day || typeof day !== 'object') continue;
     for (const bn in day) {
@@ -453,7 +473,7 @@ function entryMergeKey(e, kind) {
 // dedupe cleanly).
 function cleanDuplicates() {
   for (const dateKey in state.data) {
-    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips') continue;
+    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals') continue;
     const day = state.data[dateKey];
     if (!day || typeof day !== 'object') continue;
     for (const bn in day) {
@@ -525,6 +545,8 @@ function mergeData(local, remote) {
       merged.therapyEnds[bn] = { ...(merged.therapyEnds[bn] || {}), ...(local.therapyEnds[bn] || {}) };
     }
   }
+  // Goals (obiettivi pasti): oggetto piccolo, last-writer-wins (local vince)
+  if (local.goals) merged.goals = { ...(merged.goals || {}), ...local.goals };
   // Therapy single-day skips: union of date arrays per baby/tid
   if (local.therapySkips) {
     merged.therapySkips = merged.therapySkips || {};
@@ -537,7 +559,7 @@ function mergeData(local, remote) {
     }
   }
   for (const dateKey in local) {
-    if (dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips') continue;
+    if (dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals') continue;
     if (dateKey === 'doseOverrides') {
       merged.doseOverrides = merged.doseOverrides || {};
       const lDO = local.doseOverrides || {};
@@ -646,7 +668,7 @@ async function saveData() {
 }
 function migrateTemperatures() {
   for(const key in state.data) {
-    if(key==='doseOverrides' || key==='_tombstones' || key==='customTherapies' || key==='hiddenTherapies' || key==='therapyEnds' || key==='therapySkips') continue;
+    if(key==='doseOverrides' || key==='_tombstones' || key==='customTherapies' || key==='hiddenTherapies' || key==='therapyEnds' || key==='therapySkips' || key==='goals') continue;
     const day = state.data[key];
     if (!day || typeof day !== 'object' || Array.isArray(day)) continue;
     for(const bn in day) {
@@ -810,6 +832,7 @@ function render() {
   </div>`;
   if (view==='today') h += buildToday();
   else if (view==='trends') h += buildTrends();
+  else if (view==='goals') h += buildGoals();
   else if (view==='report') h += buildReportView();
   else if (view==='settings') h += buildSettings();
   if (view==='today') h += `${state.fabOpen?'<div class="fab-overlay" onclick="toggleFab()"></div>':''}<div class="fab-wrap${state.fabOpen?' open':''}">
@@ -831,6 +854,7 @@ function buildTabbar(view) {
   const items = [
     { k:'today',    l:'Oggi',      svg:'<path d="M5 12l7-7 7 7"/><path d="M6.5 10.5V19h11v-8.5"/>' },
     { k:'trends',   l:'Andamenti', svg:'<path d="M4 17l5-5 3.5 3L20 7"/><circle cx="20" cy="7" r="1.4"/>' },
+    { k:'goals',    l:'Obiettivi', svg:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.9" fill="currentColor"/>' },
     { k:'report',   l:'Report',    svg:'<rect x="5.5" y="3.5" width="13" height="17" rx="2.5"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/>' },
     { k:'settings', l:'Opzioni',   svg:'<circle cx="8" cy="8" r="2.3"/><circle cx="16" cy="16" r="2.3"/><path d="M11 8h9M4 8h2M4 16h7M19 16h1"/>' }
   ];
@@ -1064,6 +1088,178 @@ function buildSettings() {
   return h;
 }
 // (Il menu rapido del + è gestito dallo speed-dial: toggleFab / fabPick)
+// ─── GOALS (Obiettivi) ───
+const GOAL_MIN=4, GOAL_MAX=7;
+function goalClamp(n){ return Math.min(GOAL_MAX, Math.max(GOAL_MIN, n)); }
+// Media mobile ultimi 7 giorni completati (esclude oggi), solo giorni con poppate.
+function avgDailyMl(bn){
+  const now=new Date(); let tot=0, days=0;
+  for(let i=1;i<=7;i++){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+    const f=state.data[dk(d)]?.[bn]?.feeds||[];
+    if(f.length){ tot+=f.reduce((s,x)=>s+(x.ml||0),0); days++; }
+  }
+  return days?Math.round(tot/days):0;
+}
+function avgDailyFeeds(bn){
+  const now=new Date(); let tot=0, days=0;
+  for(let i=1;i<=7;i++){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+    const f=state.data[dk(d)]?.[bn]?.feeds||[];
+    if(f.length){ tot+=f.length; days++; }
+  }
+  return days?tot/days:0;
+}
+function getGoalMeals(){
+  const g=state.data.goals?.meals;
+  if(g) return goalClamp(g);
+  const seed=Math.round((avgDailyFeeds('Gabriel')+avgDailyFeeds('Vittorio'))/2)||6;
+  return goalClamp(seed);
+}
+async function setGoalMeals(n){
+  n=goalClamp(parseInt(n)||6);
+  if(!state.data.goals) state.data.goals={};
+  state.data.goals.meals=n;
+  await saveData(); render();
+}
+// Target per pasto: media giornaliera / n. pasti, arrotondato a multipli di 5 ml. 0 se manca la media.
+function goalPerMeal(bn,n){ const a=avgDailyMl(bn); return a>0?Math.round(a/n/5)*5:0; }
+// Scrive una poppata sul bambino indicato, sul giorno selezionato, senza toccare state.baby/state.tab.
+async function addPlannedFeed(bn, feed){
+  const key=dk(state.selDate);
+  if(!state.data[key]) state.data[key]={};
+  if(!state.data[key][bn]) state.data[key][bn]={};
+  if(!state.data[key][bn].feeds) state.data[key][bn].feeds=[];
+  if(!feed.id) feed.id=uid();
+  state.data[key][bn].feeds.push(feed);
+  state.data[key][bn].feeds.sort((a,b)=>a.time.localeCompare(b.time));
+  await saveData(); closeModal(); render();
+}
+function editPlannedSlot(bn, idx){ state.baby=bn; state.tab='feed'; openEdit(idx); }
+function buildGoals(){
+  const n=getGoalMeals();
+  const key=dk(state.selDate), todayK=dk(new Date());
+  const isToday=key===todayK;
+  const dateLabel=isToday?'Oggi':`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
+  const sd=state.selDate, sy=sd.getFullYear(), sm=sd.getMonth(), sday=sd.getDate();
+  // Sezione A: titolo + selettore pasti + riepilogo per bambino
+  let h=`<div class="content"><div class="content-title">🎯 Obiettivi</div>`;
+  h+=`<div class="cal" style="padding:13px">`;
+  h+=`<div class="form-label">Pasti al giorno</div>`;
+  h+=`<select class="form-select" style="width:100%" onchange="setGoalMeals(this.value)">${[4,5,6,7].map(v=>`<option value="${v}"${v===n?' selected':''}>${v} pasti</option>`).join('')}</select>`;
+  h+=`<div style="font-size:11px;color:var(--hint);margin-top:8px;line-height:1.5">Stesso latte totale, meno pasti: la quantità per pasto viene ricalcolata dalla media degli ultimi 7 giorni.</div>`;
+  h+=`</div>`;
+  h+=`<div class="recap-row" style="margin-top:12px">`;
+  BABIES.forEach(bn=>{
+    const col=COLORS[bn], avg=avgDailyMl(bn), per=goalPerMeal(bn,n);
+    h+=`<div class="recap-card" style="--cardgrad:${col.grad}"><div class="recap-name" style="color:${col.pri}">${bn}</div>`;
+    if(avg>0){
+      h+=`<div style="font-size:11px;color:var(--sub)">Media 7gg <b style="color:var(--txt)">${avg} ml</b></div>
+      <div style="display:flex;align-items:baseline;gap:5px;margin-top:4px"><span style="font-size:24px;font-weight:800;color:${col.pri};letter-spacing:-0.02em">${per}</span><span style="font-size:12px;color:var(--sub);font-weight:600">ml / pasto</span></div>`;
+    } else {
+      h+=`<div style="font-size:11px;color:var(--hint);line-height:1.5;margin-top:2px">Inserisci qualche poppata per calcolare il target.</div>`;
+    }
+    h+=`</div>`;
+  });
+  h+=`</div>`;
+  h+=`</div>`; // fine sezione A
+  // Sezione B: navigatore giorno + griglia due colonne
+  h+=`<div class="content"><div class="cal" style="padding:11px 13px">`;
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+    <button onclick="state.selDate=new Date(${sy},${sm},${sday-1});render()" style="border:none;width:30px;height:30px;border-radius:10px;background:var(--glass-2);color:var(--txt);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">‹</button>
+    <span style="font-size:13px;font-weight:700">${dateLabel}</span>
+    <button onclick="state.selDate=new Date(${sy},${sm},${sday+1});render()" style="border:none;width:30px;height:30px;border-radius:10px;background:var(--glass-2);color:var(--txt);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">›</button>
+  </div>`;
+  h+=`<div class="goal-grid">`;
+  BABIES.forEach(bn=>{
+    const col=COLORS[bn], per=goalPerMeal(bn,n);
+    const feeds=state.data[key]?.[bn]?.feeds||[];
+    const done=feeds.length;
+    h+=`<div><div class="goal-col-head" style="color:${col.pri}">${bn}</div>`;
+    for(let j=1;j<=n;j++){
+      if(j<=done){
+        const f=feeds[j-1];
+        const left=(f.planned&&f.leftover>0)?`<div class="goal-left-badge">avanzati ${f.leftover} ml</div>`:'';
+        h+=`<div class="goal-slot done" style="--slotcol:${col.pri}" onclick="editPlannedSlot('${bn}',${j-1})">
+          <div class="goal-slot-idx"><span class="goal-check">✓</span>${j}° pasto</div>
+          <div class="goal-slot-main"><span class="goal-slot-time">${f.time}</span><span class="goal-slot-ml" style="color:${col.pri}">${f.ml} ml</span></div>
+          ${left}
+        </div>`;
+      } else {
+        const isNext=(j===done+1);
+        const label=per>0?`≈ ${per} ml`:'imposta media';
+        h+=`<div class="goal-slot pending${isNext?' next':''}" style="--slotcol:${col.pri}" onclick="openGoalMeal('${bn}',${j},${per})">
+          <div class="goal-slot-idx">${j}° pasto${isNext?' · prossimo':''}</div>
+          <div class="goal-slot-main"><span class="goal-slot-ml" style="color:${col.pri}">${label}</span></div>
+        </div>`;
+      }
+    }
+    const tot=feeds.reduce((s,x)=>s+(x.ml||0),0);
+    const goalTot=per>0?`${per*n} ml`:'—';
+    const extra=done>n?` · +${done-n} extra`:'';
+    h+=`<div class="goal-summary">Fatti ${Math.min(done,n)}/${n}${extra}<br>${tot} ml / obiettivo ${goalTot}</div>`;
+    h+=`</div>`;
+  });
+  h+=`</div>`; // goal-grid
+  h+=`</div></div>`; // cal + content sezione B
+  return h;
+}
+function openGoalMeal(bn, slot, target){
+  const c=COLORS[bn], now=new Date(), h0=now.getHours(), m0=now.getMinutes();
+  const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h0?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-m0)<Math.abs(a-m0)?b:a);
+  const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
+  const hasTarget=target>0;
+  const body=hasTarget
+    ? `<div class="goal-preview">Obiettivo: <span style="color:${c.acc}">${target} ml</span></div>
+       <div class="form-label">Quanto ha mangiato?</div>
+       <div class="chips" id="gm-mode-chips" style="margin-bottom:12px">
+         <button class="chip on" data-val="all" onclick="goalModeToggle('all')">✅ Tutto</button>
+         <button class="chip" data-val="left" onclick="goalModeToggle('left')">✏️ Ha avanzato</button>
+       </div>
+       <div id="gm-left-wrap" style="display:none">
+         <div class="form-label">ml avanzati</div>
+         <input class="form-input big" type="number" inputmode="numeric" id="gm-left" placeholder="es. 20" oninput="goalUpdatePreview(${target})" style="margin-bottom:8px">
+         <div class="goal-preview" id="gm-preview">Preso: <span style="color:${c.acc}">${target} ml</span></div>
+       </div>`
+    : `<div class="form-label">Quantità (ml)</div>
+       <input class="form-input big" type="number" inputmode="numeric" id="gm-ml" placeholder="es. 120" style="margin-bottom:12px">`;
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div>
+    <div class="modal-title" style="color:${c.acc}">${slot}° pasto — ${bn}</div>
+    <div class="form-label">Ora</div>
+    <div class="form-row"><select class="form-select" id="gm-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="gm-m">${mO}</select></div>
+    ${body}
+    <div class="form-label">Tipo</div>
+    <div class="chips" id="gm-type-chips">${FEED_TYPES.map(t=>`<button class="chip${t==='Formula'?' on':''}" data-val="${t}" onclick="pickChip('gm-type-chips','${t}')">${t==='Formula'?'🍼 Formula':'🤱 Materno'}</button>`).join("")}</div>
+    <div class="form-label" style="margin-top:12px">Note (opzionale)</div>
+    <input class="form-input" id="gm-note" placeholder="es. rigurgito..." style="margin-bottom:12px">
+    <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitGoalMeal('${bn}',${slot},${target})">Conferma 🍼</button></div>
+  </div></div>`);
+}
+function goalModeToggle(mode){
+  pickChip('gm-mode-chips',mode);
+  const w=document.getElementById('gm-left-wrap');
+  if(w) w.style.display=mode==='left'?'block':'none';
+}
+function goalUpdatePreview(target){
+  const left=parseInt(document.getElementById('gm-left').value)||0;
+  const taken=Math.max(0,target-left);
+  const p=document.getElementById('gm-preview');
+  if(p) p.innerHTML=`Preso: <span style="color:var(--accent-acc)">${taken} ml</span>`;
+}
+function submitGoalMeal(bn, slot, target){
+  const h=parseInt(document.getElementById('gm-h').value), m=parseInt(document.getElementById('gm-m').value), time=ft(h,m);
+  let consumed, leftover=0;
+  if(target>0){
+    const mode=getChip('gm-mode-chips')||'all';
+    leftover=mode==='left'?(parseInt(document.getElementById('gm-left').value)||0):0;
+    consumed=Math.max(0,target-leftover);
+  } else {
+    consumed=parseInt(document.getElementById('gm-ml').value)||0;
+  }
+  if(!consumed||isNaN(consumed)) return;
+  addPlannedFeed(bn, { time, ml:consumed, type:getChip('gm-type-chips')||'Formula', note:document.getElementById('gm-note').value.trim(), planned:true, target, leftover });
+}
 // ─── MODAL ───
 function openAdd(){
   state._editIdx=null;const n=new Date();showModal(n.getHours(),n.getMinutes(),"","Formula","","Cacca","","");
