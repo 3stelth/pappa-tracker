@@ -1227,13 +1227,15 @@ function buildGoals(){
         </div>`;
       } else {
         const isNext=(j===done+1);
-        // Orari ancorati all'ultimo pasto; la programmazione si ferma a mezzanotte (oltre = giorno dopo).
+        // Orari ancorati all'ultimo pasto consumato; i pasti restano DENTRO la giornata:
+        // se lo spazio fino a mezzanotte non basta, il passo si comprime (mai il giorno dopo).
         let timeHtml='';
         if(anchorMin!=null){
-          const raw=anchorMin+interval*(j-done);
-          timeHtml = raw<1440
-            ? `<span class="goal-slot-time" style="opacity:.7;font-weight:600">${ft(Math.floor(raw/60),raw%60)}</span>`
-            : `<span class="goal-slot-time" style="opacity:.55;font-weight:600">🌙 domani</span>`;
+          const remaining=n-done;
+          const fit=Math.floor((1440-anchorMin)/remaining/15)*15; // passo max (multiplo di 15) per stare entro le 24:00
+          const step=(fit>0 && fit<interval)?fit:interval;        // comprimi solo se l'intervallo ideale sforerebbe
+          const raw=Math.min(anchorMin+step*(j-done), 1439);      // mai oltre le 23:59
+          timeHtml=`<span class="goal-slot-time" style="opacity:.7;font-weight:600">${ft(Math.floor(raw/60),raw%60)}</span>`;
         }
         const qLabel=dailyTarget>0?`≈ ${remainingPer} ml`:'imposta media';
         h+=`<div class="goal-slot pending${isNext?' next':''}" style="--slotcol:${col.pri}" onclick="openGoalMeal('${bn}',${j},${remainingPer})">
