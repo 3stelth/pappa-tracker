@@ -279,7 +279,7 @@ function toggleDark() {
 }
 if (isDark()) document.body.classList.add('dark');
 // ─── DATA CONFIG ───
-const APP_VERSION = "v9"; // bump ad ogni deploy: serve a verificare che il dispositivo carichi il codice aggiornato
+const APP_VERSION = "v10"; // bump ad ogni deploy: serve a verificare che il dispositivo carichi il codice aggiornato
 const BABIES = ["Gabriel", "Vittorio"];
 const FEED_TYPES = ["Formula", "Materno"];
 const DIAPER_TYPES = ["Cacca", "Pipì", "Entrambi"];
@@ -1139,7 +1139,7 @@ function avgDailyFeeds(bn){
 }
 function getGoalMeals(){
   const g=state.data.goals?.meals;
-  if(g) return goalClamp(g);
+  if(typeof g==='number' && g>=1) return goalClamp(g);
   const seed=Math.round((avgDailyFeeds('Gabriel')+avgDailyFeeds('Vittorio'))/2)||6;
   return goalClamp(seed);
 }
@@ -1191,11 +1191,17 @@ function buildGoals(){
   h+=`</div>`;
   h+=`<div class="recap-row" style="margin-top:12px">`;
   BABIES.forEach(bn=>{
-    const col=COLORS[bn], avg=avgDailyMl(bn), per=goalPerMeal(bn,n);
+    const col=COLORS[bn], avg=avgDailyMl(bn);
+    // Ricalcolo giornaliero: il residuo per arrivare alla media, diviso i pasti che restano.
+    const dFeeds=state.data[key]?.[bn]?.feeds||[];
+    const dDone=dFeeds.length, dCons=dFeeds.reduce((s,x)=>s+(x.ml||0),0);
+    const dRem=Math.max(0, n-dDone);
+    const per=(avg>0 && dRem>0)?Math.max(0,Math.round((avg-dCons)/dRem/5)*5):(avg>0?Math.round(avg/n/5)*5:0);
     h+=`<div class="recap-card" style="--cardgrad:${col.grad}"><div class="recap-name" style="color:${col.pri}">${bn}</div>`;
     if(avg>0){
       h+=`<div style="font-size:11px;color:var(--sub)">Media 7gg <b style="color:var(--txt)">${avg} ml</b></div>
-      <div style="display:flex;align-items:baseline;gap:5px;margin-top:4px"><span style="font-size:24px;font-weight:800;color:${col.pri};letter-spacing:-0.02em">${per}</span><span style="font-size:12px;color:var(--sub);font-weight:600">ml / pasto</span></div>`;
+      <div style="display:flex;align-items:baseline;gap:5px;margin-top:4px"><span style="font-size:24px;font-weight:800;color:${col.pri};letter-spacing:-0.02em">${per}</span><span style="font-size:12px;color:var(--sub);font-weight:600">ml / pasto</span></div>
+      ${dDone>0?`<div style="font-size:10px;color:var(--hint);margin-top:2px">ricalcolato · presi ${dCons} ml, restano ${dRem} pasti</div>`:''}`;
     } else {
       h+=`<div style="font-size:11px;color:var(--hint);line-height:1.5;margin-top:2px">Inserisci qualche poppata per calcolare il target.</div>`;
     }
