@@ -26,6 +26,15 @@ Tre problemi segnalati dall'utente:
 
 Non-obiettivi (YAGNI): nessuna modifica alla sincronizzazione cloud oltre al minimo necessario per preservare i nuovi campi; nessun override per singolo slot (si agisce sul totale giornaliero, non sul singolo pasto); nessuna modifica alle altre schede.
 
+## Vincolo di sicurezza dati (NON NEGOZIABILE)
+
+L'implementazione **non deve mai** creare, modificare, spostare, sovrascrivere o cancellare pasti (`feeds`) reali. In particolare:
+
+- I nuovi dati stanno **solo** in `state.data.goals` (config), **mai** dentro gli array `feeds` dei giorni.
+- Nessun pasto "fittizio" viene generato: gli slot mancanti restano placeholder vuoti a livello di sola UI; diventano pasti reali **solo** quando l'utente li inserisce manualmente (`addPlannedFeed`, invariato).
+- La "cristallizzazione" congela esclusivamente numeri di configurazione (media, numero pasti), non tocca i dati registrati.
+- Nessuna modifica alla logica di merge/tombstone che possa alterare pasti esistenti.
+
 ## Modello dati
 
 I nuovi dati stanno **dentro l'oggetto `goals`** (`state.data.goals`), che è già gestito dal merge cloud come *last-writer-wins* (`index.html:575`). Questo evita di toccare la logica di merge per-giorno (che, `index.html:609`, non preserverebbe campi scalari nuovi messi sull'oggetto bambino-giorno).
