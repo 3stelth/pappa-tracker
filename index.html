@@ -1202,10 +1202,11 @@ async function addPlannedFeed(bn, feed){
 }
 function editPlannedSlot(bn, idx){ state.baby=bn; state.tab='feed'; openEdit(idx); }
 function buildGoals(){
-  const n=getGoalMeals();
-  const lastMealMin=(()=>{ const p=getGoalLastMeal().split(':'); return parseInt(p[0])*60+parseInt(p[1]); })();
   const key=dk(state.selDate), todayK=dk(new Date());
   const isToday=key===todayK;
+  const isPast=key<todayK;
+  const n=getGoalMeals(key);
+  const lastMealMin=(()=>{ const p=getGoalLastMeal().split(':'); return parseInt(p[0])*60+parseInt(p[1]); })();
   const dateLabel=isToday?'Oggi':`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
   const sd=state.selDate, sy=sd.getFullYear(), sm=sd.getMonth(), sday=sd.getDate();
   // Sezione A: titolo + selettore pasti + riepilogo per bambino
@@ -1220,7 +1221,7 @@ function buildGoals(){
   h+=`</div>`;
   h+=`<div class="recap-row" style="margin-top:12px">`;
   BABIES.forEach(bn=>{
-    const col=COLORS[bn], avg=avgDailyMl(bn);
+    const col=COLORS[bn], avg=effectiveTargetMl(bn,key), manual=isManualTarget(bn,key);
     // Ricalcolo giornaliero: il residuo per arrivare alla media, diviso i pasti che restano.
     const dFeeds=state.data[key]?.[bn]?.feeds||[];
     const dDone=dFeeds.length, dCons=dFeeds.reduce((s,x)=>s+(x.ml||0),0);
@@ -1250,7 +1251,7 @@ function buildGoals(){
     const col=COLORS[bn];
     const feeds=state.data[key]?.[bn]?.feeds||[];
     const done=feeds.length;
-    const dailyTarget=avgDailyMl(bn);                    // media giornaliera prefissata (obiettivo del giorno)
+    const dailyTarget=effectiveTargetMl(bn,key);         // obiettivo del giorno (override manuale o media relativa)
     const consumedSoFar=feeds.reduce((s,x)=>s+(x.ml||0),0);
     const remainingSlots=Math.max(0, n-done);
     // Ricalcolo quantità: il residuo per arrivare all'obiettivo diviso i pasti rimasti (multipli di 5).
