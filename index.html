@@ -349,8 +349,9 @@ function dayBeforeKey(ymd) {
 }
 const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
-let state = { data: {}, baby: "Gabriel", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false };
+let state = { data: {}, baby: "Gabriel", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false, goalMealsForceEditKey: null };
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function dkToDate(key){ const p=String(key).split('-'); return new Date(+p[0], (+p[1])-1, +p[2]); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function getDose(t, dateStr, baby) {
   const bn = baby || state.baby;
@@ -1119,10 +1120,11 @@ function buildSettings() {
 const GOAL_MIN=4, GOAL_MAX=7;
 function goalClamp(n){ return Math.min(GOAL_MAX, Math.max(GOAL_MIN, n)); }
 // Media mobile ultimi 7 giorni completati (esclude oggi), solo giorni con poppate.
-function avgDailyMl(bn){
-  const now=new Date(); let tot=0, days=0;
+function avgDailyMl(bn, ref){
+  const base = (ref instanceof Date) ? ref : (state.selDate || new Date());
+  let tot=0, days=0;
   for(let i=1;i<=7;i++){
-    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+    const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()-i);
     const f=state.data[dk(d)]?.[bn]?.feeds||[];
     if(f.length){ tot+=f.reduce((s,x)=>s+(x.ml||0),0); days++; }
   }
@@ -1137,20 +1139,44 @@ function avgDailyFeeds(bn){
   }
   return days?tot/days:0;
 }
-function getGoalMeals(){
+function getGoalMeals(key){
+  const byDate = (key && state.data.goals?.mealsByDate) ? state.data.goals.mealsByDate[key] : undefined;
+  if(typeof byDate==='number' && byDate>=1) return goalClamp(byDate);
   const g=state.data.goals?.meals;
   if(typeof g==='number' && g>=1) return goalClamp(g);
   const seed=Math.round((avgDailyFeeds('Gabriel')+avgDailyFeeds('Vittorio'))/2)||6;
   return goalClamp(seed);
 }
-async function setGoalMeals(n){
+async function setGoalMeals(n, key){
   n=goalClamp(parseInt(n)||6);
+  const k = key || dk(state.selDate);
   if(!state.data.goals) state.data.goals={};
-  state.data.goals.meals=n;
+  if(!state.data.goals.mealsByDate) state.data.goals.mealsByDate={};
+  state.data.goals.mealsByDate[k]=n;
+  if(k===dk(new Date())) state.data.goals.meals=n; // oggi aggiorna anche il default per i giorni futuri
   await saveData(); render();
 }
 // Target per pasto: media giornaliera / n. pasti, arrotondato a multipli di 5 ml. 0 se manca la media.
 function goalPerMeal(bn,n){ const a=avgDailyMl(bn); return a>0?Math.round(a/n/5)*5:0; }
+function getManualTarget(bn, key){ const v=state.data.goals?.targetByDate?.[key]?.[bn]; return (typeof v==='number' && v>=0)?v:undefined; }
+function isManualTarget(bn, key){ return getManualTarget(bn,key)!==undefined; }
+function effectiveTargetMl(bn, key){
+  const m=getManualTarget(bn,key);
+  return (m!==undefined) ? m : avgDailyMl(bn, dkToDate(key));
+}
+async function setManualTarget(bn, key, ml){
+  ml=Math.max(0, Math.round(parseInt(ml)||0));
+  if(!state.data.goals) state.data.goals={};
+  if(!state.data.goals.targetByDate) state.data.goals.targetByDate={};
+  if(!state.data.goals.targetByDate[key]) state.data.goals.targetByDate[key]={};
+  state.data.goals.targetByDate[key][bn]=ml;
+  await saveData(); closeModal(); render();
+}
+async function clearManualTarget(bn, key){
+  const t=state.data.goals?.targetByDate;
+  if(t && t[key]){ delete t[key][bn]; if(!Object.keys(t[key]).length) delete t[key]; }
+  await saveData(); closeModal(); render();
+}
 // Orario "ultimo pasto" (globale, condiviso, si porta avanti da solo). Default 22:00.
 function getGoalLastMeal(){ return state.data.goals?.lastMeal || '22:00'; }
 async function setGoalLastMealFromSelects(){
@@ -1162,6 +1188,9 @@ async function setGoalLastMealFromSelects(){
 // Scrive una poppata sul bambino indicato, sul giorno selezionato, senza toccare state.baby/state.tab.
 async function addPlannedFeed(bn, feed){
   const key=dk(state.selDate);
+  if(!state.data.goals) state.data.goals={};
+  if(!state.data.goals.mealsByDate) state.data.goals.mealsByDate={};
+  if(typeof state.data.goals.mealsByDate[key]!=='number') state.data.goals.mealsByDate[key]=getGoalMeals(key); // congela il giorno alla prima poppata
   if(!state.data[key]) state.data[key]={};
   if(!state.data[key][bn]) state.data[key][bn]={};
   if(!state.data[key][bn].feeds) state.data[key][bn].feeds=[];
