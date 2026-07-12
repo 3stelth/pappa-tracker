@@ -353,6 +353,64 @@ let state = { data: {}, baby: "Gabriel", tab: "feed", view: "today", trendsBaby:
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function dkToDate(key){ const p=String(key).split('-'); return new Date(+p[0], (+p[1])-1, +p[2]); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+// ─── FRUTTA (registro indipendente dai feeds: non influisce su ml/medie/Obiettivi) ───
+const FRUIT_PRESETS = [
+  {id:'banana', name:'Banana', emoji:'🍌'},
+  {id:'pera', name:'Pera', emoji:'🍐'},
+  {id:'mela', name:'Mela', emoji:'🍎'},
+  {id:'pesca', name:'Pesca', emoji:'🍑'},
+  {id:'kiwi', name:'Kiwi', emoji:'🥝'},
+  {id:'uva', name:'Uva', emoji:'🍇'},
+  {id:'fragola', name:'Fragola', emoji:'🍓'},
+  {id:'mirtilli', name:'Mirtilli', emoji:'🫐'},
+  {id:'arancia', name:'Arancia', emoji:'🍊'},
+  {id:'melone', name:'Melone', emoji:'🍈'},
+  {id:'mango', name:'Mango', emoji:'🥭'},
+  {id:'avocado', name:'Avocado', emoji:'🥑'}
+];
+function fruitCatalog() {
+  const hidden = new Set(state.data.hiddenFruits || []);
+  const presets = FRUIT_PRESETS.filter(f => !hidden.has(f.id));
+  const custom = state.data.customFruits || [];
+  return [...presets, ...custom];
+}
+function getFruitLog(bn, key) {
+  return (state.data.fruitLog && state.data.fruitLog[bn] && state.data.fruitLog[bn][key]) || {};
+}
+async function bumpFruit(bn, key, fruitId, delta) {
+  if (!state.data.fruitLog) state.data.fruitLog = {};
+  if (!state.data.fruitLog[bn]) state.data.fruitLog[bn] = {};
+  if (!state.data.fruitLog[bn][key]) state.data.fruitLog[bn][key] = {};
+  const day = state.data.fruitLog[bn][key];
+  const next = Math.max(0, (day[fruitId]||0) + delta);
+  if (next === 0) delete day[fruitId]; else day[fruitId] = next;
+  if (!Object.keys(day).length) delete state.data.fruitLog[bn][key];
+  if (!Object.keys(state.data.fruitLog[bn]).length) delete state.data.fruitLog[bn];
+  await saveData(); render();
+}
+async function clearFruit(bn, key, fruitId) {
+  const cur = getFruitLog(bn, key)[fruitId] || 0;
+  if (cur > 0) await bumpFruit(bn, key, fruitId, -cur);
+}
+async function addCustomFruit(name, emoji) {
+  name = (name||'').trim(); if (!name) return;
+  if (!state.data.customFruits) state.data.customFruits = [];
+  state.data.customFruits.push({ id: uid(), name, emoji: emoji || '🍏' });
+  await saveData(); render();
+}
+async function hideFruit(fruitId) {
+  if (!state.data.hiddenFruits) state.data.hiddenFruits = [];
+  if (!state.data.hiddenFruits.includes(fruitId)) state.data.hiddenFruits.push(fruitId);
+  await saveData(); render();
+}
+async function unhideFruit(fruitId) {
+  state.data.hiddenFruits = (state.data.hiddenFruits||[]).filter(id => id !== fruitId);
+  await saveData(); render();
+}
+async function deleteCustomFruit(fruitId) {
+  state.data.customFruits = (state.data.customFruits||[]).filter(f => f.id !== fruitId);
+  await saveData(); render();
+}
 function getDose(t, dateStr, baby) {
   const bn = baby || state.baby;
   const overrides = state.data.doseOverrides?.[bn]?.[t.id];
@@ -454,7 +512,7 @@ function applyTombstones(data, tombstones) {
     }
   }
   for (const dateKey in data) {
-    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals') continue;
+    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals' || dateKey === 'fruitLog' || dateKey === 'customFruits' || dateKey === 'hiddenFruits') continue;
     const day = data[dateKey];
     if (!day || typeof day !== 'object') continue;
     for (const bn in day) {
@@ -500,7 +558,7 @@ function entryMergeKey(e, kind) {
 // dedupe cleanly).
 function cleanDuplicates() {
   for (const dateKey in state.data) {
-    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals') continue;
+    if (dateKey === 'doseOverrides' || dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals' || dateKey === 'fruitLog' || dateKey === 'customFruits' || dateKey === 'hiddenFruits') continue;
     const day = state.data[dateKey];
     if (!day || typeof day !== 'object') continue;
     for (const bn in day) {
@@ -585,8 +643,28 @@ function mergeData(local, remote) {
       }
     }
   }
+  // Custom fruits: union by id (local wins on duplicate) — condiviso tra i bambini
+  if (local.customFruits) {
+    const byId = {};
+    (merged.customFruits || []).forEach(f => { if (f && f.id) byId[f.id] = f; });
+    (local.customFruits || []).forEach(f => { if (f && f.id) byId[f.id] = f; });
+    merged.customFruits = Object.values(byId);
+  }
+  // Hidden fruits: union of id array — condiviso tra i bambini
+  if (local.hiddenFruits) {
+    merged.hiddenFruits = [...new Set([...(merged.hiddenFruits || []), ...(local.hiddenFruits || [])])];
+  }
+  // Fruit log: merge profondo baby -> dateKey -> fruitId -> count. Il giorno locale
+  // vince per intero se presente in entrambi (come i tombstone-safe array altrove),
+  // così una correzione di un genitore non sparisce per un merge "somma" involontario.
+  if (local.fruitLog) {
+    merged.fruitLog = merged.fruitLog || {};
+    for (const bn in local.fruitLog) {
+      merged.fruitLog[bn] = { ...(merged.fruitLog[bn] || {}), ...(local.fruitLog[bn] || {}) };
+    }
+  }
   for (const dateKey in local) {
-    if (dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals') continue;
+    if (dateKey === '_tombstones' || dateKey === 'customTherapies' || dateKey === 'hiddenTherapies' || dateKey === 'therapyEnds' || dateKey === 'therapySkips' || dateKey === 'goals' || dateKey === 'fruitLog' || dateKey === 'customFruits' || dateKey === 'hiddenFruits') continue;
     if (dateKey === 'doseOverrides') {
       merged.doseOverrides = merged.doseOverrides || {};
       const lDO = local.doseOverrides || {};
@@ -695,7 +773,7 @@ async function saveData() {
 }
 function migrateTemperatures() {
   for(const key in state.data) {
-    if(key==='doseOverrides' || key==='_tombstones' || key==='customTherapies' || key==='hiddenTherapies' || key==='therapyEnds' || key==='therapySkips' || key==='goals') continue;
+    if(key==='doseOverrides' || key==='_tombstones' || key==='customTherapies' || key==='hiddenTherapies' || key==='therapyEnds' || key==='therapySkips' || key==='goals' || key==='fruitLog' || key==='customFruits' || key==='hiddenFruits') continue;
     const day = state.data[key];
     if (!day || typeof day !== 'object' || Array.isArray(day)) continue;
     for(const bn in day) {
