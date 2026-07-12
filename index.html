@@ -167,6 +167,18 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .goal-more-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--green); background: var(--green-light); padding: 1px 6px; border-radius: 6px; margin-top: 3px; }
 .goal-check { color: var(--green); font-weight: 900; margin-right: 2px; }
 .goal-summary { font-size: 10px; color: var(--sub); text-align: center; margin-top: 4px; font-weight: 600; }
+.fruit-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.fruit-chip { position: relative; display: flex; align-items: center; gap: 6px; padding: 9px 14px 9px 11px; border: 1px solid var(--glass-brd-2); border-radius: var(--r-sm); background: var(--glass-2); color: var(--txt); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform 0.15s; }
+.fruit-chip:active { transform: scale(0.94); }
+.fruit-chip .fruit-emoji { font-size: 17px; }
+.fruit-chip.add { border-style: dashed; color: var(--sub); }
+.fruit-badge { position: absolute; top: -6px; right: -6px; background: var(--grad); color: #fff; font-size: 10px; font-weight: 800; min-width: 17px; height: 17px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-shadow: 0 3px 8px -2px var(--accent); }
+.fruit-log-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--glass); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 7px; }
+.fruit-log-name { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
+.fruit-stepper { display: flex; align-items: center; gap: 8px; }
+.fruit-step-btn { border: none; width: 26px; height: 26px; border-radius: 9px; background: var(--glass-2); color: var(--txt); font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; }
+.fruit-step-btn:active { transform: scale(0.88); }
+.fruit-step-count { min-width: 18px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
 .goal-preview { font-size: 12px; font-weight: 700; color: var(--txt); margin: 2px 0 12px; }
 .therapy-item { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 12px 13px; box-shadow: var(--shadow-sm); margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.15s; position: relative; }
 .therapy-item::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--titem,var(--accent)); }
@@ -792,6 +804,27 @@ function getBabyDay(bn, dateKey) {
   const feeds = bd?.feeds || [], diapers = bd?.diapers || [], checks = bd?.therapies || {}, ts = getActiveTherapies(bn, dateKey);
   return { feeds, diapers, checks, therapies: ts, totalMl: feeds.reduce((s,f)=>s+(f.ml||0),0), totalDiapers: diapers.length, therapyDone: ts.filter(t=>checks[t.id]).length };
 }
+function buildFruitSection(bn, key) {
+  const dateLabel = fmtDotDate(key);
+  const log = getFruitLog(bn, key);
+  const catalog = fruitCatalog();
+  let h = `<div class="content"><div class="content-title">🍎 Frutta · ${dateLabel}</div>`;
+  h += `<div class="fruit-grid">${catalog.map(f=>{
+    const n = log[f.id]||0;
+    return `<button class="fruit-chip" onclick="bumpFruit('${bn}','${key}','${f.id}',1)"><span class="fruit-emoji">${f.emoji}</span>${f.name}${n>0?`<span class="fruit-badge">${n}</span>`:''}</button>`;
+  }).join("")}<button class="fruit-chip add" onclick="openAddFruit()">➕ Aggiungi</button><button class="fruit-chip add" onclick="openManageFruits()">⚙️ Gestisci</button></div>`;
+  const active = catalog.filter(f=>(log[f.id]||0)>0).sort((a,b)=>(log[b.id]||0)-(log[a.id]||0));
+  if (active.length) {
+    h += `<div class="content-title" style="margin-top:2px;font-size:11px;color:var(--hint)">Dati oggi</div>`;
+    active.forEach(f=>{
+      h += `<div class="fruit-log-row"><span class="fruit-log-name">${f.emoji} ${f.name}</span><div class="fruit-stepper"><button class="fruit-step-btn" onclick="bumpFruit('${bn}','${key}','${f.id}',-1)">−</button><span class="fruit-step-count">${log[f.id]}</span><button class="fruit-step-btn" onclick="bumpFruit('${bn}','${key}','${f.id}',1)">+</button><button class="entry-del" onclick="clearFruit('${bn}','${key}','${f.id}')">✕</button></div></div>`;
+    });
+  } else {
+    h += `<div class="empty">Nessuna frutta registrata</div>`;
+  }
+  h += `</div>`;
+  return h;
+}
 function getCalDays(y, mo) {
   const first = new Date(y, mo, 1), last = new Date(y, mo+1, 0);
   let start = first.getDay()-1; if(start<0) start=6;
@@ -1054,6 +1087,8 @@ function buildToday() {
     h+=`<div class="entry" onclick="state.tab='feed';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:var(--accent)">${e.ml} ml</span><span class="entry-tag" style="background:${tBg};color:${tC}">${e.type}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='feed';delEntry(${i})">✕</button></div>`;
   });
   h+=`</div>`;
+  // Fruit (registro indipendente: non tocca feeds/ml/Obiettivi)
+  h+=buildFruitSection(state.baby, key);
   // Diapers
   const diapers = state.data[key]?.[state.baby]?.diapers || [];
   h+=`<div class="content"><div class="content-title">💩 Pannolini · ${dateLabel}</div>`;
