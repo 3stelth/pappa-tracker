@@ -167,6 +167,11 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .goal-more-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--green); background: var(--green-light); padding: 1px 6px; border-radius: 6px; margin-top: 3px; }
 .goal-check { color: var(--green); font-weight: 900; margin-right: 2px; }
 .goal-summary { font-size: 10px; color: var(--sub); text-align: center; margin-top: 4px; font-weight: 600; }
+.goal-snack { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--glass-2); border: 1px dashed var(--glass-brd); border-radius: var(--r-sm); padding: 6px 10px; margin-bottom: 7px; cursor: pointer; }
+.goal-snack-lbl { font-size: 10px; font-weight: 800; color: var(--amber); white-space: nowrap; }
+.goal-snack-main { display: flex; align-items: baseline; gap: 6px; }
+.goal-snack .goal-slot-time { font-size: 12px; }
+.goal-snack .goal-slot-ml { font-size: 12px; color: var(--sub); }
 .fruit-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .fruit-chip { position: relative; display: flex; align-items: center; gap: 6px; padding: 9px 14px 9px 11px; border: 1px solid var(--glass-brd-2); border-radius: var(--r-sm); background: var(--glass-2); color: var(--txt); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform 0.15s; }
 .fruit-chip:active { transform: scale(0.94); }
@@ -1371,7 +1376,8 @@ function buildGoals(){
     const col=COLORS[bn], avg=effectiveTargetMl(bn,key), manual=isManualTarget(bn,key);
     // Ricalcolo giornaliero: il residuo per arrivare alla media, diviso i pasti che restano.
     const dFeeds=state.data[key]?.[bn]?.feeds||[];
-    const dDone=dFeeds.length, dCons=dFeeds.reduce((s,x)=>s+(x.ml||0),0);
+    const dDone=dFeeds.filter(f=>!f.snack).length;               // solo pasti veri occupano slot
+    const dCons=dFeeds.reduce((s,x)=>s+(x.ml||0),0);              // ml totali (spuntini inclusi)
     const dRem=Math.max(0, n-dDone);
     const per=(avg>0 && dRem>0)?Math.max(0,Math.round((avg-dCons)/dRem/5)*5):(avg>0?Math.round(avg/n/5)*5:0);
     h+=`<div class="recap-card" style="--cardgrad:${col.grad}"><div class="recap-name" style="color:${col.pri}">${bn}</div>`;
@@ -1400,41 +1406,43 @@ function buildGoals(){
   h+=`<div class="goal-grid">`;
   BABIES.forEach(bn=>{
     const col=COLORS[bn];
-    const feeds=state.data[key]?.[bn]?.feeds||[];
-    const done=feeds.length;
+    const allFeeds=state.data[key]?.[bn]?.feeds||[];
+    const meals=[], snacks=[];
+    allFeeds.forEach((f,idx)=>{ (f.snack?snacks:meals).push({...f,_i:idx}); }); // _i = indice reale nell'array feeds
+    const realDone=meals.length;
     const dailyTarget=effectiveTargetMl(bn,key);         // obiettivo del giorno (override manuale o media relativa)
-    const consumedSoFar=feeds.reduce((s,x)=>s+(x.ml||0),0);
-    const remainingSlots=Math.max(0, n-done);
+    const consumedSoFar=allFeeds.reduce((s,x)=>s+(x.ml||0),0); // gli spuntini contano nel totale
+    const remainingSlots=Math.max(0, n-realDone);
     // Ricalcolo quantità: il residuo per arrivare all'obiettivo diviso i pasti rimasti (multipli di 5).
     const remainingPer=(dailyTarget>0 && remainingSlots>0)?Math.max(0,Math.round((dailyTarget-consumedSoFar)/remainingSlots/5)*5):0;
-    const anchor=done>0?feeds[done-1].time:null;
+    const anchor=realDone>0?meals[realDone-1].time:null;  // tabella di marcia ancorata all'ultimo pasto vero
     const anchorMin=anchor?(parseInt(anchor.split(':')[0])*60+parseInt(anchor.split(':')[1])):null;
     h+=`<div><div class="goal-col-head" style="color:${col.pri}">${bn}</div>`;
     for(let j=1;j<=n;j++){
-      if(j<=done){
-        const f=feeds[j-1];
+      if(j<=realDone){
+        const f=meals[j-1];
         const hasLeft=f.planned&&f.leftover>0;
         const hasMore=f.planned&&f.extra>0;
         const cls=hasLeft?'leftover':'done';
         const mlCol=hasLeft?'var(--red)':col.pri;
         const badge=hasLeft?`<div class="goal-left-badge">avanzati ${f.leftover} ml</div>`
                   :hasMore?`<div class="goal-more-badge">+${f.extra} ml in più</div>`:'';
-        h+=`<div class="goal-slot ${cls}" style="--slotcol:${col.pri}" onclick="editPlannedSlot('${bn}',${j-1})">
+        h+=`<div class="goal-slot ${cls}" style="--slotcol:${col.pri}" onclick="editPlannedSlot('${bn}',${f._i})">
           <div class="goal-slot-idx"><span class="${hasLeft?'goal-warn':'goal-check'}">${hasLeft?'⚠':'✓'}</span>${j}° pasto</div>
           <div class="goal-slot-main"><span class="goal-slot-time">${f.time}</span><span class="goal-slot-ml" style="color:${mlCol}">${f.ml} ml</span></div>
           ${badge}
         </div>`;
       } else {
-        const isNext=!isPast && (j===done+1);
+        const isNext=!isPast && (j===realDone+1);
         // Solo per oggi/futuro proiettiamo gli orari; i giorni passati restano "liberi" (nessuna proiezione).
         let timeHtml='';
         if(!isPast && anchorMin!=null){
           let raw;
           if(j===n){ raw=lastMealMin; }                          // l'ultimo pasto è esattamente all'orario scelto
           else {
-            const remaining=n-done;
+            const remaining=n-realDone;
             const step=(lastMealMin>anchorMin && remaining>0)?(lastMealMin-anchorMin)/remaining:0;
-            raw=Math.min(Math.round((anchorMin+step*(j-done))/15)*15, lastMealMin);
+            raw=Math.min(Math.round((anchorMin+step*(j-realDone))/15)*15, lastMealMin);
           }
           timeHtml=`<span class="goal-slot-time" style="opacity:.7;font-weight:600">${ft(Math.floor(raw/60),raw%60)}</span>`;
         }
@@ -1445,9 +1453,17 @@ function buildGoals(){
         </div>`;
       }
     }
+    // Spuntini fuori-pasto: mostrati a parte, non occupano slot
+    snacks.forEach(s=>{
+      h+=`<div class="goal-snack" onclick="editPlannedSlot('${bn}',${s._i})">
+        <span class="goal-snack-lbl">🍪 Spuntino</span>
+        <span class="goal-snack-main"><span class="goal-slot-time">${s.time}</span><span class="goal-slot-ml">${s.ml} ml</span></span>
+      </div>`;
+    });
     const goalTot=dailyTarget>0?`${dailyTarget} ml`:'—';
-    const extra=done>n?` · +${done-n} extra`:'';
-    h+=`<div class="goal-summary">Fatti ${Math.min(done,n)}/${n}${extra}<br>${consumedSoFar} ml / obiettivo ${goalTot}</div>`;
+    const extra=realDone>n?` · +${realDone-n} extra`:'';
+    const snackNote=snacks.length?` · 🍪 ${snacks.length} spuntino${snacks.length>1?'i':''}`:'';
+    h+=`<div class="goal-summary">Fatti ${Math.min(realDone,n)}/${n}${extra}${snackNote}<br>${consumedSoFar} ml / obiettivo ${goalTot}</div>`;
     h+=`</div>`;
   });
   h+=`</div>`; // goal-grid
