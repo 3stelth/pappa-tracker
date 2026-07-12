@@ -2037,6 +2037,33 @@ async function restoreTherapy(bn, tid) {
   state.data.therapyEnds[bn][tid] = ""; // "" clears the end (even a hardcoded one)
   await saveData(); render();
 }
+// ─── FRUTTA: modali Aggiungi / Gestisci ───
+const FRUIT_EMOJI_CHOICES = ['🍎','🍐','🍑','🍌','🍇','🍓','🫐','🍊','🍈','🥭','🥑','🍍','🍒','🥥','🟠','🟢'];
+function openAddFruit() {
+  const emojiOpts = FRUIT_EMOJI_CHOICES.map((e,i)=>`<option value="${e}"${i===0?' selected':''}>${e}</option>`).join('');
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title">🍎 Aggiungi frutto</div>
+    <div class="form-label">Nome *</div><input class="form-input big" type="text" id="fr-name" placeholder="es. Albicocca" style="margin-bottom:10px">
+    <div class="form-label">Emoji</div><select class="form-select" id="fr-emoji" style="width:100%">${emojiOpts}</select>
+    <div class="form-actions" style="margin-top:14px"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" onclick="submitAddFruit()">Aggiungi 🍎</button></div>
+  </div></div>`);
+}
+async function submitAddFruit() {
+  const name = document.getElementById('fr-name').value.trim();
+  if (!name) return;
+  const emoji = document.getElementById('fr-emoji').value || '🍏';
+  await addCustomFruit(name, emoji);
+  closeModal();
+}
+function openManageFruits() {
+  const hidden = new Set(state.data.hiddenFruits || []);
+  const presetRows = FRUIT_PRESETS.map(f => `<div class="fruit-log-row"><span class="fruit-log-name">${f.emoji} ${f.name}</span><button class="weight-btn" style="width:auto;margin:0;padding:6px 12px;font-size:12px" onclick="${hidden.has(f.id)?`unhideFruit('${f.id}')`:`hideFruit('${f.id}')`};openManageFruits()">${hidden.has(f.id)?'Mostra':'Nascondi'}</button></div>`).join('');
+  const customRows = (state.data.customFruits||[]).map(f => `<div class="fruit-log-row"><span class="fruit-log-name">${f.emoji} ${f.name}</span><button class="entry-del" onclick="deleteCustomFruit('${f.id}');openManageFruits()">✕</button></div>`).join('');
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title">⚙️ Gestisci frutti</div>
+    <div class="content-title" style="font-size:11px;color:var(--hint)">Preset</div>${presetRows}
+    ${customRows?`<div class="content-title" style="font-size:11px;color:var(--hint);margin-top:10px">Personalizzati</div>${customRows}`:''}
+    <div class="form-actions" style="margin-top:14px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div>
+  </div></div>`);
+}
 // Undo a single-day skip for the viewed day.
 async function unskipTherapyDay(bn, tid) {
   const key = dk(state.selDate);
