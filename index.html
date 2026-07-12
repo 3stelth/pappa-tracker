@@ -1406,20 +1406,20 @@ function saveTargetModal(bn, key){
 }
 // ─── MODAL ───
 function openAdd(){
-  state._editIdx=null;const n=new Date();showModal(n.getHours(),n.getMinutes(),"","Formula","","Cacca","","");
+  state._editIdx=null;const n=new Date();showModal(n.getHours(),n.getMinutes(),"","Formula","","Cacca","","",false);
 }
 function openEdit(idx){
   state._editIdx=idx;const key=dk(state.selDate),sec=state.tab==="feed"?"feeds":"diapers",e=state.data[key][state.baby][sec][idx];
   const[h,m]=e.time.split(":").map(Number);
-  if(state.tab==="feed")showModal(h,m,String(e.ml),e.type,e.note||"","Cacca","","");
-  else showModal(h,m,"","Formula","",e.dtype,e.color||"",e.note||"");
+  if(state.tab==="feed")showModal(h,m,String(e.ml),e.type,e.note||"","Cacca","","",!!e.snack);
+  else showModal(h,m,"","Formula","",e.dtype,e.color||"",e.note||"",false);
 }
-function showModal(h,m,ml,ftype,fnote,dtype,dcolor,dnote){
+function showModal(h,m,ml,ftype,fnote,dtype,dcolor,dnote,fsnack){
   const c=COLORS[state.baby],isF=state.tab==="feed",title=(state._editIdx!==null?"Modifica":"Aggiungi")+" "+(isF?"poppata":"pannolino")+" — "+state.baby;
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   const mins=[0,15,30,45],nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   let fields="";
-  if(isF){fields=`<div class="form-label">Quantità (ml)</div><input class="form-input big" type="number" inputmode="numeric" id="f-ml" value="${ml}" placeholder="es. 120" style="margin-bottom:12px"><div class="form-label">Tipo</div><div class="chips" id="f-type-chips">${FEED_TYPES.map(t=>`<button class="chip${ftype===t?' on':''}" data-val="${t}" onclick="pickChip('f-type-chips','${t}')">${t==='Formula'?'🍼 Formula':'🤱 Materno'}</button>`).join("")}</div><div class="form-label">Note (opzionale)</div><input class="form-input" id="f-note" value="${fnote}" placeholder="es. rigurgito..." style="margin-bottom:12px">`;}
+  if(isF){fields=`<div class="form-label">Quantità (ml)</div><input class="form-input big" type="number" inputmode="numeric" id="f-ml" value="${ml}" placeholder="es. 120" style="margin-bottom:12px"><div class="form-label">Tipo</div><div class="chips" id="f-type-chips">${FEED_TYPES.map(t=>`<button class="chip${ftype===t?' on':''}" data-val="${t}" onclick="pickChip('f-type-chips','${t}')">${t==='Formula'?'🍼 Formula':'🤱 Materno'}</button>`).join("")}</div><div class="form-label">Pasto o spuntino</div><div class="chips" id="f-snack-chips"><button class="chip${!fsnack?' on':''}" data-val="meal" onclick="pickChip('f-snack-chips','meal')">🍽️ Pasto</button><button class="chip${fsnack?' on':''}" data-val="snack" onclick="pickChip('f-snack-chips','snack')">🍪 Spuntino</button></div><div class="form-label">Note (opzionale)</div><input class="form-input" id="f-note" value="${fnote}" placeholder="es. rigurgito..." style="margin-bottom:12px">`;}
   else{fields=`<div class="form-label">Tipo</div><div class="chips" id="d-type-chips">${DIAPER_TYPES.map(t=>`<button class="chip${dtype===t?' on':''}" data-val="${t}" onclick="pickChip('d-type-chips','${t}')">${t==='Cacca'?'💩 Cacca':t==='Pipì'?'💧 Pipì':'💩💧 Entrambi'}</button>`).join("")}</div><div class="form-label">Colore (opzionale)</div><input class="form-input" id="d-color" value="${dcolor}" placeholder="es. giallo, verde..." style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="d-note" value="${dnote}" placeholder="es. diarrea..." style="margin-bottom:12px">`;}
   setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${title}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div>${fields}<div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitForm()">${state._editIdx!==null?'Salva':'Aggiungi'} ${isF?'🍼':'💩'}</button></div></div></div>`);
 }
@@ -1429,7 +1429,7 @@ function pickChip(id,val){document.querySelectorAll(`#${id} .chip`).forEach(c=>c
 function getChip(id){const o=document.querySelector(`#${id} .chip.on`);return o?o.dataset.val:"";}
 function submitForm(){
   const h=parseInt(document.getElementById("f-h").value),m=parseInt(document.getElementById("f-m").value),time=ft(h,m);
-  if(state.tab==="feed"){const ml=parseInt(document.getElementById("f-ml").value);if(!ml||isNaN(ml))return;addEntry({time,ml,type:getChip("f-type-chips")||"Formula",note:document.getElementById("f-note").value.trim()});}
+  if(state.tab==="feed"){const ml=parseInt(document.getElementById("f-ml").value);if(!ml||isNaN(ml))return;const entry={time,ml,type:getChip("f-type-chips")||"Formula",note:document.getElementById("f-note").value.trim()};if(getChip("f-snack-chips")==="snack")entry.snack=true;addEntry(entry);}
   else{addEntry({time,dtype:getChip("d-type-chips")||"Cacca",color:document.getElementById("d-color").value.trim(),note:document.getElementById("d-note").value.trim()});}
 }
 // ─── WEIGHT ───
