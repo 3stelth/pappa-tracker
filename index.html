@@ -1214,6 +1214,7 @@ function buildWeeklyInline() {
   h += `<div class="cal" style="padding:13px">`;
   h += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><button onclick="navWeeklyTrends(1)" style="border:none;width:30px;height:30px;border-radius:10px;background:${hexA(c.pri,0.15)};color:${c.pri};font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">‹</button><span style="font-size:13px;font-weight:700">${parts.label}</span><button onclick="navWeeklyTrends(-1)"${parts.isCurrentWeek?' disabled':''} style="border:none;width:30px;height:30px;border-radius:10px;background:${parts.isCurrentWeek?'var(--glass-2)':hexA(c.pri,0.15)};color:${parts.isCurrentWeek?'var(--hint)':c.pri};font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">›</button></div>`;
   h += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:inherit">${parts.tableInner}</table></div>`;
+  if (parts.fruitLegend) h += `<div style="font-size:11px;color:var(--sub);margin-top:10px;text-align:center">🍎 ${parts.fruitLegend}</div>`;
   h += `</div></div>`;
   return h;
 }
@@ -2161,8 +2162,11 @@ function buildWeeklySummaryParts(bn) {
   const endDate=new Date(startDate.getFullYear(),startDate.getMonth(),startDate.getDate()+6);
   const label=`${startDate.getDate()}/${startDate.getMonth()+1} — ${endDate.getDate()}/${endDate.getMonth()+1}`;
   const todayKey=dk(now);
+  const catalog=fruitCatalog();
   let rows='';
   let totMl=0,totFeeds=0,totDiapers=0,days=0;
+  const fruitTotals={}; // fruitId -> conteggio settimanale
+  let anyFruit=false;
   for(let i=0;i<7;i++){
     const d=new Date(startDate.getFullYear(),startDate.getMonth(),startDate.getDate()+i);
     const key=dk(d), bd=state.data[key]?.[bn];
@@ -2176,12 +2180,22 @@ function buildWeeklySummaryParts(bn) {
     const isPast=key<todayKey;
     if(isPast && hasData) days++;
     if(isPast) { totMl+=ml; totFeeds+=dayFeeds.length; totDiapers+=dayDiapers.length; }
-    rows+=`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 4px;font-weight:700;font-size:10px">${dayName} ${d.getDate()}/${d.getMonth()+1}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${ml||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayFeeds.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayDiapers.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${wt}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${tmp}</td></tr>`;
+    const dayFruitLog=getFruitLog(bn,key);
+    const dayFruitIds=Object.keys(dayFruitLog).filter(id=>dayFruitLog[id]>0);
+    const fruitCell=dayFruitIds.map(id=>(catalog.find(f=>f.id===id)||{emoji:'🍏'}).emoji).join('');
+    if(dayFruitIds.length){ anyFruit=true; dayFruitIds.forEach(id=>{ fruitTotals[id]=(fruitTotals[id]||0)+dayFruitLog[id]; }); }
+    rows+=`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 4px;font-weight:700;font-size:10px">${dayName} ${d.getDate()}/${d.getMonth()+1}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${ml||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayFeeds.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${dayDiapers.length||'—'}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${wt}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${tmp}</td><td style="padding:6px 4px;text-align:center;font-size:12px">${fruitCell||'—'}</td></tr>`;
   }
   const avgMl=days?Math.round(totMl/days):0, avgFeeds=days?(totFeeds/days).toFixed(1):0, avgDiapers=days?(totDiapers/days).toFixed(1):0;
   const isCurrentWeek=weeklyOffset===0;
-  const tableInner = `<thead><tr style="border-bottom:2px solid ${c.pri}"><th style="padding:6px 4px;text-align:left;font-size:9px;color:#888">Giorno</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">ml</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">🍼</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">💩</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">kg</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">°C</th></tr></thead><tbody>${rows}<tr style="background:${c.light};font-weight:800"><td style="padding:6px 4px;font-size:10px">Media/gg</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgMl}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgFeeds}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgDiapers}</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td></tr></tbody>`;
-  return { label, tableInner, isCurrentWeek, c, bn };
+  const tableInner = `<thead><tr style="border-bottom:2px solid ${c.pri}"><th style="padding:6px 4px;text-align:left;font-size:9px;color:#888">Giorno</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">ml</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">🍼</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">💩</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">kg</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">°C</th><th style="padding:6px 4px;text-align:center;font-size:9px;color:#888">🍎</th></tr></thead><tbody>${rows}<tr style="background:${c.light};font-weight:800"><td style="padding:6px 4px;font-size:10px">Media/gg</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgMl}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgFeeds}</td><td style="padding:6px 4px;text-align:center;font-size:10px">${avgDiapers}</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td><td style="padding:6px 4px;text-align:center;font-size:10px">—</td></tr></tbody>`;
+  const fruitLegend = anyFruit
+    ? Object.keys(fruitTotals).map(id => ({ id, count: fruitTotals[id], meta: catalog.find(f=>f.id===id) || {emoji:'🍏',name:id} }))
+        .sort((a,b) => b.count - a.count)
+        .map(x => `${x.meta.emoji} ${x.meta.name} ${x.count}`)
+        .join(' · ')
+    : '';
+  return { label, tableInner, isCurrentWeek, c, bn, fruitLegend };
 }
 // Update existing modal in place (no flash). Falls back to full open if modal absent.
 function renderWeeklySummary() {
