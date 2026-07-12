@@ -1278,11 +1278,10 @@ function buildGoals(){
           ${badge}
         </div>`;
       } else {
-        const isNext=(j===done+1);
-        // Orari ancorati all'ultimo pasto consumato; i rimanenti si distribuiscono così che
-        // l'ULTIMO cada esattamente all'orario impostato (lastMeal) e niente dopo.
+        const isNext=!isPast && (j===done+1);
+        // Solo per oggi/futuro proiettiamo gli orari; i giorni passati restano "liberi" (nessuna proiezione).
         let timeHtml='';
-        if(anchorMin!=null){
+        if(!isPast && anchorMin!=null){
           let raw;
           if(j===n){ raw=lastMealMin; }                          // l'ultimo pasto è esattamente all'orario scelto
           else {
