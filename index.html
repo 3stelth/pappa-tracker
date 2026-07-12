@@ -1046,6 +1046,17 @@ function buildToday() {
       <div class="recap-line">🍼 <b>${d.totalMl} ml</b> <span class="sub">(${d.feeds.length})</span></div>
       <div class="recap-line" style="font-size:10px"><span style="color:${getLastFeedAgo(bn).color}">🕐 ${getLastFeedAgo(bn).text}</span></div>
       <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
+      ${(() => {
+        const log = getFruitLog(bn, key);
+        const entries = Object.keys(log).filter(id=>log[id]>0);
+        if (!entries.length) return '';
+        const cat = fruitCatalog();
+        const items = entries.map(id => ({ id, count: log[id], meta: cat.find(f=>f.id===id) || {emoji:'🍏',name:id} }))
+          .sort((a,b) => b.count - a.count)
+          .map(x => `${x.meta.emoji}×${x.count}`)
+          .join(' ');
+        return `<div class="recap-line">🍎 ${items}</div>`;
+      })()}
       <div class="recap-line">⚖️ <b>${(state.data[key]?.[bn]?.weight?.kg||'—')}${state.data[key]?.[bn]?.weight?' kg':''}</b></div>
       <div class="recap-line">🌡️ <b style="color:${(state.data[key]?.[bn]?.temperatures||[]).length?tempColor(Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))):'inherit'}">${(state.data[key]?.[bn]?.temperatures||[]).length?Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))+'°C':'—'}</b>${(state.data[key]?.[bn]?.temperatures||[]).length>1?` <span class="sub">(${state.data[key][bn].temperatures.length})</span>`:''}</div>
       <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
