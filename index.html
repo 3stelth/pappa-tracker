@@ -1157,8 +1157,7 @@ async function setGoalMeals(n, key){
   await saveData(); render();
 }
 // Target per pasto: media giornaliera / n. pasti, arrotondato a multipli di 5 ml. 0 se manca la media.
-function goalPerMeal(bn,n){ const a=avgDailyMl(bn); return a>0?Math.round(a/n/5)*5:0; }
-function getManualTarget(bn, key){ const v=state.data.goals?.targetByDate?.[key]?.[bn]; return (typeof v==='number' && v>=0)?v:undefined; }
+function getManualTarget(bn, key){ const v=state.data.goals?.targetByDate?.[key]?.[bn]; return (typeof v==='number' && v>=1)?v:undefined; }
 function isManualTarget(bn, key){ return getManualTarget(bn,key)!==undefined; }
 function effectiveTargetMl(bn, key){
   const m=getManualTarget(bn,key);
