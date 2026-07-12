@@ -1229,11 +1229,15 @@ function buildGoals(){
     const per=(avg>0 && dRem>0)?Math.max(0,Math.round((avg-dCons)/dRem/5)*5):(avg>0?Math.round(avg/n/5)*5:0);
     h+=`<div class="recap-card" style="--cardgrad:${col.grad}"><div class="recap-name" style="color:${col.pri}">${bn}</div>`;
     if(avg>0){
-      h+=`<div style="font-size:11px;color:var(--sub)">Media 7gg <b style="color:var(--txt)">${avg} ml</b></div>
+      const labelHtml = manual
+        ? `<div style="font-size:11px;color:var(--amber);font-weight:700;cursor:pointer" onclick="openTargetModal('${bn}','${key}')">✏️ Manuale <b>${avg} ml</b></div>`
+        : `<div style="font-size:11px;color:var(--sub);cursor:pointer" onclick="openTargetModal('${bn}','${key}')">Media 7gg <b style="color:var(--txt)">${avg} ml</b> ✏️</div>`;
+      h+=labelHtml+`
       <div style="display:flex;align-items:baseline;gap:5px;margin-top:4px"><span style="font-size:24px;font-weight:800;color:${col.pri};letter-spacing:-0.02em">${per}</span><span style="font-size:12px;color:var(--sub);font-weight:600">ml / pasto</span></div>
-      ${dDone>0?`<div style="font-size:10px;color:var(--hint);margin-top:2px">ricalcolato · presi ${dCons} ml, restano ${dRem} pasti</div>`:''}`;
+      ${dDone>0?`<div style="font-size:10px;color:var(--hint);margin-top:2px">ricalcolato · presi ${dCons} ml, restano ${dRem} pasti</div>`:''}
+      ${manual?`<div style="font-size:10px;margin-top:3px"><a href="#" onclick="clearManualTarget('${bn}','${key}');return false" style="color:var(--sub);font-weight:600">↺ torna alla media</a></div>`:''}`;
     } else {
-      h+=`<div style="font-size:11px;color:var(--hint);line-height:1.5;margin-top:2px">Inserisci qualche poppata per calcolare il target.</div>`;
+      h+=`<div style="font-size:11px;color:var(--hint);line-height:1.5;margin-top:2px;cursor:pointer" onclick="openTargetModal('${bn}','${key}')">Nessuna media · tocca per impostare un obiettivo manuale ✏️</div>`;
     }
     h+=`</div>`;
   });
@@ -1373,6 +1377,29 @@ function submitGoalMeal(bn, slot, target){
   }
   if(!consumed||isNaN(consumed)) return;
   addPlannedFeed(bn, { time, ml:consumed, type:getChip('gm-type-chips')||'Formula', note:document.getElementById('gm-note').value.trim(), planned:true, target, leftover, extra });
+}
+function openTargetModal(bn, key){
+  const c=COLORS[bn];
+  const cur=getManualTarget(bn,key);
+  const avg=avgDailyMl(bn, dkToDate(key));
+  const val=(cur!==undefined)?cur:(avg||'');
+  const dayTxt = key===dk(new Date()) ? 'oggi' : 'questo giorno';
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div>
+    <div class="modal-title" style="color:${c.acc}">Obiettivo giornaliero — ${bn}</div>
+    <div class="form-label">Media 7gg calcolata: <b>${avg||0} ml</b></div>
+    <div class="form-label" style="margin-top:8px">Obiettivo manuale (ml al giorno)</div>
+    <input class="form-input big" type="number" inputmode="numeric" id="tgt-ml" value="${val}" placeholder="es. 800" style="margin-bottom:12px">
+    <div style="font-size:11px;color:var(--hint);margin-bottom:12px">Vale solo per ${dayTxt}. Il ml per pasto si ricalcola da qui.</div>
+    <div class="form-actions">
+      ${cur!==undefined?`<button class="btn-cancel" onclick="clearManualTarget('${bn}','${key}')">↺ Torna alla media</button>`:`<button class="btn-cancel" onclick="closeModal()">Annulla</button>`}
+      <button class="btn-save" style="background:${c.grad}" onclick="saveTargetModal('${bn}','${key}')">Salva</button>
+    </div>
+  </div></div>`);
+}
+function saveTargetModal(bn, key){
+  const el=document.getElementById('tgt-ml');
+  if(!el || el.value===''){ closeModal(); return; }
+  setManualTarget(bn, key, el.value);
 }
 // ─── MODAL ───
 function openAdd(){
