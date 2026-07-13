@@ -1117,9 +1117,10 @@ function buildToday() {
   h+=`<div class="content"><div class="content-title">🍼 Poppate · ${dateLabel}</div>`;
   if(!feeds.length) h+=`<div class="empty">Nessuna poppata</div>`;
   else feeds.forEach((e,i)=>{
-    const eI=e.type==="Materno"?"🤱":"🍼";
+    const eI=e.snack?"🍪":(e.type==="Materno"?"🤱":"🍼");
     const tBg=e.type==="Formula"?"rgba(59,130,246,0.16)":"rgba(245,158,11,0.18)",tC=e.type==="Formula"?"#3B82F6":"#D97706";
-    h+=`<div class="entry" onclick="state.tab='feed';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:var(--accent)">${e.ml} ml</span><span class="entry-tag" style="background:${tBg};color:${tC}">${e.type}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='feed';delEntry(${i})">✕</button></div>`;
+    const snackTag=e.snack?`<span class="entry-tag" style="background:var(--amber-light);color:var(--amber)">🍪 Spuntino</span>`:'';
+    h+=`<div class="entry" onclick="state.tab='feed';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:var(--accent)">${e.ml} ml</span><span class="entry-tag" style="background:${tBg};color:${tC}">${e.type}</span>${snackTag}</div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='feed';delEntry(${i})">✕</button></div>`;
   });
   h+=`</div>`;
   // Fruit (registro indipendente: non tocca feeds/ml/Obiettivi)
