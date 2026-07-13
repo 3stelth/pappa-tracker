@@ -377,6 +377,7 @@ const FRUIT_PRESETS = [
   {id:'pera', name:'Pera', emoji:'🍐'},
   {id:'mela', name:'Mela', emoji:'🍎'},
   {id:'pesca', name:'Pesca', emoji:'🍑'},
+  {id:'albicocca', name:'Albicocca', emoji:'🟠'},
   {id:'kiwi', name:'Kiwi', emoji:'🥝'},
   {id:'uva', name:'Uva', emoji:'🍇'},
   {id:'fragola', name:'Fragola', emoji:'🍓'},
@@ -2084,19 +2085,18 @@ async function restoreTherapy(bn, tid) {
   await saveData(); render();
 }
 // ─── FRUTTA: modali Aggiungi / Gestisci ───
-const FRUIT_EMOJI_CHOICES = ['🍎','🍐','🍑','🍌','🍇','🍓','🫐','🍊','🍈','🥭','🥑','🍍','🍒','🥥','🟠','🟢'];
 function openAddFruit() {
-  const emojiOpts = FRUIT_EMOJI_CHOICES.map((e,i)=>`<option value="${e}"${i===0?' selected':''}>${e}</option>`).join('');
   setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title">🍎 Aggiungi frutto</div>
     <div class="form-label">Nome *</div><input class="form-input big" type="text" id="fr-name" placeholder="es. Albicocca" style="margin-bottom:10px">
-    <div class="form-label">Emoji</div><select class="form-select" id="fr-emoji" style="width:100%">${emojiOpts}</select>
-    <div class="form-actions" style="margin-top:14px"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" onclick="submitAddFruit()">Aggiungi 🍎</button></div>
+    <div class="form-label">Emoji</div><input class="form-input big" type="text" id="fr-emoji" maxlength="16" autocomplete="off" placeholder="🍏" style="text-align:center;font-size:28px;margin-bottom:4px">
+    <div style="font-size:11px;color:var(--hint);margin-bottom:6px;text-align:center">Tocca il campo e usa il tasto emoji 😀 della tastiera</div>
+    <div class="form-actions" style="margin-top:12px"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" onclick="submitAddFruit()">Aggiungi 🍎</button></div>
   </div></div>`);
 }
 async function submitAddFruit() {
   const name = document.getElementById('fr-name').value.trim();
   if (!name) return;
-  const emoji = document.getElementById('fr-emoji').value || '🍏';
+  const emoji = document.getElementById('fr-emoji').value.trim() || '🍏';
   await addCustomFruit(name, emoji);
   closeModal();
 }
