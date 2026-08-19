@@ -143,6 +143,14 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .entry-ml { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .entry-tag { font-size: 9px; padding: 2px 7px; border-radius: 7px; font-weight: 700; }
 .entry-note { font-size: 11px; color: var(--hint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Il riassunto della pappa è il contenuto della riga: va a capo invece di troncarsi */
+.entry-note.wrap { white-space: normal; overflow: visible; line-height: 1.45; }
+/* Iniziale del bambino sulle righe della giornata condivisa */
+.baby-chip { font-size: 10px; font-weight: 800; width: 18px; height: 18px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* Scelta del bambino prima di un inserimento */
+.baby-pick { display: flex; gap: 10px; margin-bottom: 14px; }
+.baby-pick-btn { flex: 1; padding: 22px 10px; border: none; border-radius: var(--r-md); color: #fff; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform 0.15s; letter-spacing: -0.01em; }
+.baby-pick-btn:active { transform: scale(0.97); }
 .entry-del { border: none; background: var(--red-light); color: var(--red); width: 26px; height: 26px; border-radius: 9px; font-size: 12px; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; transition: transform 0.15s; }
 .entry-del:active { transform: scale(0.85); }
 /* ── Goals (Obiettivi) ── */
@@ -356,7 +364,10 @@ const FEED_TYPES = ["Formula", "Materno"];
 const DIAPER_TYPES = ["Cacca", "Pipì", "Entrambi"];
 const COLORS = {
   Gabriel: { pri: "#3B82F6", acc: "#2563EB", light: "#E8F1FE", grad: "linear-gradient(135deg,#60A5FA,#3B82F6)", g2: "#60A5FA" },
-  Vittorio: { pri: "#14B8A6", acc: "#0D9488", light: "#E2FBF6", grad: "linear-gradient(135deg,#2DD4BF,#14B8A6)", g2: "#2DD4BF" }
+  Vittorio: { pri: "#14B8A6", acc: "#0D9488", light: "#E2FBF6", grad: "linear-gradient(135deg,#2DD4BF,#14B8A6)", g2: "#2DD4BF" },
+  // Filtro "Entrambi": non è un terzo bambino, è la fusione dei due — dal blu di
+  // Gabriel al verde acqua di Vittorio.
+  both: { pri: "#2E9FD4", acc: "#1B87BC", light: "#E4F4FB", grad: "linear-gradient(135deg,#60A5FA,#2DD4BF)", g2: "#5BC8D8" }
 };
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const DAYNAMES = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
@@ -420,7 +431,10 @@ function dayBeforeKey(ymd) {
 }
 const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
-let state = { data: {}, baby: "Gabriel", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false, goalPastForceEditKey: null };
+// `filter` decide cosa mostra la giornata: entrambi i bambini o uno solo. `baby` resta
+// il bambino su cui agisce il modale aperto (i modali riguardano sempre un bambino solo).
+let state = { data: {}, baby: "Gabriel", filter: "both", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false };
+function filteredBabies() { return state.filter === 'both' ? BABIES : [state.filter]; }
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function dkToDate(key){ const p=String(key).split('-'); return new Date(+p[0], (+p[1])-1, +p[2]); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -553,9 +567,12 @@ async function deleteCustomFood(id) {
 }
 function getMeals(bn, key) { return state.data[key]?.[bn]?.meals || []; }
 // Totale in grammi: i grassi sono in cucchiai e restano fuori dalla somma.
-function mealGrams(m) { return (m.items||[]).filter(i => i.unit==='g').reduce((s,i) => s + (+i.qty||0), 0); }
+function mealGrams(m) { return (m.items||[]).filter(i => i.unit==='g' && hasQty(i)).reduce((s,i) => s + (+i.qty||0), 0); }
 function mealIsSnack(m) { const it = m.items||[]; return it.length>0 && it.every(i => i.cat==='fruit'); }
+// La quantità è facoltativa: senza, l'alimento si legge da solo ("🥒 Zucchina").
+function hasQty(i) { return i && i.qty !== undefined && i.qty !== null && i.qty !== '' && !isNaN(i.qty); }
 function fmtQty(i) {
+  if (!hasQty(i)) return '';
   if (i.unit === 'g') return `${i.qty} g`;
   const q = i.qty === 0.5 ? '½' : String(i.qty).replace('.',',');
   const u = i.qty > 1 ? (i.unit==='cucchiaino' ? 'cucchiaini' : 'cucchiai') : i.unit;
@@ -566,7 +583,7 @@ function itemFoodLabel(i) {
   const emo = metas.map(m => m.emoji).filter(Boolean).join('');
   return (emo ? emo+' ' : '') + metas.map(m => m.name).join(' + ');
 }
-function mealSummary(m) { return (m.items||[]).map(i => `${itemFoodLabel(i)} ${fmtQty(i)}`).join(' · '); }
+function mealSummary(m) { return (m.items||[]).map(i => { const q=fmtQty(i); return q ? `${itemFoodLabel(i)} ${q}` : itemFoodLabel(i); }).join(' · '); }
 // Prima volta in assoluto che un alimento compare, per bambino: serve alla riga
 // "Nuovi assaggi". Include il vecchio registro Frutta così un frutto già dato non
 // risulta nuovo. Ritorna { foodId: "YYYY-MM-DD" }.
@@ -1065,24 +1082,6 @@ function dayTimeline(babies, dateKey) {
   });
   return out.sort((a,b) => a.time.localeCompare(b.time) || a.baby.localeCompare(b.baby));
 }
-function buildMealsSection(bn, key, dateLabel) {
-  const meals = getMeals(bn, key);
-  const legacy = legacyFruitRows(bn, key);
-  let h = `<div class="content"><div class="content-title">🥣 Pappe · ${dateLabel}</div>`;
-  if (!meals.length && !legacy.length) h += `<div class="empty">Nessuna pappa. Tocca + per aggiungerne una.</div>`;
-  meals.forEach((m,i)=>{
-    const snack = mealIsSnack(m), g = mealGrams(m), lk = LIKINGS[likingOf(m)];
-    h += `<div class="entry" onclick="openMealModal(${i})"><div class="entry-icon">${snack?'🍎':'🥣'}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${m.time}</span>${g?`<span class="entry-ml" style="color:var(--accent)">${g} g</span>`:''}${snack?`<span class="entry-tag" style="background:var(--amber-light);color:var(--amber)">🍎 Merenda</span>`:''}${lk?`<span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">${lk.e} ${lk.l}</span>`:''}</div><div class="entry-note">${mealSummary(m)}</div>${m.note?`<div class="entry-note">${m.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delMeal(${i})">✕</button></div>`;
-  });
-  if (legacy.length) {
-    h += `<div class="content-title" style="margin-top:10px;font-size:11px;color:var(--hint)">Dal registro Frutta precedente · sola lettura</div>`;
-    legacy.forEach(r=>{
-      h += `<div class="entry" style="opacity:.7"><div class="entry-icon">📥</div><div class="entry-body"><div class="entry-top"><span class="entry-time">—</span><span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">Importata</span></div><div class="entry-note">${r.meta.emoji||'🍎'} ${r.meta.name} ×${r.count}</div></div></div>`;
-    });
-  }
-  h += `</div>`;
-  return h;
-}
 function getCalDays(y, mo) {
   const first = new Date(y, mo, 1), last = new Date(y, mo+1, 0);
   let start = first.getDay()-1; if(start<0) start=6;
@@ -1275,8 +1274,9 @@ function hexA(hex, a) {
 function render() {
   const view = state.view || 'today';
   document.body.classList.toggle('has-baby-switch', view==='today');
-  const c = COLORS[state.baby];
-  // Drive the ambient orbs + all accents from the active baby's color (signature).
+  // L'accento (orbs, pillole, numeri) segue il filtro: con "Entrambi" è la fusione dei
+  // due colori. I modali restano invece sul colore del bambino su cui si sta agendo.
+  const c = COLORS[state.filter] || COLORS.both;
   const rs = document.body.style;
   rs.setProperty('--accent', c.pri);
   rs.setProperty('--accent-2', c.g2 || c.pri);
@@ -1306,13 +1306,13 @@ function render() {
       <button class="fab-action" onclick="fabPick('temp')"><span class="fab-action-label">Temperatura</span><span class="fab-action-ic">🌡️</span></button>
       <button class="fab-action" onclick="fabPick('weight')"><span class="fab-action-label">Peso</span><span class="fab-action-ic">⚖️</span></button>
       <button class="fab-action" onclick="fabPick('diaper')"><span class="fab-action-label">Pannolino</span><span class="fab-action-ic">💩</span></button>
-      <button class="fab-action" onclick="fabPick('feed')"><span class="fab-action-label">Poppata</span><span class="fab-action-ic">🍼</span></button>
+      <button class="fab-action" onclick="fabPick('feed')"><span class="fab-action-label">Latte</span><span class="fab-action-ic">🍼</span></button>
       <button class="fab-action" onclick="fabPick('meal')"><span class="fab-action-label">Pappa</span><span class="fab-action-ic">🥣</span></button>
     </div>
     <button class="fab-add" onclick="toggleFab()" aria-label="Aggiungi"><span class="plus">+</span></button>
   </div>`;
   // Thumb-reachable baby switch floating just above the tab bar
-  if (view==='today') h += `<div class="baby-switch"><div class="pills">${BABIES.map(b=>`<button class="pill ${state.baby===b?'on':'off'}" onclick="state.baby='${b}';render()">${b}</button>`).join("")}</div></div>`;
+  if (view==='today') h += `<div class="baby-switch"><div class="pills">${[['both','Entrambi'],...BABIES.map(b=>[b,b])].map(([v,l])=>`<button class="pill ${state.filter===v?'on':'off'}" onclick="setFilter('${v}')">${l}</button>`).join("")}</div></div>`;
   h += buildTabbar(view);
   document.getElementById("app").innerHTML = h;
 }
@@ -1328,8 +1328,25 @@ function buildTabbar(view) {
   return `<div class="tabbar">${items.map(it=>`<button class="tabbar-btn ${view===it.k?'on':''}" onclick="setView('${it.k}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${it.svg}</svg><span>${it.l}</span></button>`).join('')}</div>`;
 }
 function setView(v) { state.view = v; state.fabOpen = false; window.scrollTo({top:0,behavior:'smooth'}); render(); }
+function setFilter(v) { state.filter = v; if (v !== 'both') state.baby = v; state.fabOpen = false; render(); }
 function toggleFab() { state.fabOpen = !state.fabOpen; render(); }
-function fabPick(action) { state.fabOpen = false; quickAddAction(state.baby, action); }
+// Con la giornata filtrata su un bambino si va dritti al modale; con entrambi a schermo
+// manca un'informazione — per chi — e la si chiede prima.
+function fabPick(action) {
+  state.fabOpen = false;
+  if (state.filter === 'both') { render(); askBabyFor(action); }
+  else quickAddAction(state.filter, action);
+}
+const ADD_LABELS = { feed:{e:'🍼',l:'Latte'}, meal:{e:'🥣',l:'Pappa'}, diaper:{e:'💩',l:'Pannolino'}, weight:{e:'⚖️',l:'Peso'}, temp:{e:'🌡️',l:'Temperatura'} };
+function askBabyFor(action) {
+  const a = ADD_LABELS[action] || { e:'➕', l:'Aggiungi' };
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div>
+    <div class="modal-title">${a.e} ${a.l} — per chi?</div>
+    <div class="baby-pick">${BABIES.map(bn=>`<button class="baby-pick-btn" style="background:${COLORS[bn].grad}" onclick="pickBabyFor('${bn}','${action}')">${bn}</button>`).join('')}</div>
+    <div class="form-actions"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Annulla</button></div>
+  </div></div>`);
+}
+function pickBabyFor(bn, action) { closeModal(); quickAddAction(bn, action); }
 // ── TODAY VIEW ──
 function buildToday() {
   const c=COLORS[state.baby], key=dk(state.selDate), todayK=dk(new Date());
@@ -1366,96 +1383,124 @@ function buildToday() {
     else if(isTod) st='background:var(--accent-soft);color:var(--accent);font-weight:700';
     return`<button class="cal-day${!day.cur?' other':''}" style="${st}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#3B82F6"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#2DD4BF"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
   }).join("")}</div></div></div>`;
-  // Recap
+  // Riepilogo: una card per bambino. Tap sulla card = filtra la giornata su di lui.
   h+=`<div class="recap-section"><div class="recap-label">Riepilogo · ${dateLabel}</div><div class="recap-row">${BABIES.map(bn=>{
-    const d=getBabyDay(bn,key),bc=COLORS[bn];
-    return`<div class="recap-card" style="--cardgrad:${bc.grad};${bn!==state.baby?'opacity:.62':''}">
+    const d=getBabyDay(bn,key),bc=COLORS[bn],ms=getMeals(bn,key),legacy=legacyFruitRows(bn,key);
+    const temps=state.data[key]?.[bn]?.temperatures||[],w=state.data[key]?.[bn]?.weight;
+    const maxT=temps.length?Math.max(...temps.map(t=>t.temp)):null;
+    const dim=state.filter!=='both'&&state.filter!==bn;
+    const ago=getLastFeedAgo(bn);
+    return`<div class="recap-card" style="--cardgrad:${bc.grad};cursor:pointer${dim?';opacity:.45':''}" onclick="setFilter('${state.filter===bn?'both':bn}')">
       <div class="recap-name" style="color:${bc.pri}">${bn}</div>
-      <div class="recap-line">🍼 <b>${d.totalMl} ml</b> <span class="sub">(${d.feeds.length})</span></div>
-      <div class="recap-line" style="font-size:10px"><span style="color:${getLastFeedAgo(bn).color}">🕐 ${getLastFeedAgo(bn).text}</span></div>
+      <div class="recap-line">🍼 <b>${d.feeds.length}</b> <span class="sub">latte</span></div>
+      <div class="recap-line" style="font-size:10px"><span style="color:${ago.color}">🕐 ${ago.text}</span></div>
+      <div class="recap-line">🥣 <b>${ms.length}</b> <span class="sub">pappe</span></div>
+      ${legacy.length?`<div class="recap-line">🍎 ${legacy.map(r=>`${r.meta.emoji||'🍎'}×${r.count}`).join(' ')}</div>`:''}
       <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
-      ${(() => {
-        const ms = getMeals(bn, key);
-        const g = ms.reduce((s,m)=>s+mealGrams(m),0);
-        return ms.length ? `<div class="recap-line">🥣 <b>${ms.length}</b>${g?` <span class="sub">${g} g</span>`:''}</div>` : '';
-      })()}
-      ${(() => {
-        const legacy = legacyFruitRows(bn, key);
-        return legacy.length ? `<div class="recap-line">🍎 ${legacy.map(r=>`${r.meta.emoji||'🍎'}×${r.count}`).join(' ')}</div>` : '';
-      })()}
-      <div class="recap-line">⚖️ <b>${(state.data[key]?.[bn]?.weight?.kg||'—')}${state.data[key]?.[bn]?.weight?' kg':''}</b></div>
-      <div class="recap-line">🌡️ <b style="color:${(state.data[key]?.[bn]?.temperatures||[]).length?tempColor(Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))):'inherit'}">${(state.data[key]?.[bn]?.temperatures||[]).length?Math.max(...state.data[key][bn].temperatures.map(t=>t.temp))+'°C':'—'}</b>${(state.data[key]?.[bn]?.temperatures||[]).length>1?` <span class="sub">(${state.data[key][bn].temperatures.length})</span>`:''}</div>
+      <div class="recap-line">⚖️ <b>${w?w.kg+' kg':'—'}</b></div>
+      <div class="recap-line">🌡️ <b style="color:${maxT!==null?tempColor(maxT):'inherit'}">${maxT!==null?maxT+'°C':'—'}</b>${temps.length>1?` <span class="sub">(${temps.length})</span>`:''}</div>
       <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
     </div>`;
   }).join("")}</div></div>`;
-  // Therapies
-  const ts=getTherapies(state.baby), checks=state.data[key]?.[state.baby]?.therapies||{};
-  h+=`<div class="content"><div class="content-title" style="display:flex;align-items:center;justify-content:space-between">💊 Terapie · ${dateLabel}<button onclick="event.stopPropagation();openAddTherapy('${state.baby}')" title="Aggiungi terapia" style="border:none;background:var(--accent-soft);color:var(--accent);width:28px;height:28px;border-radius:9px;font-size:19px;font-weight:600;line-height:1;cursor:pointer;font-family:inherit">+</button></div>${ts.map(t=>{
-    const endDate = therapyEndDate(t, state.baby);
-    const isEndedView = endDate && key > endDate;
-    const isSkipped = therapySkippedOn(t.id, state.baby, key);
-    if (isEndedView) {
+  // Timeline unica: i due bambini nella stessa giornata, in ordine di orario.
+  const babies=filteredBabies(), rows=dayTimeline(babies,key), showBadge=babies.length>1;
+  h+=`<div class="content"><div class="content-title">🕒 Giornata · ${dateLabel}</div>`;
+  if(!rows.length) h+=`<div class="empty">Ancora nulla. Tocca + per segnare qualcosa.</div>`;
+  rows.forEach(r=>{ h+=timelineRow(r,showBadge); });
+  // Frutta del vecchio registro: niente orario, sola lettura, in coda alla giornata.
+  const legacyRows=[];
+  babies.forEach(bn=>legacyFruitRows(bn,key).forEach(r=>legacyRows.push({ ...r, baby:bn })));
+  if(legacyRows.length){
+    h+=`<div class="content-title" style="margin-top:10px;font-size:11px;color:var(--hint)">Dal registro Frutta precedente · sola lettura</div>`;
+    legacyRows.forEach(r=>{
+      h+=`<div class="entry" style="opacity:.7;--accent:${COLORS[r.baby].pri}"><div class="entry-icon">📥</div><div class="entry-body"><div class="entry-top"><span class="entry-time">—</span>${showBadge?babyChip(r.baby):''}<span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">Importata</span></div><div class="entry-note">${r.meta.emoji||'🍎'} ${r.meta.name} ×${r.count}</div></div></div>`;
+    });
+  }
+  h+=`</div>`;
+  // Terapie: non hanno un orario, quindi restano fuori dalla timeline.
+  babies.forEach(bn=>{ h+=buildTherapySection(bn,key,dateLabel,showBadge); });
+  return h;
+}
+// Pastiglia con l'iniziale del bambino: compare solo quando la giornata mostra entrambi.
+function babyChip(bn) {
+  const c=COLORS[bn];
+  return `<span class="baby-chip" style="background:${hexA(c.pri,0.16)};color:${c.pri}">${bn[0]}</span>`;
+}
+// Una riga della timeline. Le azioni impostano state.baby (e state.tab dove serve) prima
+// di richiamare le funzioni esistenti, che lavorano sul bambino attivo.
+function timelineRow(r, showBadge) {
+  const bn=r.baby, c=COLORS[bn], e=r.data;
+  // La barretta a sinistra della riga (.entry::before) e i numeri leggono --accent:
+  // impostandolo qui, ogni riga porta il colore del proprio bambino.
+  const edge=`style="--accent:${c.pri}"`;
+  const badge=showBadge?babyChip(bn):'';
+  const note=e.note?`<div class="entry-note">${e.note}</div>`:'';
+  const row=(icon,tags,body,open,del)=>
+    `<div class="entry" ${edge} onclick="${open}"><div class="entry-icon">${icon}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${r.time||'—'}</span>${badge}${tags}</div>${body}${note}</div><button class="entry-del" onclick="event.stopPropagation();${del}">✕</button></div>`;
+  if(r.kind==='feed'){
+    // Poppate storiche: ml e tipo (Formula/Materno) restano leggibili e sostituiscono
+    // l'etichetta "Latte", che accanto al tipo non aggiungerebbe nulla.
+    const ml=e.ml?`<span class="entry-ml" style="color:var(--accent)">${e.ml} ml</span>`:'';
+    const oldType=e.type&&e.type!=='Latte';
+    const tag=`<span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">${oldType?e.type:'Latte'}</span>`;
+    const snack=e.snack?`<span class="entry-tag" style="background:var(--amber-light);color:var(--amber)">🍪 Spuntino</span>`:'';
+    return row('🍼',`${tag}${ml}${snack}`,'',
+      `state.baby='${bn}';state.tab='feed';openEdit(${r.idx})`,`state.baby='${bn}';state.tab='feed';delEntry(${r.idx})`);
+  }
+  if(r.kind==='meal'){
+    const snack=mealIsSnack(e), g=mealGrams(e), lk=LIKINGS[likingOf(e)];
+    const tags=`<span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">${snack?'Merenda':'Pappa'}</span>`
+      +(g?`<span class="entry-ml" style="color:var(--accent)">${g} g</span>`:'')
+      +(lk?`<span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">${lk.e} ${lk.l}</span>`:'');
+    return row(snack?'🍎':'🥣',tags,`<div class="entry-note wrap">${mealSummary(e)}</div>`,
+      `state.baby='${bn}';openMealModal(${r.idx})`,`state.baby='${bn}';delMeal(${r.idx})`);
+  }
+  if(r.kind==='diaper'){
+    const icon=e.dtype==='Cacca'?'💩':e.dtype==='Pipì'?'💧':'💩💧';
+    return row(icon,`<span class="entry-tag" style="background:rgba(167,139,207,0.2);color:#9F7AEA">${e.dtype}</span>`,
+      e.color?`<div class="entry-note">Colore: ${e.color}</div>`:'',
+      `state.baby='${bn}';state.tab='diaper';openEdit(${r.idx})`,`state.baby='${bn}';state.tab='diaper';delEntry(${r.idx})`);
+  }
+  if(r.kind==='weight'){
+    return row('⚖️',`<span class="entry-ml" style="color:var(--accent)">${e.kg} kg</span>`,'',
+      `openWeightModal('${bn}')`,`delWeight('${bn}')`);
+  }
+  const tc=tempColor(e.temp);
+  const med=e.medicine?`<div style="font-size:11px;color:#818CF8;font-weight:700;margin-top:3px">💊 ${e.medicine.name}${e.medicine.dose?' — '+e.medicine.dose:''}</div>`:'';
+  return row('🌡️',`<span class="entry-ml" style="color:${tc}">${e.temp}°C</span>`,med,
+    `openTempModal('${bn}',${r.idx})`,`delTemp('${bn}',${r.idx})`);
+}
+// Terapie di un bambino nel giorno selezionato. Con entrambi i bambini a schermo il
+// titolo porta il nome, così i due blocchi non si confondono.
+function buildTherapySection(bn, key, dateLabel, withName) {
+  const ts=getTherapies(bn), checks=state.data[key]?.[bn]?.therapies||{}, bc=COLORS[bn];
+  let h=`<div class="content"><div class="content-title" style="display:flex;align-items:center;justify-content:space-between">💊 Terapie${withName?` · <span style="color:${bc.pri}">${bn}</span>`:` · ${dateLabel}`}<button onclick="event.stopPropagation();openAddTherapy('${bn}')" title="Aggiungi terapia" style="border:none;background:var(--accent-soft);color:var(--accent);width:28px;height:28px;border-radius:9px;font-size:19px;font-weight:600;line-height:1;cursor:pointer;font-family:inherit">+</button></div>`;
+  h+=ts.map(t=>{
+    const endDate=therapyEndDate(t,bn);
+    const isEndedView=endDate&&key>endDate;
+    const isSkipped=therapySkippedOn(t.id,bn,key);
+    if(isEndedView){
       return`<div class="therapy-item ended">
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:var(--hint)">${t.name}</span><span class="therapy-cat" style="background:var(--glass-2);color:var(--hint)">${t.cat}</span></div><div class="therapy-dose" style="color:var(--hint)">📋 ${getDose(t,key)}</div><div style="font-size:10px;color:var(--hint);margin-top:3px;font-style:italic">Somministrato l'ultimo giorno il ${fmtDotDate(endDate)}</div></div>
-      <button class="entry-del" title="Ripristina terapia" onclick="event.stopPropagation();restoreTherapy('${state.baby}','${t.id}')" style="background:var(--accent-soft);color:var(--accent)">↺</button>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:var(--hint)">${t.name}</span><span class="therapy-cat" style="background:var(--glass-2);color:var(--hint)">${t.cat}</span></div><div class="therapy-dose" style="color:var(--hint)">📋 ${getDose(t,key,bn)}</div><div style="font-size:10px;color:var(--hint);margin-top:3px;font-style:italic">Somministrato l'ultimo giorno il ${fmtDotDate(endDate)}</div></div>
+      <button class="entry-del" title="Ripristina terapia" onclick="event.stopPropagation();restoreTherapy('${bn}','${t.id}')" style="background:var(--accent-soft);color:var(--accent)">↺</button>
     </div>`;
     }
-    if (isSkipped) {
+    if(isSkipped){
       return`<div class="therapy-item ended">
       <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px;filter:grayscale(1)">${t.icon}</span><span class="therapy-name" style="color:var(--hint)">${t.name}</span><span class="therapy-cat" style="background:var(--glass-2);color:var(--hint)">${t.cat}</span></div><div style="font-size:10px;color:var(--hint);margin-top:3px;font-style:italic">Rimossa per questo giorno</div></div>
-      <button class="entry-del" title="Ripristina per questo giorno" onclick="event.stopPropagation();unskipTherapyDay('${state.baby}','${t.id}')" style="background:var(--accent-soft);color:var(--accent)">↺</button>
+      <button class="entry-del" title="Ripristina per questo giorno" onclick="event.stopPropagation();unskipTherapyDay('${bn}','${t.id}')" style="background:var(--accent-soft);color:var(--accent)">↺</button>
     </div>`;
     }
     const done=!!checks[t.id];
-    return`<div class="therapy-item${done?' done':''}" style="--titem:${t.color}" onclick="toggleTherapy('${state.baby}','${t.id}')">
+    return`<div class="therapy-item${done?' done':''}" style="--titem:${t.color}" onclick="toggleTherapy('${bn}','${t.id}')">
       <div class="therapy-check${done?' checked':''}">${done?'✓':''}</div>
-      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${hexA(t.color,0.16)};color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key)} <span onclick="event.stopPropagation();openDoseModal('${state.baby}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:12px">✏️</span></div></div>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:16px">${t.icon}</span><span class="therapy-name${done?' checked':''}">${t.name}</span><span class="therapy-cat" style="background:${hexA(t.color,0.16)};color:${t.color}">${t.cat}</span></div><div class="therapy-dose">📋 ${getDose(t,key,bn)} <span onclick="event.stopPropagation();openDoseModal('${bn}','${t.id}')" style="cursor:pointer;margin-left:4px;font-size:12px">✏️</span></div></div>
       ${done?'<span class="therapy-done-badge">Fatto</span>':''}
-      <button class="entry-del" onclick="event.stopPropagation();openDeleteTherapy('${state.baby}','${t.id}')">✕</button>
+      <button class="entry-del" onclick="event.stopPropagation();openDeleteTherapy('${bn}','${t.id}')">✕</button>
     </div>`;
-  }).join("")}${ts.length?'':'<div class="empty">Nessuna terapia. Tocca + per aggiungerne una.</div>'}</div>`;
-  // Feeds
-  const feeds = state.data[key]?.[state.baby]?.feeds || [];
-  h+=`<div class="content"><div class="content-title">🍼 Poppate · ${dateLabel}</div>`;
-  if(!feeds.length) h+=`<div class="empty">Nessuna poppata</div>`;
-  else feeds.forEach((e,i)=>{
-    const eI=e.snack?"🍪":(e.type==="Materno"?"🤱":"🍼");
-    const tBg=e.type==="Formula"?"rgba(59,130,246,0.16)":"rgba(245,158,11,0.18)",tC=e.type==="Formula"?"#3B82F6":"#D97706";
-    const snackTag=e.snack?`<span class="entry-tag" style="background:var(--amber-light);color:var(--amber)">🍪 Spuntino</span>`:'';
-    h+=`<div class="entry" onclick="state.tab='feed';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:var(--accent)">${e.ml} ml</span><span class="entry-tag" style="background:${tBg};color:${tC}">${e.type}</span>${snackTag}</div>${e.note?`<div class="entry-note">${e.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='feed';delEntry(${i})">✕</button></div>`;
-  });
-  h+=`</div>`;
-  // Pappe (registro indipendente: non tocca feeds/ml/Obiettivi)
-  h+=buildMealsSection(state.baby, key, dateLabel);
-  // Diapers
-  const diapers = state.data[key]?.[state.baby]?.diapers || [];
-  h+=`<div class="content"><div class="content-title">💩 Pannolini · ${dateLabel}</div>`;
-  if(!diapers.length) h+=`<div class="empty">Nessun cambio</div>`;
-  else diapers.forEach((e,i)=>{
-    const eI=e.dtype==="Cacca"?"💩":e.dtype==="Pipì"?"💧":"💩💧";
-    h+=`<div class="entry" onclick="state.tab='diaper';openEdit(${i})"><div class="entry-icon">${eI}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-tag" style="background:rgba(167,139,207,0.2);color:#9F7AEA">${e.dtype}</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${e.color?`<div class="entry-note">Colore: ${e.color}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();state.tab='diaper';delEntry(${i})">✕</button></div>`;
-  });
-  h+=`</div>`;
-  // Weight
-  const weight = state.data[key]?.[state.baby]?.weight;
-  h+=`<div class="content"><div class="content-title">⚖️ Peso · ${dateLabel}</div>`;
-  if(weight) {
-    h+=`<div class="weight-entry"><div class="entry-icon">⚖️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${weight.time}</span><span class="entry-ml" style="color:var(--accent)">${weight.kg} kg</span></div>${weight.note?`<div class="entry-note">${weight.note}</div>`:''}</div><button class="entry-del" onclick="event.stopPropagation();delWeight('${state.baby}')">✕</button></div>`;
-  } else {
-    h+=`<div class="empty">Nessuna pesata</div>`;
-  }
-  h+=`</div>`;
-  // Temperature
-  const temperatures = state.data[key]?.[state.baby]?.temperatures || [];
-  h+=`<div class="content"><div class="content-title">🌡️ Temperatura · ${dateLabel}</div>`;
-  if(!temperatures.length) h+=`<div class="empty">Nessuna misurazione</div>`;
-  else temperatures.forEach((e,i)=>{
-    const tc=tempColor(e.temp);
-    const medHtml=e.medicine?`<div style="font-size:11px;color:#818CF8;font-weight:700;margin-top:3px">💊 ${e.medicine.name}${e.medicine.dose?' — '+e.medicine.dose:''}</div>`:'';
-    h+=`<div class="weight-entry" style="--accent:${tc};cursor:pointer" onclick="openTempModal('${state.baby}',${i})"><div class="entry-icon">🌡️</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${e.time}</span><span class="entry-ml" style="color:${tc}">${e.temp}°C</span></div>${e.note?`<div class="entry-note">${e.note}</div>`:''}${medHtml}</div><button class="entry-del" onclick="event.stopPropagation();delTemp('${state.baby}',${i})">✕</button></div>`;
-  });
-  h+=`</div>`;
-  return h;
+  }).join("");
+  h+=ts.length?'':'<div class="empty">Nessuna terapia. Tocca + per aggiungerne una.</div>';
+  return h+`</div>`;
 }
 // ── TRENDS VIEW ──
 // Compact Italian date for the last weigh-in, e.g. "18 giu" (year appended only when not current).
