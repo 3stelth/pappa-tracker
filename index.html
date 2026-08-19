@@ -203,6 +203,16 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .meal-item-qty { margin-left: auto; color: var(--sub); font-weight: 800; font-variant-numeric: tabular-nums; }
 .meal-total { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; font-size: 13px; font-weight: 700; }
 .meal-total b { font-size: 19px; color: var(--accent); }
+/* Scheda Gradimento: una riga per combinazione di alimenti */
+.like-row { display: flex; align-items: center; gap: 11px; background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 11px 13px; box-shadow: var(--shadow-sm); margin-bottom: 8px; cursor: pointer; transition: transform 0.15s; }
+.like-row:active { transform: scale(0.99); }
+.like-emoji { font-size: 17px; flex-shrink: 0; max-width: 62px; line-height: 1.25; }
+.like-body { flex: 1; min-width: 0; }
+.like-name { font-size: 13px; font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; }
+.like-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+.like-badge { font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 7px; font-variant-numeric: tabular-nums; }
+.like-meta { font-size: 10px; color: var(--hint); font-weight: 600; text-align: right; flex-shrink: 0; line-height: 1.5; }
+details > summary::-webkit-details-marker { display: none; }
 /* Le pappe che si ripetono: striscia scorrevole in cima al modale */
 .sugg-strip { display: flex; gap: 8px; overflow-x: auto; padding: 1px 1px 12px; margin: 0 -1px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .sugg-strip::-webkit-scrollbar { display: none; }
@@ -376,7 +386,6 @@ if (isDark()) document.body.classList.add('dark');
 // ─── DATA CONFIG ───
 const APP_VERSION = "v11"; // bump ad ogni deploy: serve a verificare che il dispositivo carichi il codice aggiornato
 const BABIES = ["Gabriel", "Vittorio"];
-const FEED_TYPES = ["Formula", "Materno"];
 const DIAPER_TYPES = ["Cacca", "Pipì", "Entrambi"];
 const COLORS = {
   Gabriel: { pri: "#3B82F6", acc: "#2563EB", light: "#E8F1FE", grad: "linear-gradient(135deg,#60A5FA,#3B82F6)", g2: "#60A5FA" },
@@ -1323,7 +1332,7 @@ function render() {
   </div>`;
   if (view==='today') h += buildToday();
   else if (view==='trends') h += buildTrends();
-  else if (view==='goals') h += buildGoals();
+  else if (view==='likes') h += buildLikes();
   else if (view==='report') h += buildReportView();
   else if (view==='settings') h += buildSettings();
   if (view==='today') h += `${state.fabOpen?'<div class="fab-overlay" onclick="toggleFab()"></div>':''}<div class="fab-wrap${state.fabOpen?' open':''}">
@@ -1346,7 +1355,7 @@ function buildTabbar(view) {
   const items = [
     { k:'today',    l:'Oggi',      svg:'<path d="M5 12l7-7 7 7"/><path d="M6.5 10.5V19h11v-8.5"/>' },
     { k:'trends',   l:'Andamenti', svg:'<path d="M4 17l5-5 3.5 3L20 7"/><circle cx="20" cy="7" r="1.4"/>' },
-    { k:'goals',    l:'Obiettivi', svg:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.9" fill="currentColor"/>' },
+    { k:'likes',    l:'Gradimento', svg:'<circle cx="12" cy="12" r="8.5"/><path d="M8.7 14.2c.8 1.1 1.9 1.7 3.3 1.7s2.5-.6 3.3-1.7"/><path d="M9 9.6v.5M15 9.6v.5" stroke-width="2.2"/>' },
     { k:'report',   l:'Report',    svg:'<rect x="5.5" y="3.5" width="13" height="17" rx="2.5"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/>' },
     { k:'settings', l:'Opzioni',   svg:'<circle cx="8" cy="8" r="2.3"/><circle cx="16" cy="16" r="2.3"/><path d="M11 8h9M4 8h2M4 16h7M19 16h1"/>' }
   ];
@@ -1625,304 +1634,99 @@ function buildSettings() {
   return h;
 }
 // (Il menu rapido del + è gestito dallo speed-dial: toggleFab / fabPick)
-// ─── GOALS (Obiettivi) ───
-const GOAL_MIN=4, GOAL_MAX=7;
-function goalClamp(n){ return Math.min(GOAL_MAX, Math.max(GOAL_MIN, n)); }
-// Media mobile ultimi 7 giorni completati (esclude oggi), solo giorni con poppate.
-function avgDailyMl(bn, ref){
-  const base = (ref instanceof Date) ? ref : (state.selDate || new Date());
-  let tot=0, days=0;
-  for(let i=1;i<=7;i++){
-    const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()-i);
-    const f=state.data[dk(d)]?.[bn]?.feeds||[];
-    if(f.length){ tot+=f.reduce((s,x)=>s+(x.ml||0),0); days++; }
-  }
-  return days?Math.round(tot/days):0;
-}
-function avgDailyFeeds(bn){
-  const now=new Date(); let tot=0, days=0;
-  for(let i=1;i<=7;i++){
-    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
-    const f=state.data[dk(d)]?.[bn]?.feeds||[];
-    if(f.length){ tot+=f.length; days++; }
-  }
-  return days?tot/days:0;
-}
-function getGoalMeals(key){
-  const byDate = (key && state.data.goals?.mealsByDate) ? state.data.goals.mealsByDate[key] : undefined;
-  if(typeof byDate==='number' && byDate>=1) return goalClamp(byDate);
-  const g=state.data.goals?.meals;
-  if(typeof g==='number' && g>=1) return goalClamp(g);
-  const seed=Math.round((avgDailyFeeds('Gabriel')+avgDailyFeeds('Vittorio'))/2)||6;
-  return goalClamp(seed);
-}
-async function setGoalMeals(n, key){
-  n=goalClamp(parseInt(n)||6);
-  const k = key || dk(state.selDate);
-  if(!state.data.goals) state.data.goals={};
-  if(!state.data.goals.mealsByDate) state.data.goals.mealsByDate={};
-  state.data.goals.mealsByDate[k]=n;
-  if(k===dk(new Date())) state.data.goals.meals=n; // oggi aggiorna anche il default per i giorni futuri
-  await saveData(); render();
-}
-// Target per pasto: media giornaliera / n. pasti, arrotondato a multipli di 5 ml. 0 se manca la media.
-function getManualTarget(bn, key){ const v=state.data.goals?.targetByDate?.[key]?.[bn]; return (typeof v==='number' && v>=1)?v:undefined; }
-function isManualTarget(bn, key){ return getManualTarget(bn,key)!==undefined; }
-function effectiveTargetMl(bn, key){
-  const m=getManualTarget(bn,key);
-  return (m!==undefined) ? m : avgDailyMl(bn, dkToDate(key));
-}
-async function setManualTarget(bn, key, ml){
-  ml=Math.max(0, Math.round(parseInt(ml)||0));
-  if(!state.data.goals) state.data.goals={};
-  if(!state.data.goals.targetByDate) state.data.goals.targetByDate={};
-  if(!state.data.goals.targetByDate[key]) state.data.goals.targetByDate[key]={};
-  state.data.goals.targetByDate[key][bn]=ml;
-  await saveData(); closeModal(); render();
-}
-async function clearManualTarget(bn, key){
-  const t=state.data.goals?.targetByDate;
-  if(t && t[key]){ delete t[key][bn]; if(!Object.keys(t[key]).length) delete t[key]; }
-  await saveData(); closeModal(); render();
-}
-// Orario "ultimo pasto" (globale, condiviso, si porta avanti da solo). Default 22:00.
-function getGoalLastMeal(){ return state.data.goals?.lastMeal || '22:00'; }
-async function setGoalLastMealFromSelects(){
-  const h=parseInt(document.getElementById('goal-lm-h').value), m=parseInt(document.getElementById('goal-lm-m').value);
-  if(!state.data.goals) state.data.goals={};
-  state.data.goals.lastMeal=ft(h,m);
-  await saveData(); render();
-}
-// Scrive una poppata sul bambino indicato, sul giorno selezionato, senza toccare state.baby/state.tab.
-async function addPlannedFeed(bn, feed){
-  const key=dk(state.selDate);
-  if(!state.data.goals) state.data.goals={};
-  if(!state.data.goals.mealsByDate) state.data.goals.mealsByDate={};
-  if(typeof state.data.goals.mealsByDate[key]!=='number') state.data.goals.mealsByDate[key]=getGoalMeals(key); // congela il giorno alla prima poppata
-  if(!state.data[key]) state.data[key]={};
-  if(!state.data[key][bn]) state.data[key][bn]={};
-  if(!state.data[key][bn].feeds) state.data[key][bn].feeds=[];
-  if(!feed.id) feed.id=uid();
-  state.data[key][bn].feeds.push(feed);
-  state.data[key][bn].feeds.sort((a,b)=>a.time.localeCompare(b.time));
-  clearEntryTombstones('feeds', key, bn, feed);
-  await saveData(); closeModal(); render();
-}
-function editPlannedSlot(bn, idx){ state.baby=bn; state.tab='feed'; openEdit(idx); }
-function buildGoals(){
-  const key=dk(state.selDate), todayK=dk(new Date());
-  const isToday=key===todayK;
-  const isPast=key<todayK;
-  const n=getGoalMeals(key);
-  const lastMealMin=(()=>{ const p=getGoalLastMeal().split(':'); return parseInt(p[0])*60+parseInt(p[1]); })();
-  const dateLabel=isToday?'Oggi':`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
-  const sd=state.selDate, sy=sd.getFullYear(), sm=sd.getMonth(), sday=sd.getDate();
-  // Sezione A: titolo + selettore pasti + riepilogo per bambino
-  let h=`<div class="content"><div class="content-title">🎯 Obiettivi</div>`;
-  h+=`<div class="cal" style="padding:13px">`;
-  const pastLocked = isPast && state.goalPastForceEditKey!==key;
-  h+=`<div class="form-label">Pasti al giorno</div>`;
-  h+=`<select class="form-select" style="width:100%"${pastLocked?' disabled':''} onchange="setGoalMeals(this.value)">${[4,5,6,7].map(v=>`<option value="${v}"${v===n?' selected':''}>${v} pasti</option>`).join('')}</select>`;
-  const lm=getGoalLastMeal(), lmh=parseInt(lm.split(':')[0]), lmm=parseInt(lm.split(':')[1]);
-  h+=`<div class="form-label" style="margin-top:12px">Orario ultimo pasto</div>`;
-  h+=`<div class="form-row" style="margin-bottom:0;align-items:center"><select class="form-select" id="goal-lm-h"${pastLocked?' disabled':''} onchange="setGoalLastMealFromSelects()">${Array.from({length:24},(_,i)=>`<option value="${i}"${i===lmh?' selected':''}>${String(i).padStart(2,'0')}</option>`).join('')}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="goal-lm-m"${pastLocked?' disabled':''} onchange="setGoalLastMealFromSelects()">${[0,15,30,45].map(i=>`<option value="${i}"${i===lmm?' selected':''}>${String(i).padStart(2,'0')}</option>`).join('')}</select><span style="font-size:11px;color:var(--hint);margin-left:8px;line-height:1.3">l'ultimo pasto sarà a quest'ora, niente dopo</span></div>`;
-  if(pastLocked){
-    h+=`<div style="font-size:11px;color:var(--hint);margin-top:8px;line-height:1.5">🔒 Giorno passato: numero pasti e orario ultimo pasto congelati per non riscrivere la storia. <a href="#" onclick="state.goalPastForceEditKey='${key}';render();return false" style="color:var(--amber);font-weight:700">Sblocca (emergenza)</a></div>`;
-  } else {
-    h+=`<div style="font-size:11px;color:var(--hint);margin-top:8px;line-height:1.5">Stesso latte totale, meno pasti: la quantità per pasto viene ricalcolata dalla media degli ultimi 7 giorni.</div>`;
-  }
-  h+=`</div>`;
-  h+=`<div class="recap-row" style="margin-top:12px">`;
-  BABIES.forEach(bn=>{
-    const col=COLORS[bn], avg=effectiveTargetMl(bn,key), manual=isManualTarget(bn,key);
-    // Ricalcolo giornaliero: il residuo per arrivare alla media, diviso i pasti che restano.
-    const dFeeds=state.data[key]?.[bn]?.feeds||[];
-    const dDone=dFeeds.filter(f=>!f.snack).length;               // solo pasti veri occupano slot
-    const dCons=dFeeds.reduce((s,x)=>s+(x.ml||0),0);              // ml totali (spuntini inclusi)
-    const dRem=Math.max(0, n-dDone);
-    const per=(avg>0 && dRem>0)?Math.max(0,Math.round((avg-dCons)/dRem/5)*5):(avg>0?Math.round(avg/n/5)*5:0);
-    h+=`<div class="recap-card" style="--cardgrad:${col.grad}"><div class="recap-name" style="color:${col.pri}">${bn}</div>`;
-    if(avg>0){
-      const labelHtml = manual
-        ? `<div style="font-size:11px;color:var(--amber);font-weight:700;cursor:pointer" onclick="openTargetModal('${bn}','${key}')">✏️ Manuale <b>${avg} ml</b></div>`
-        : `<div style="font-size:11px;color:var(--sub);cursor:pointer" onclick="openTargetModal('${bn}','${key}')">Media 7gg <b style="color:var(--txt)">${avg} ml</b> ✏️</div>`;
-      h+=labelHtml+`
-      <div style="display:flex;align-items:baseline;gap:5px;margin-top:4px"><span style="font-size:24px;font-weight:800;color:${col.pri};letter-spacing:-0.02em">${per}</span><span style="font-size:12px;color:var(--sub);font-weight:600">ml / pasto</span></div>
-      ${dDone>0?`<div style="font-size:10px;color:var(--hint);margin-top:2px">ricalcolato · presi ${dCons} ml, restano ${dRem} pasti</div>`:''}
-      ${manual?`<div style="font-size:10px;margin-top:3px"><a href="#" onclick="clearManualTarget('${bn}','${key}');return false" style="color:var(--sub);font-weight:600">↺ torna alla media</a></div>`:''}`;
-    } else {
-      h+=`<div style="font-size:11px;color:var(--hint);line-height:1.5;margin-top:2px;cursor:pointer" onclick="openTargetModal('${bn}','${key}')">Nessuna media · tocca per impostare un obiettivo manuale ✏️</div>`;
-    }
-    h+=`</div>`;
-  });
-  h+=`</div>`;
-  h+=`</div>`; // fine sezione A
-  // Sezione B: navigatore giorno + griglia due colonne
-  h+=`<div class="content"><div class="cal" style="padding:11px 13px">`;
-  h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
-    <button onclick="state.selDate=new Date(${sy},${sm},${sday-1});render()" style="border:none;width:30px;height:30px;border-radius:10px;background:var(--glass-2);color:var(--txt);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">‹</button>
-    <span style="font-size:13px;font-weight:700">${dateLabel}</span>
-    <button onclick="state.selDate=new Date(${sy},${sm},${sday+1});render()" style="border:none;width:30px;height:30px;border-radius:10px;background:var(--glass-2);color:var(--txt);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">›</button>
-  </div>`;
-  h+=`<div class="goal-grid">`;
-  BABIES.forEach(bn=>{
-    const col=COLORS[bn];
-    const allFeeds=state.data[key]?.[bn]?.feeds||[];
-    const meals=[], snacks=[];
-    allFeeds.forEach((f,idx)=>{ (f.snack?snacks:meals).push({...f,_i:idx}); }); // _i = indice reale nell'array feeds
-    const realDone=meals.length;
-    const dailyTarget=effectiveTargetMl(bn,key);         // obiettivo del giorno (override manuale o media relativa)
-    const consumedSoFar=allFeeds.reduce((s,x)=>s+(x.ml||0),0); // gli spuntini contano nel totale
-    const remainingSlots=Math.max(0, n-realDone);
-    // Ricalcolo quantità: il residuo per arrivare all'obiettivo diviso i pasti rimasti (multipli di 5).
-    const remainingPer=(dailyTarget>0 && remainingSlots>0)?Math.max(0,Math.round((dailyTarget-consumedSoFar)/remainingSlots/5)*5):0;
-    const anchor=realDone>0?meals[realDone-1].time:null;  // tabella di marcia ancorata all'ultimo pasto vero
-    const anchorMin=anchor?(parseInt(anchor.split(':')[0])*60+parseInt(anchor.split(':')[1])):null;
-    h+=`<div><div class="goal-col-head" style="color:${col.pri}">${bn}</div>`;
-    for(let j=1;j<=n;j++){
-      if(j<=realDone){
-        const f=meals[j-1];
-        const hasLeft=f.planned&&f.leftover>0;
-        const hasMore=f.planned&&f.extra>0;
-        const cls=hasLeft?'leftover':'done';
-        const mlCol=hasLeft?'var(--red)':col.pri;
-        const badge=hasLeft?`<div class="goal-left-badge">avanzati ${f.leftover} ml</div>`
-                  :hasMore?`<div class="goal-more-badge">+${f.extra} ml in più</div>`:'';
-        h+=`<div class="goal-slot ${cls}" style="--slotcol:${col.pri}" onclick="editPlannedSlot('${bn}',${f._i})">
-          <div class="goal-slot-idx"><span class="${hasLeft?'goal-warn':'goal-check'}">${hasLeft?'⚠':'✓'}</span>${j}° pasto</div>
-          <div class="goal-slot-main"><span class="goal-slot-time">${f.time}</span><span class="goal-slot-ml" style="color:${mlCol}">${f.ml} ml</span></div>
-          ${badge}
-        </div>`;
-      } else {
-        const isNext=!isPast && (j===realDone+1);
-        // Solo per oggi/futuro proiettiamo gli orari; i giorni passati restano "liberi" (nessuna proiezione).
-        let timeHtml='';
-        if(!isPast && anchorMin!=null){
-          let raw;
-          if(j===n){ raw=lastMealMin; }                          // l'ultimo pasto è esattamente all'orario scelto
-          else {
-            const remaining=n-realDone;
-            const step=(lastMealMin>anchorMin && remaining>0)?(lastMealMin-anchorMin)/remaining:0;
-            raw=Math.min(Math.round((anchorMin+step*(j-realDone))/15)*15, lastMealMin);
-          }
-          timeHtml=`<span class="goal-slot-time" style="opacity:.7;font-weight:600">${ft(Math.floor(raw/60),raw%60)}</span>`;
-        }
-        const qLabel=dailyTarget>0?`≈ ${remainingPer} ml`:'imposta media';
-        h+=`<div class="goal-slot pending${isNext?' next':''}" style="--slotcol:${col.pri}" onclick="openGoalMeal('${bn}',${j},${remainingPer})">
-          <div class="goal-slot-idx">${j}° pasto${isNext?' · prossimo':''}</div>
-          <div class="goal-slot-main">${timeHtml}<span class="goal-slot-ml" style="color:${col.pri}">${qLabel}</span></div>
-        </div>`;
-      }
-    }
-    // Spuntini fuori-pasto: mostrati a parte, non occupano slot
-    snacks.forEach(s=>{
-      h+=`<div class="goal-snack" onclick="editPlannedSlot('${bn}',${s._i})">
-        <span class="goal-snack-lbl">🍪 Spuntino</span>
-        <span class="goal-snack-main"><span class="goal-slot-time">${s.time}</span><span class="goal-slot-ml">${s.ml} ml</span></span>
-      </div>`;
+// ─── GRADIMENTO ───
+// Il giudizio si dà sulla pappa intera, quindi l'unità di misura di questa scheda è la
+// combinazione di alimenti: tutte le volte che è stata fatta, con l'esito, per bambino.
+function likeStats() {
+  const out={};
+  for (const key in state.data) {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+    BABIES.forEach(bn=>{
+      (state.data[key]?.[bn]?.meals||[]).forEach(m=>{
+        const ck=comboKey(m); if(!ck) return;
+        const e=out[ck]||(out[ck]={ key:ck, total:0, last:'', byBaby:{} });
+        const b=e.byBaby[bn]||(e.byBaby[bn]={ good:0, ok:0, bad:0, none:0, total:0, dates:[] });
+        const lk=likingOf(m);
+        b[lk||'none']++; b.total++; e.total++;
+        if(key>e.last) e.last=key;
+        b.dates.push({ date:key, time:m.time, liking:lk });
+      });
     });
-    const goalTot=dailyTarget>0?`${dailyTarget} ml`:'—';
-    const extra=realDone>n?` · +${realDone-n} extra`:'';
-    const snackNote=snacks.length?` · 🍪 ${snacks.length} spuntino${snacks.length>1?'i':''}`:'';
-    h+=`<div class="goal-summary">Fatti ${Math.min(realDone,n)}/${n}${extra}${snackNote}<br>${consumedSoFar} ml / obiettivo ${goalTot}</div>`;
-    h+=`</div>`;
+  }
+  // Punteggio da -1 a +1 sulle sole pappe giudicate: decide in quale blocco finisce la riga.
+  Object.values(out).forEach(e=>{
+    let good=0, bad=0, judged=0;
+    Object.values(e.byBaby).forEach(b=>{ good+=b.good; bad+=b.bad; judged+=b.good+b.ok+b.bad; });
+    e.judged=judged;
+    e.score=judged?(good-bad)/judged:null;
   });
-  h+=`</div>`; // goal-grid
-  h+=`</div></div>`; // cal + content sezione B
+  return out;
+}
+function likeBadge(bn, b) {
+  const c=COLORS[bn];
+  const parts=[];
+  if(b.good) parts.push(`👍${b.good}`);
+  if(b.ok) parts.push(`😐${b.ok}`);
+  if(b.bad) parts.push(`👎${b.bad}`);
+  if(!parts.length) parts.push(`${b.total}×`);
+  return `<span class="like-badge" style="background:${hexA(c.pri,0.14)};color:${c.pri}">${bn[0]} ${parts.join(' ')}</span>`;
+}
+function likeRow(e) {
+  const babies=BABIES.filter(bn=>e.byBaby[bn]).map(bn=>likeBadge(bn,e.byBaby[bn])).join('');
+  return `<div class="like-row" onclick="openComboDetail('${e.key}')">
+    <div class="like-emoji">${comboEmoji(e.key)||'🥣'}</div>
+    <div class="like-body"><div class="like-name">${comboLabel(e.key)}</div><div class="like-badges">${babies}</div></div>
+    <div class="like-meta">${e.total} volt${e.total===1?'a':'e'}<br><span>${fmtNiceDate(e.last)}</span></div>
+  </div>`;
+}
+function buildLikes() {
+  const stats=Object.values(likeStats()).sort((a,b)=>b.total-a.total||b.last.localeCompare(a.last));
+  if(!stats.length) return `<div class="content"><div class="content-title">😋 Gradimento</div><div class="empty">Ancora nessuna pappa registrata.</div></div>`;
+  // Riepilogo per bambino: quante pappe sono piaciute, su quante giudicate.
+  let h=`<div class="recap-section"><div class="recap-label">Come sta andando</div><div class="recap-row">${BABIES.map(bn=>{
+    const c=COLORS[bn]; let good=0,ok=0,bad=0;
+    stats.forEach(e=>{ const b=e.byBaby[bn]; if(b){ good+=b.good; ok+=b.ok; bad+=b.bad; } });
+    const judged=good+ok+bad;
+    return `<div class="recap-card" style="--cardgrad:${c.grad}">
+      <div class="recap-name" style="color:${c.pri}">${bn}</div>
+      <div style="font-size:23px;font-weight:700;letter-spacing:-0.02em;margin:2px 0 6px">${judged?Math.round(good/judged*100)+'%':'—'}</div>
+      <div class="recap-line" style="font-size:10px;color:var(--hint)">${judged?`piaciute su ${judged} giudicate`:'nessun giudizio ancora'}</div>
+      <div class="recap-line" style="margin-top:5px">👍 <b>${good}</b> &nbsp; 😐 <b>${ok}</b> &nbsp; 👎 <b>${bad}</b></div>
+    </div>`;
+  }).join('')}</div></div>`;
+  const blocks=[
+    { t:'👍 Piacciono', f:e=>e.score!==null&&e.score>0.34 },
+    { t:'😐 Così così', f:e=>e.score!==null&&e.score<=0.34&&e.score>=-0.34 },
+    { t:'👎 Non piacciono', f:e=>e.score!==null&&e.score<-0.34 }
+  ];
+  blocks.forEach(b=>{
+    const rows=stats.filter(b.f);
+    if(!rows.length) return;
+    h+=`<div class="content"><div class="content-title">${b.t} <span style="color:var(--hint);font-weight:600">${rows.length}</span></div>${rows.map(likeRow).join('')}</div>`;
+  });
+  const senza=stats.filter(e=>e.score===null);
+  if(senza.length) {
+    h+=`<div class="content"><details><summary class="content-title" style="cursor:pointer;list-style:none">🕓 Ancora senza giudizio <span style="color:var(--hint);font-weight:600">${senza.length}</span></summary>${senza.map(likeRow).join('')}</details></div>`;
+  }
   return h;
 }
-function openGoalMeal(bn, slot, target){
-  const c=COLORS[bn], now=new Date(), h0=now.getHours(), m0=now.getMinutes();
-  const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h0?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
-  const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-m0)<Math.abs(a-m0)?b:a);
-  const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
-  const hasTarget=target>0;
-  const body=hasTarget
-    ? `<div class="goal-preview">Obiettivo: <span style="color:${c.acc}">${target} ml</span></div>
-       <div class="form-label">Quanto ha mangiato?</div>
-       <div class="chips" id="gm-mode-chips" style="margin-bottom:12px">
-         <button class="chip on" data-val="all" onclick="goalModeToggle('all',${target})">✅ Tutto</button>
-         <button class="chip" data-val="left" onclick="goalModeToggle('left',${target})">➖ Ha avanzato</button>
-         <button class="chip" data-val="more" onclick="goalModeToggle('more',${target})">➕ Di più</button>
-       </div>
-       <div id="gm-adj-wrap" style="display:none">
-         <div class="form-label" id="gm-adj-label">ml avanzati</div>
-         <input class="form-input big" type="number" inputmode="numeric" id="gm-adj" placeholder="es. 20" oninput="goalUpdatePreview(${target})" style="margin-bottom:8px">
-         <div class="goal-preview" id="gm-preview">Preso: <span style="color:${c.acc}">${target} ml</span></div>
-       </div>`
-    : `<div class="form-label">Quantità (ml)</div>
-       <input class="form-input big" type="number" inputmode="numeric" id="gm-ml" placeholder="es. 120" style="margin-bottom:12px">`;
+// Dettaglio di una combinazione: quando è stata fatta e com'è andata, bambino per bambino.
+function openComboDetail(key) {
+  const e=likeStats()[key];
+  if(!e) return;
+  const body=BABIES.filter(bn=>e.byBaby[bn]).map(bn=>{
+    const b=e.byBaby[bn], c=COLORS[bn];
+    const rows=[...b.dates].sort((x,y)=>y.date.localeCompare(x.date)).map(d=>{
+      const lk=LIKINGS[d.liking];
+      return `<div class="fruit-log-row"><span class="fruit-log-name">${fmtNiceDate(d.date)} · ${d.time}</span><span style="font-size:12px;font-weight:700;color:var(--sub)">${lk?lk.e+' '+lk.l:'—'}</span></div>`;
+    }).join('');
+    return `<div class="content-title" style="font-size:12px;color:${c.pri};margin-top:10px">${bn} · ${b.total} volt${b.total===1?'a':'e'}</div>${rows}`;
+  }).join('');
   setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div>
-    <div class="modal-title" style="color:${c.acc}">${slot}° pasto — ${bn}</div>
-    <div class="form-label">Ora</div>
-    <div class="form-row"><select class="form-select" id="gm-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="gm-m">${mO}</select></div>
+    <div class="modal-title">${comboEmoji(key)} ${comboLabel(key)}</div>
     ${body}
-    <div class="form-label">Tipo</div>
-    <div class="chips" id="gm-type-chips">${FEED_TYPES.map(t=>`<button class="chip${t==='Formula'?' on':''}" data-val="${t}" onclick="pickChip('gm-type-chips','${t}')">${t==='Formula'?'🍼 Formula':'🤱 Materno'}</button>`).join("")}</div>
-    <div class="form-label" style="margin-top:12px">Note (opzionale)</div>
-    <input class="form-input" id="gm-note" placeholder="es. rigurgito..." style="margin-bottom:12px">
-    <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitGoalMeal('${bn}',${slot},${target})">Conferma 🍼</button></div>
+    <div class="form-actions" style="margin-top:14px"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Chiudi</button></div>
   </div></div>`);
-}
-function goalModeToggle(mode, target){
-  pickChip('gm-mode-chips',mode);
-  const wrap=document.getElementById('gm-adj-wrap');
-  const label=document.getElementById('gm-adj-label');
-  const inp=document.getElementById('gm-adj');
-  if(mode==='all'){ if(wrap) wrap.style.display='none'; }
-  else {
-    if(wrap) wrap.style.display='block';
-    if(label) label.textContent = mode==='more' ? 'ml in più' : 'ml avanzati';
-    if(inp) inp.value='';
-    goalUpdatePreview(target);
-  }
-}
-function goalUpdatePreview(target){
-  const mode=getChip('gm-mode-chips')||'all';
-  const v=parseInt(document.getElementById('gm-adj')?.value)||0;
-  let taken=target;
-  if(mode==='left') taken=Math.max(0,target-v);
-  else if(mode==='more') taken=target+v;
-  const p=document.getElementById('gm-preview');
-  if(p) p.innerHTML=`Preso: <span style="color:var(--accent-acc)">${taken} ml</span>`;
-}
-function submitGoalMeal(bn, slot, target){
-  const h=parseInt(document.getElementById('gm-h').value), m=parseInt(document.getElementById('gm-m').value), time=ft(h,m);
-  let consumed, leftover=0, extra=0;
-  if(target>0){
-    const mode=getChip('gm-mode-chips')||'all';
-    const v=parseInt(document.getElementById('gm-adj')?.value)||0;
-    if(mode==='left'){ leftover=v; consumed=Math.max(0,target-v); }
-    else if(mode==='more'){ extra=v; consumed=target+v; }
-    else { consumed=target; }
-  } else {
-    consumed=parseInt(document.getElementById('gm-ml').value)||0;
-  }
-  if(!consumed||isNaN(consumed)) return;
-  addPlannedFeed(bn, { time, ml:consumed, type:getChip('gm-type-chips')||'Formula', note:document.getElementById('gm-note').value.trim(), planned:true, target, leftover, extra });
-}
-function openTargetModal(bn, key){
-  const c=COLORS[bn];
-  const cur=getManualTarget(bn,key);
-  const avg=avgDailyMl(bn, dkToDate(key));
-  const val=(cur!==undefined)?cur:(avg||'');
-  const dayTxt = key===dk(new Date()) ? 'oggi' : 'questo giorno';
-  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div>
-    <div class="modal-title" style="color:${c.acc}">Obiettivo giornaliero — ${bn}</div>
-    <div class="form-label">Media 7gg calcolata: <b>${avg||0} ml</b></div>
-    <div class="form-label" style="margin-top:8px">Obiettivo manuale (ml al giorno)</div>
-    <input class="form-input big" type="number" inputmode="numeric" id="tgt-ml" value="${val}" placeholder="es. 800" style="margin-bottom:12px">
-    <div style="font-size:11px;color:var(--hint);margin-bottom:12px">Vale solo per ${dayTxt}. Il ml per pasto si ricalcola da qui.</div>
-    <div class="form-actions">
-      ${cur!==undefined?`<button class="btn-cancel" onclick="clearManualTarget('${bn}','${key}')">↺ Torna alla media</button>`:`<button class="btn-cancel" onclick="closeModal()">Annulla</button>`}
-      <button class="btn-save" style="background:${c.grad}" onclick="saveTargetModal('${bn}','${key}')">Salva</button>
-    </div>
-  </div></div>`);
-}
-function saveTargetModal(bn, key){
-  const el=document.getElementById('tgt-ml');
-  if(!el || el.value===''){ closeModal(); return; }
-  setManualTarget(bn, key, el.value);
 }
 // ─── MODAL ───
 function openAdd(){
