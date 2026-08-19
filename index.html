@@ -147,6 +147,13 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .entry-note.wrap { white-space: normal; overflow: visible; line-height: 1.45; }
 /* Iniziale del bambino sulle righe della giornata condivisa */
 .baby-chip { font-size: 10px; font-weight: 800; width: 18px; height: 18px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* Riga condivisa dai due bambini: la pastiglia si allarga per ospitare il valore */
+.baby-chip.wide { width: auto; height: 20px; padding: 0 8px; gap: 4px; font-size: 11px; }
+.baby-chip.wide b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.group-caret { font-size: 10px; color: var(--hint); flex-shrink: 0; transition: transform 0.2s; }
+.entry.group.open .group-caret { transform: rotate(180deg); }
+.group-detail { margin: -2px 0 8px 16px; padding-left: 12px; border-left: 2px solid var(--hair); }
+.group-detail .entry { margin-bottom: 6px; }
 /* Scelta del bambino prima di un inserimento */
 .baby-pick { display: flex; gap: 10px; margin-bottom: 14px; }
 .baby-pick-btn { flex: 1; padding: 22px 10px; border: none; border-radius: var(--r-md); color: #fff; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform 0.15s; letter-spacing: -0.01em; }
@@ -175,6 +182,16 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .meal-item-qty { margin-left: auto; color: var(--sub); font-weight: 800; font-variant-numeric: tabular-nums; }
 .meal-total { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; font-size: 13px; font-weight: 700; }
 .meal-total b { font-size: 19px; color: var(--accent); }
+/* Riepilogo compatto: una riga bassa per bambino, sopra la giornata */
+.recap-strip { padding: 0 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+.recap-line-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 13px; border: 1px solid var(--glass-brd); border-radius: var(--r-sm); background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); box-shadow: var(--shadow-sm); font-family: inherit; color: var(--txt); cursor: pointer; position: relative; overflow: hidden; transition: transform 0.15s, border-color 0.2s; }
+.recap-line-btn::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--bcol); }
+.recap-line-btn:active { transform: scale(0.99); }
+.recap-line-btn.on { border-color: var(--bcol); }
+.recap-who { font-size: 13px; font-weight: 700; color: var(--bcol); letter-spacing: -0.01em; flex-shrink: 0; }
+.recap-nums { font-size: 12px; font-weight: 500; color: var(--sub); font-variant-numeric: tabular-nums; }
+.recap-nums b { color: var(--txt); font-weight: 700; }
+.recap-ago { font-size: 10px; font-weight: 700; margin-left: auto; flex-shrink: 0; }
 /* Scheda Gradimento: una riga per combinazione di alimenti */
 .like-row { display: flex; align-items: center; gap: 11px; background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 11px 13px; box-shadow: var(--shadow-sm); margin-bottom: 8px; cursor: pointer; transition: transform 0.15s; }
 .like-row:active { transform: scale(0.99); }
@@ -690,6 +707,8 @@ function getDose(t, dateStr, baby) {
   return t.dose;
 }
 function ft(h,m) { return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
+// Decimali all'italiana: 7,39 kg e 37,2 °C
+function itNum(n) { return String(n).replace('.', ','); }
 function bumpTime(t) { const [h,m]=t.split(':').map(Number); const tot=(h*60+m+1)%1440; return ft(Math.floor(tot/60), tot%60); }
 // ─── STORAGE (localStorage + Supabase sync) ───
 function loadLocal() {
@@ -1407,30 +1426,25 @@ function buildToday() {
     else if(isTod) st='background:var(--accent-soft);color:var(--accent);font-weight:700';
     return`<button class="cal-day${!day.cur?' other':''}" style="${st}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#3B82F6"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#2DD4BF"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
   }).join("")}</div></div></div>`;
-  // Riepilogo: una card per bambino. Tap sulla card = filtra la giornata su di lui.
-  h+=`<div class="recap-section"><div class="recap-label">Riepilogo · ${dateLabel}</div><div class="recap-row">${BABIES.map(bn=>{
-    const d=getBabyDay(bn,key),bc=COLORS[bn],ms=getMeals(bn,key),legacy=legacyFruitRows(bn,key);
-    const temps=state.data[key]?.[bn]?.temperatures||[],w=state.data[key]?.[bn]?.weight;
-    const maxT=temps.length?Math.max(...temps.map(t=>t.temp)):null;
-    const dim=state.filter!=='both'&&state.filter!==bn;
+  // Riepilogo: due righe basse invece di due card alte — bastano i conteggi e da quanto
+  // manca il latte. Peso, temperatura e terapie hanno già il loro posto più sotto.
+  // Tap su una riga = filtra la giornata su quel bambino.
+  h+=`<div class="recap-strip">${BABIES.map(bn=>{
+    const d=getBabyDay(bn,key),bc=COLORS[bn],ms=getMeals(bn,key);
+    const on=state.filter===bn, dim=state.filter!=='both'&&!on;
     const ago=getLastFeedAgo(bn);
-    return`<div class="recap-card" style="--cardgrad:${bc.grad};cursor:pointer${dim?';opacity:.45':''}" onclick="setFilter('${state.filter===bn?'both':bn}')">
-      <div class="recap-name" style="color:${bc.pri}">${bn}</div>
-      <div class="recap-line">🍼 <b>${d.feeds.length}</b> <span class="sub">latte</span></div>
-      <div class="recap-line" style="font-size:10px"><span style="color:${ago.color}">🕐 ${ago.text}</span></div>
-      <div class="recap-line">🥣 <b>${ms.length}</b> <span class="sub">pappe</span></div>
-      ${legacy.length?`<div class="recap-line">🍎 ${legacy.map(r=>`${r.meta.emoji||'🍎'}×${r.count}`).join(' ')}</div>`:''}
-      <div class="recap-line">💩 <b>${d.totalDiapers}</b></div>
-      <div class="recap-line">⚖️ <b>${w?w.kg+' kg':'—'}</b></div>
-      <div class="recap-line">🌡️ <b style="color:${maxT!==null?tempColor(maxT):'inherit'}">${maxT!==null?maxT+'°C':'—'}</b>${temps.length>1?` <span class="sub">(${temps.length})</span>`:''}</div>
-      <div class="therapy-badges">${d.therapies.map(t=>`<span class="therapy-badge ${d.checks[t.id]?'done':'pending'}">${t.icon}${t.name.split(' ')[0]} ${d.checks[t.id]?'✓':'✗'}</span>`).join("")}</div>
-    </div>`;
-  }).join("")}</div></div>`;
+    return`<button class="recap-line-btn${on?' on':''}" style="--bcol:${bc.pri}${dim?';opacity:.45':''}" onclick="setFilter('${on?'both':bn}')">
+      <span class="recap-who">${bn}</span>
+      <span class="recap-nums">🍼 <b>${d.feeds.length}</b> &nbsp;🥣 <b>${ms.length}</b> &nbsp;💩 <b>${d.totalDiapers}</b></span>
+      <span class="recap-ago" style="color:${ago.color}">${ago.text}</span>
+    </button>`;
+  }).join("")}</div>`;
   // Timeline unica: i due bambini nella stessa giornata, in ordine di orario.
   const babies=filteredBabies(), rows=dayTimeline(babies,key), showBadge=babies.length>1;
+  const groups=groupTimeline(rows);
   h+=`<div class="content"><div class="content-title">🕒 Giornata · ${dateLabel}</div>`;
   if(!rows.length) h+=`<div class="empty">Ancora nulla. Tocca + per segnare qualcosa.</div>`;
-  rows.forEach(r=>{ h+=timelineRow(r,showBadge); });
+  groups.forEach(g=>{ h+= g.entries.length>1 ? timelineGroup(g) : timelineRow(g.entries[0],showBadge); });
   // Frutta del vecchio registro: niente orario, sola lettura, in coda alla giornata.
   const legacyRows=[];
   babies.forEach(bn=>legacyFruitRows(bn,key).forEach(r=>legacyRows.push({ ...r, baby:bn })));
@@ -1449,6 +1463,62 @@ function buildToday() {
 function babyChip(bn) {
   const c=COLORS[bn];
   return `<span class="baby-chip" style="background:${hexA(c.pri,0.16)};color:${c.pri}">${bn[0]}</span>`;
+}
+// Quando i due bambini fanno la stessa cosa nello stesso momento — ed è la norma, dal
+// latte del mattino alla pesata — le due voci diventano una riga sola. Peso e temperatura
+// si uniscono per orario (i valori differiscono e finiscono accanto a ciascuno); latte,
+// pappa e pannolino solo quando sono davvero la stessa cosa.
+function groupKeyOf(r) {
+  if (r.kind==='meal') return `meal|${r.time}|${comboKey(r.data)}`;
+  if (r.kind==='diaper') return `diaper|${r.time}|${r.data.dtype||''}`;
+  return `${r.kind}|${r.time}`;
+}
+function groupTimeline(rows) {
+  const groups=[], openByKey={};
+  rows.forEach(r=>{
+    const k=groupKeyOf(r);
+    const list=openByKey[k] || (openByKey[k]=[]);
+    // Un bambino non può comparire due volte nella stessa riga: due sue voci identiche
+    // restano righe distinte.
+    let g=list.find(x=>!x.entries.some(e=>e.baby===r.baby));
+    if(!g) { g={ kind:r.kind, time:r.time, entries:[] }; list.push(g); groups.push(g); }
+    g.entries.push(r);
+  });
+  return groups;
+}
+// Pastiglia del bambino dentro una riga condivisa: porta con sé il suo valore, così
+// "17:30 · G 7,39 kg · V 5,6 kg" si legge senza aprire nulla.
+function groupChip(r) {
+  const c=COLORS[r.baby], e=r.data;
+  let v='';
+  if(r.kind==='weight') v=` <b>${itNum(e.kg)} kg</b>`;
+  else if(r.kind==='temp') v=` <b style="color:${tempColor(e.temp)}">${itNum(e.temp)}°</b>`;
+  else if(r.kind==='feed'&&e.ml) v=` <b>${e.ml} ml</b>`;
+  else if(r.kind==='meal') { const lk=LIKINGS[likingOf(e)]; if(lk) v=` ${lk.e}`; }
+  return `<span class="baby-chip wide" style="background:${hexA(c.pri,0.16)};color:${c.pri}">${r.baby[0]}${v}</span>`;
+}
+function timelineGroup(g) {
+  const first=g.entries[0], e=first.data;
+  let icon='🍼', tag='Latte', body='';
+  if(g.kind==='meal') {
+    const snack=mealIsSnack(e), grams=mealGrams(e);
+    icon=snack?'🍎':'🥣'; tag=snack?'Merenda':'Pappa';
+    if(grams) tag+=` · ${grams} g`;
+    body=`<div class="entry-note wrap">${mealSummary(e)}</div>`;
+  } else if(g.kind==='diaper') {
+    icon=e.dtype==='Cacca'?'💩':e.dtype==='Pipì'?'💧':'💩💧'; tag=e.dtype;
+  } else if(g.kind==='weight') { icon='⚖️'; tag='Peso'; }
+  else if(g.kind==='temp') { icon='🌡️'; tag='Temperatura'; }
+  const chips=g.entries.map(groupChip).join('');
+  return `<div class="entry group" onclick="toggleGroup(this)"><div class="entry-icon">${icon}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${g.time||'—'}</span>${chips}<span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">${tag}</span></div>${body}</div><span class="group-caret">▾</span></div>`
+    + `<div class="group-detail" hidden>${g.entries.map(r=>timelineRow(r,true)).join('')}</div>`;
+}
+// Apertura in place: ricostruire la giornata a ogni tocco farebbe saltare lo scroll.
+function toggleGroup(el) {
+  const d=el.nextElementSibling;
+  if(!d) return;
+  d.hidden=!d.hidden;
+  el.classList.toggle('open', !d.hidden);
 }
 // Una riga della timeline. Le azioni impostano state.baby (e state.tab dove serve) prima
 // di richiamare le funzioni esistenti, che lavorano sul bambino attivo.
@@ -1486,12 +1556,12 @@ function timelineRow(r, showBadge) {
       `state.baby='${bn}';state.tab='diaper';openEdit(${r.idx})`,`state.baby='${bn}';state.tab='diaper';delEntry(${r.idx})`);
   }
   if(r.kind==='weight'){
-    return row('⚖️',`<span class="entry-ml" style="color:var(--accent)">${e.kg} kg</span>`,'',
+    return row('⚖️',`<span class="entry-ml" style="color:var(--accent)">${itNum(e.kg)} kg</span>`,'',
       `openWeightModal('${bn}')`,`delWeight('${bn}')`);
   }
   const tc=tempColor(e.temp);
   const med=e.medicine?`<div style="font-size:11px;color:#818CF8;font-weight:700;margin-top:3px">💊 ${e.medicine.name}${e.medicine.dose?' — '+e.medicine.dose:''}</div>`:'';
-  return row('🌡️',`<span class="entry-ml" style="color:${tc}">${e.temp}°C</span>`,med,
+  return row('🌡️',`<span class="entry-ml" style="color:${tc}">${itNum(e.temp)}°C</span>`,med,
     `openTempModal('${bn}',${r.idx})`,`delTemp('${bn}',${r.idx})`);
 }
 // Terapie di un bambino nel giorno selezionato. Con entrambi i bambini a schermo il
