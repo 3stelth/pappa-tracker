@@ -158,6 +158,11 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .baby-pick { display: flex; gap: 10px; margin-bottom: 14px; }
 .baby-pick-btn { flex: 1; padding: 22px 10px; border: none; border-radius: var(--r-md); color: #fff; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform 0.15s; letter-spacing: -0.01em; }
 .baby-pick-btn:active { transform: scale(0.97); }
+.baby-pick-btn.both { width: 100%; padding: 16px 10px; margin-bottom: 14px; font-size: 15px; }
+/* Pappa data a tutti e due: una fila di giudizi per bambino */
+.liking-for { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.liking-who { font-size: 12px; font-weight: 800; letter-spacing: -0.01em; width: 58px; flex-shrink: 0; }
+.liking-for .chips { flex: 1; }
 .entry-del { border: none; background: var(--red-light); color: var(--red); width: 26px; height: 26px; border-radius: 9px; font-size: 12px; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; transition: transform 0.15s; }
 .entry-del:active { transform: scale(0.85); }
 .fruit-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
@@ -446,7 +451,9 @@ const STORAGE_KEY = "pappatracker_data_v2";
 // ─── STATE ───
 // `filter` decide cosa mostra la giornata: entrambi i bambini o uno solo. `baby` resta
 // il bambino su cui agisce il modale aperto (i modali riguardano sempre un bambino solo).
-let state = { data: {}, baby: "Gabriel", filter: "both", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false };
+// `addFor` è il bersaglio del modale aperto: un bambino, oppure 'both' quando si sta
+// registrando la stessa cosa per tutti e due. Ogni apertura lo dichiara.
+let state = { data: {}, baby: "Gabriel", filter: "both", addFor: "Gabriel", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false };
 function filteredBabies() { return state.filter === 'both' ? BABIES : [state.filter]; }
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function dkToDate(key){ const p=String(key).split('-'); return new Date(+p[0], (+p[1])-1, +p[2]); }
@@ -1169,27 +1176,33 @@ async function toggleTherapy(bn, tid) {
 }
 async function addEntry(entry) {
   const key=dk(state.selDate), sec=state.tab==="feed"?"feeds":"diapers";
+  const editing = state._editIdx!==null && state._editIdx!==undefined;
+  // In modifica si tocca una voce sola; inserendo, il bersaglio può essere entrambi.
+  const babies = editing ? [state.baby] : targetBabies();
   if(!state.data[key]) state.data[key]={};
-  if(!state.data[key][state.baby]) state.data[key][state.baby]={};
-  if(!state.data[key][state.baby][sec]) state.data[key][state.baby][sec]=[];
-  // L'impronta di una poppata è ora|ml|tipo (entryContentKey): senza più i ml, due latte
-  // alla stessa ora sarebbero indistinguibili e il dedup ne scarterebbe uno. Il secondo
-  // scivola avanti di un minuto.
-  if(sec==='feeds') {
-    const arr=state.data[key][state.baby][sec];
-    const clash=t=>arr.some((e,i)=>i!==state._editIdx && e.time===t && (e.ml||'')===(entry.ml||'') && (e.type||'')===(entry.type||''));
-    while(clash(entry.time)) entry.time=bumpTime(entry.time);
-  }
-  if(state._editIdx!==null&&state._editIdx!==undefined) {
-    const existing = state.data[key][state.baby][sec][state._editIdx];
-    entry.id = existing && existing.id ? existing.id : uid();
-    state.data[key][state.baby][sec][state._editIdx]=entry;
-  } else {
-    if (!entry.id) entry.id = uid();
-    state.data[key][state.baby][sec].push(entry);
-  }
-  state.data[key][state.baby][sec].sort((a,b)=>a.time.localeCompare(b.time));
-  clearEntryTombstones(sec, key, state.baby, entry);
+  babies.forEach(bn=>{
+    if(!state.data[key][bn]) state.data[key][bn]={};
+    if(!state.data[key][bn][sec]) state.data[key][bn][sec]=[];
+    const e = { ...entry };
+    // L'impronta di una poppata è ora|ml|tipo (entryContentKey): senza più i ml, due latte
+    // alla stessa ora sarebbero indistinguibili e il dedup ne scarterebbe uno. Il secondo
+    // scivola avanti di un minuto.
+    if(sec==='feeds') {
+      const arr=state.data[key][bn][sec];
+      const clash=t=>arr.some((x,i)=>!(editing && i===state._editIdx) && x.time===t && (x.ml||'')===(e.ml||'') && (x.type||'')===(e.type||''));
+      while(clash(e.time)) e.time=bumpTime(e.time);
+    }
+    if(editing) {
+      const existing = state.data[key][bn][sec][state._editIdx];
+      e.id = existing && existing.id ? existing.id : uid();
+      state.data[key][bn][sec][state._editIdx]=e;
+    } else {
+      e.id = uid();
+      state.data[key][bn][sec].push(e);
+    }
+    state.data[key][bn][sec].sort((a,b)=>a.time.localeCompare(b.time));
+    clearEntryTombstones(sec, key, bn, e);
+  });
   await saveData(); closeModal(); render();
 }
 async function delEntry(idx) {
@@ -1211,8 +1224,10 @@ async function delEntry(idx) {
 async function resetAll() {
   if(confirm("Sei sicuro? Tutti i dati verranno cancellati.")) { state.data={}; await saveData(); render(); }
 }
-async function saveMeal(meal, editIdx) {
-  const key=dk(state.selDate), bn=state.baby;
+// Sola scrittura in memoria: chi chiama decide quando salvare, così una pappa data a
+// tutti e due non fa partire due sincronizzazioni.
+function putMeal(meal, editIdx, bn) {
+  const key=dk(state.selDate);
   if(!state.data[key]) state.data[key]={};
   if(!state.data[key][bn]) state.data[key][bn]={};
   if(!state.data[key][bn].meals) state.data[key][bn].meals=[];
@@ -1221,12 +1236,11 @@ async function saveMeal(meal, editIdx) {
     meal.id = arr[editIdx].id || uid();
     arr[editIdx]=meal;
   } else {
-    if(!meal.id) meal.id=uid();
+    meal.id = uid();
     arr.push(meal);
   }
   arr.sort((a,b)=>(a.time||'').localeCompare(b.time||''));
   clearEntryTombstones('meals', key, bn, meal);
-  await saveData(); closeModal(); render();
 }
 async function delMeal(idx) {
   const key=dk(state.selDate), bn=state.baby;
@@ -1295,8 +1309,12 @@ function exportCSV() {
   a.href=URL.createObjectURL(blob); a.download=`pappa-tracker-${dk(new Date())}.csv`; a.click();
 }
 // ─── QUICK ADD ───
+// `bn` può essere 'both': i due bambini fanno quasi tutto insieme, e registrarlo due
+// volte è il lavoro che questa versione doveva togliere. In modifica il bersaglio è
+// sempre uno solo, quindi ogni apertura di un modale dichiara il proprio `addFor`.
 function quickAddAction(bn, action) {
-  state.baby = bn;
+  state.addFor = bn;
+  state.baby = bn === 'both' ? BABIES[0] : bn;
   if (action === 'weight') {
     openWeightModal(bn);
   } else if (action === 'temp') {
@@ -1308,6 +1326,11 @@ function quickAddAction(bn, action) {
     openAdd();
   }
 }
+function addForBoth() { return state.addFor === 'both'; }
+// I bambini su cui salvare: entrambi solo quando si sta inserendo, mai in modifica.
+function targetBabies() { return addForBoth() ? BABIES : [state.baby]; }
+function addForLabel() { return addForBoth() ? BABIES.join(' e ') : state.baby; }
+function addForColors() { return addForBoth() ? COLORS.both : COLORS[state.baby]; }
 // ─── RENDER ───
 // hex -> rgba helper for soft accent fills
 function hexA(hex, a) {
@@ -1386,6 +1409,7 @@ function askBabyFor(action) {
   setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div>
     <div class="modal-title">${a.e} ${a.l} — per chi?</div>
     <div class="baby-pick">${BABIES.map(bn=>`<button class="baby-pick-btn" style="background:${COLORS[bn].grad}" onclick="pickBabyFor('${bn}','${action}')">${bn}</button>`).join('')}</div>
+    <button class="baby-pick-btn both" style="background:${COLORS.both.grad}" onclick="pickBabyFor('both','${action}')">Tutti e due</button>
     <div class="form-actions"><button class="btn-cancel" style="width:100%" onclick="closeModal()">Annulla</button></div>
   </div></div>`);
 }
@@ -1793,6 +1817,7 @@ function openAdd(){
   state._editIdx=null;state._editEntry=null;const n=new Date();showModal(n.getHours(),n.getMinutes(),"","Cacca","","");
 }
 function openEdit(idx){
+  state.addFor=state.baby; // si modifica sempre la voce di un bambino solo
   state._editIdx=idx;const key=dk(state.selDate),sec=state.tab==="feed"?"feeds":"diapers",e=state.data[key][state.baby][sec][idx];
   state._editEntry=e;
   const[h,m]=e.time.split(":").map(Number);
@@ -1800,7 +1825,7 @@ function openEdit(idx){
   else showModal(h,m,"",e.dtype,e.color||"",e.note||"");
 }
 function showModal(h,m,fnote,dtype,dcolor,dnote){
-  const c=COLORS[state.baby],isF=state.tab==="feed",title=(state._editIdx!==null?"Modifica":"Aggiungi")+" "+(isF?"latte":"pannolino")+" — "+state.baby;
+  const c=addForColors(),isF=state.tab==="feed",title=(state._editIdx!==null?"Modifica":"Aggiungi")+" "+(isF?"latte":"pannolino")+" — "+addForLabel();
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   // Passo di 5 minuti: l'ora del latte è l'unico dato che resta, tanto vale che sia giusta.
   const mins=Array.from({length:12},(_,i)=>i*5),nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
@@ -1830,14 +1855,19 @@ function submitForm(){
 // Il modale e il selettore alimenti si alternano nella stessa scheda, quindi i campi
 // vivono in una bozza (state._mealDraft): uscendo dal DOM andrebbero altrimenti persi.
 function openMealModal(editIdx) {
-  const key=dk(state.selDate), existing = editIdx!==null&&editIdx!==undefined ? getMeals(state.baby,key)[editIdx] : null;
+  const key=dk(state.selDate), isEdit = editIdx!==null&&editIdx!==undefined;
+  if(isEdit) state.addFor = state.baby; // si modifica sempre la pappa di un bambino solo
+  const existing = isEdit ? getMeals(state.baby,key)[editIdx] : null;
   const n=new Date();
   const [eh,em] = existing ? existing.time.split(':').map(Number) : [n.getHours(), n.getMinutes()];
   state._mealDraft = {
     editIdx: existing ? editIdx : null,
     h: eh, m: em,
     items: existing ? JSON.parse(JSON.stringify(existing.items||[])).map(i=>({ ...i, _k:uid() })) : [],
-    liking: existing ? (existing.liking||'') : '',
+    liking: existing ? (likingOf(existing)||'') : '',
+    // Con la pappa data a tutti e due, il giudizio è di ciascuno: la stessa pappa può
+    // piacere a uno e non all'altro, ed è proprio quello che la scheda Gradimento mostra.
+    likingBy: {},
     note: existing ? (existing.note||'') : ''
   };
   renderMealModal();
@@ -1850,15 +1880,22 @@ function syncMealDraftFromDOM() {
   if(nEl) d.note=nEl.value;
 }
 function renderMealModal() {
-  const d=state._mealDraft, c=COLORS[state.baby];
-  const title=(d.editIdx!==null?'Modifica':'Aggiungi')+' pappa — '+state.baby;
+  const d=state._mealDraft, c=addForColors();
+  const title=(d.editIdx!==null?'Modifica':'Aggiungi')+' pappa — '+addForLabel();
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===d.h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join('');
   const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-d.m)<Math.abs(a-d.m)?b:a);
   const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join('');
   const cats=MEAL_CATS.map(cat=>
     `<div class="meal-cat-row"><span class="meal-cat-name">${cat.emoji} ${cat.name}</span><button class="meal-cat-add" onclick="openFoodPicker('${cat.id}')">+</button></div><div id="m-items-${cat.id}">${mealItemRows(cat.id)}</div>`
   ).join('');
-  const likingChips=Object.keys(LIKINGS).map(k=>`<button class="chip liking${d.liking===k?' on':''}" data-val="${k}" onclick="setMealLiking('${k}')">${LIKINGS[k].e} ${LIKINGS[k].l}</button>`).join('');
+  const twoWay = addForBoth() && d.editIdx===null;
+  const likingRow = bn => Object.keys(LIKINGS).map(k=>{
+    const on = bn ? d.likingBy[bn]===k : d.liking===k;
+    return `<button class="chip liking${on?' on':''}" data-val="${k}" onclick="setMealLiking('${k}'${bn?`,'${bn}'`:''})">${LIKINGS[k].e}${bn?'':' '+LIKINGS[k].l}</button>`;
+  }).join('');
+  const likingChips = twoWay
+    ? BABIES.map(bn=>`<div class="liking-for"><span class="liking-who" style="color:${COLORS[bn].pri}">${bn}</span><div class="chips" id="m-liking-${bn}" style="margin-bottom:0">${likingRow(bn)}</div></div>`).join('')
+    : `<div class="chips" id="m-liking">${likingRow(null)}</div>`;
   // Le pappe che si ripetono (la merenda di sempre) stanno in cima: un tap le prepara.
   const sugg=d.editIdx===null?suggestedMeals(state.baby):[];
   const cur=comboKey({items:d.items});
@@ -1874,7 +1911,7 @@ function renderMealModal() {
     <div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="m-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="m-m">${mO}</select></div>
     ${cats}
     <div id="m-total">${mealTotalHTML(d.items)}</div>
-    <div class="form-label" style="margin-top:14px">Gradimento</div><div class="chips" id="m-liking">${likingChips}</div>
+    <div class="form-label" style="margin-top:14px">Gradimento</div>${likingChips}
     <div id="m-fav">${favButtonHTML(cur)}</div>
     <div class="form-label">Note (opzionale)</div><input class="form-input" id="m-note" value="${(d.note||'').replace(/"/g,'&quot;')}" placeholder="es. ha rifiutato la carota..." style="margin-bottom:12px">
     <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitMeal()">${d.editIdx!==null?'Salva':'Aggiungi'} 🥣</button></div>
@@ -1951,8 +1988,13 @@ function mealTotalHTML(items) {
 }
 // I tap che cambiano solo una selezione aggiornano il DOM sul posto: ricostruire il
 // modale farebbe "ricaricare" la card a ogni tocco, perdendo scroll e focus.
-function setMealLiking(v) {
+function setMealLiking(v, bn) {
   const d=state._mealDraft;
+  if(bn) {
+    d.likingBy[bn] = d.likingBy[bn]===v ? '' : v;
+    document.querySelectorAll(`#m-liking-${bn} .chip`).forEach(b=>b.classList.toggle('on', b.dataset.val===d.likingBy[bn]));
+    return;
+  }
   d.liking = d.liking===v ? '' : v;
   document.querySelectorAll('#m-liking .chip').forEach(b=>b.classList.toggle('on', b.dataset.val===d.liking));
 }
@@ -1965,13 +2007,20 @@ function removeMealItem(k) {
   if(tot) tot.innerHTML=mealTotalHTML(d.items);
   syncComboUI();
 }
-function submitMeal() {
+async function submitMeal() {
   syncMealDraftFromDOM();
   const d=state._mealDraft;
   if(!d.items.length) { showToast('Aggiungi almeno un alimento'); return; }
-  const meal={ time:ft(d.h,d.m), items:d.items.map(({_k,...rest})=>rest), note:(d.note||'').trim() };
-  if(d.liking) meal.liking=d.liking;
-  saveMeal(meal, d.editIdx);
+  const editing = d.editIdx!==null;
+  const items = d.items.map(({_k,...rest})=>rest);
+  const babies = editing ? [state.baby] : targetBabies();
+  babies.forEach(bn=>{
+    const meal={ time:ft(d.h,d.m), items:JSON.parse(JSON.stringify(items)), note:(d.note||'').trim() };
+    const lk = (addForBoth() && !editing) ? d.likingBy[bn] : d.liking;
+    if(lk) meal.liking=lk;
+    putMeal(meal, editing?d.editIdx:null, bn);
+  });
+  await saveData(); closeModal(); render();
 }
 // ─── SELETTORE ALIMENTI ───
 // Multi-selezione: più alimenti della stessa categoria possono condividere la stessa
@@ -2097,24 +2146,43 @@ async function removeCustomFood(id, cat) {
   openManageFoods(cat);
 }
 // ─── WEIGHT ───
+// Con bn='both' il modale porta un campo per bambino: li pesate uno dopo l'altro, e
+// un campo lasciato vuoto significa semplicemente "questo non l'ho pesato".
 function openWeightModal(bn) {
-  const c=COLORS[bn], n=new Date(), h=n.getHours(), m=n.getMinutes();
+  const both = bn==='both';
+  state.addFor = bn;
+  if(!both) state.baby = bn;
+  const babies = both ? BABIES : [bn];
+  const c = both ? COLORS.both : COLORS[bn];
+  const n=new Date(), h=n.getHours(), m=n.getMinutes();
   const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
-  // Check existing weight for today
-  const key=dk(state.selDate), existing=state.data[key]?.[bn]?.weight;
-  const wVal=existing?String(existing.kg):'', wNote=existing?.note||'';
-  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${existing?'Modifica':'Aggiungi'} peso — ${bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div><div class="form-label">Peso (kg)</div><input class="form-input big" type="text" inputmode="decimal" id="w-kg" value="${wVal}" placeholder="es. 3,45" style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="w-note" value="${wNote}" placeholder="es. prima della poppata..." style="margin-bottom:12px"><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitWeight('${bn}')">${existing?'Salva':'Aggiungi'} ⚖️</button></div></div></div>`);
+  const key=dk(state.selDate);
+  const anyExisting = babies.some(b=>state.data[key]?.[b]?.weight);
+  const wNote = (babies.map(b=>state.data[key]?.[b]?.weight?.note).find(Boolean))||'';
+  const fields = babies.map(b=>{
+    const ex=state.data[key]?.[b]?.weight;
+    return `<div class="form-label"${both?` style="color:${COLORS[b].pri}"`:''}>Peso${both?' — '+b:''} (kg)</div><input class="form-input big" type="text" inputmode="decimal" id="w-kg-${b}" value="${ex?itNum(ex.kg):''}" placeholder="es. 3,45" style="margin-bottom:12px">`;
+  }).join('');
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${anyExisting?'Modifica':'Aggiungi'} peso — ${both?BABIES.join(' e '):bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div>${fields}<div class="form-label">Note (opzionale)</div><input class="form-input" id="w-note" value="${wNote}" placeholder="es. prima della poppata..." style="margin-bottom:12px"><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitWeight('${bn}')">${anyExisting?'Salva':'Aggiungi'} ⚖️</button></div></div></div>`);
 }
 async function submitWeight(bn) {
-  const kg=parseFloat(document.getElementById("w-kg").value.replace(",","."));
-  if(!kg||isNaN(kg)) return;
+  const babies = bn==='both' ? BABIES : [bn];
   const h=parseInt(document.getElementById("f-h").value), m=parseInt(document.getElementById("f-m").value);
-  const key=dk(state.selDate);
-  if(!state.data[key]) state.data[key]={};
-  if(!state.data[key][bn]) state.data[key][bn]={};
-  state.data[key][bn].weight={kg, time:ft(h,m), note:document.getElementById("w-note").value.trim(), addedAt: Date.now()};
+  const key=dk(state.selDate), note=document.getElementById("w-note").value.trim();
+  let scritti=0;
+  babies.forEach(b=>{
+    const el=document.getElementById("w-kg-"+b);
+    if(!el) return;
+    const kg=parseFloat(el.value.replace(",","."));
+    if(!kg||isNaN(kg)) return; // campo vuoto: quel bambino non si pesa
+    if(!state.data[key]) state.data[key]={};
+    if(!state.data[key][b]) state.data[key][b]={};
+    state.data[key][b].weight={kg, time:ft(h,m), note, addedAt: Date.now()};
+    scritti++;
+  });
+  if(!scritti) return;
   await saveData(); closeModal(); render();
 }
 async function delWeight(bn) {
@@ -2619,40 +2687,58 @@ function showToast(msg) {
 // ─── TEMPERATURE ───
 function openTempModal(bn, idx) {
   state._editTempIdx = idx !== undefined ? idx : null;
-  const c=COLORS[bn], n=new Date(), h=n.getHours(), m=n.getMinutes();
+  const both = bn==='both' && idx===undefined;
+  state.addFor = both ? 'both' : bn;
+  if(!both) state.baby = bn;
+  const babies = both ? BABIES : [bn];
+  const c = both ? COLORS.both : COLORS[bn];
+  const n=new Date(), h=n.getHours(), m=n.getMinutes();
   const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);
   const key=dk(state.selDate), existing = idx !== undefined ? (state.data[key]?.[bn]?.temperatures||[])[idx] : null;
   const selH = existing ? parseInt(existing.time.split(":")[0]) : h;
   const selM = existing ? parseInt(existing.time.split(":")[1]) : nearM;
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===selH?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   const mO=mins.map(i=>`<option value="${i}"${i===selM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
-  const tVal=existing?String(existing.temp).replace('.',','):'', tNote=existing?.note||'';
+  const tVal=existing?itNum(existing.temp):'', tNote=existing?.note||'';
   const med=existing?.medicine||{};
   const hasMed=med.name?'checked':'';
-  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${existing?'Modifica':'Aggiungi'} temperatura — ${bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div><div class="form-label">Temperatura (°C)</div><input class="form-input big" type="text" inputmode="decimal" id="t-val" value="${tVal}" placeholder="es. 37,5" style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="t-note" value="${tNote}" placeholder="es. dopo il bagnetto..." style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer" onclick="const c=document.getElementById('t-med-check');c.checked=!c.checked;document.getElementById('t-med-fields').style.display=c.checked?'block':'none'"><input type="checkbox" id="t-med-check" ${hasMed} style="width:16px;height:16px;cursor:pointer" onclick="event.stopPropagation();document.getElementById('t-med-fields').style.display=this.checked?'block':'none'"><span style="font-size:12px;font-weight:700">💊 Somministrato farmaco</span></div><div id="t-med-fields" style="display:${hasMed?'block':'none'};margin-bottom:12px"><div class="form-label">Nome farmaco</div><input class="form-input" id="t-med-name" value="${med.name||''}" placeholder="es. Tachipirina" style="margin-bottom:8px"><div class="form-label">Dosaggio</div><input class="form-input" id="t-med-dose" value="${med.dose||''}" placeholder="es. 5 gocce" style="margin-bottom:4px"></div><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitTemp('${bn}')">${existing?'Salva':'Aggiungi'} 🌡️</button></div></div></div>`);
+  // Un campo per bambino quando la misuri a tutti e due: chi non ha la febbre si lascia
+  // in bianco e non viene registrato.
+  const tFields = babies.map(b=>
+    `<div class="form-label"${both?` style="color:${COLORS[b].pri}"`:''}>Temperatura${both?' — '+b:''} (°C)</div><input class="form-input big" type="text" inputmode="decimal" id="t-val-${b}" value="${both?'':tVal}" placeholder="es. 37,5" style="margin-bottom:12px">`).join('');
+  setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${existing?'Modifica':'Aggiungi'} temperatura — ${both?BABIES.join(' e '):bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div>${tFields}<div class="form-label">Note (opzionale)</div><input class="form-input" id="t-note" value="${tNote}" placeholder="es. dopo il bagnetto..." style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer" onclick="const c=document.getElementById('t-med-check');c.checked=!c.checked;document.getElementById('t-med-fields').style.display=c.checked?'block':'none'"><input type="checkbox" id="t-med-check" ${hasMed} style="width:16px;height:16px;cursor:pointer" onclick="event.stopPropagation();document.getElementById('t-med-fields').style.display=this.checked?'block':'none'"><span style="font-size:12px;font-weight:700">💊 Somministrato farmaco</span></div><div id="t-med-fields" style="display:${hasMed?'block':'none'};margin-bottom:12px"><div class="form-label">Nome farmaco</div><input class="form-input" id="t-med-name" value="${med.name||''}" placeholder="es. Tachipirina" style="margin-bottom:8px"><div class="form-label">Dosaggio</div><input class="form-input" id="t-med-dose" value="${med.dose||''}" placeholder="es. 5 gocce" style="margin-bottom:4px"></div><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitTemp('${bn}')">${existing?'Salva':'Aggiungi'} 🌡️</button></div></div></div>`);
 }
 async function submitTemp(bn) {
-  const temp=parseFloat(document.getElementById("t-val").value.replace(",","."));
-  if(!temp||isNaN(temp)||temp<35||temp>42) return;
+  const editing = state._editTempIdx!==null && state._editTempIdx!==undefined;
+  const babies = (bn==='both' && !editing) ? BABIES : [bn];
   const h=parseInt(document.getElementById("f-h").value), m=parseInt(document.getElementById("f-m").value);
-  const key=dk(state.selDate);
-  if(!state.data[key]) state.data[key]={};
-  if(!state.data[key][bn]) state.data[key][bn]={};
-  if(!state.data[key][bn].temperatures) state.data[key][bn].temperatures=[];
-  const entry={temp, time:ft(h,m), note:document.getElementById("t-note").value.trim()};
+  const key=dk(state.selDate), note=document.getElementById("t-note").value.trim();
   const medName=document.getElementById("t-med-name").value.trim();
-  if(document.getElementById("t-med-check").checked && medName) {
-    entry.medicine={name:medName, dose:document.getElementById("t-med-dose").value.trim()};
-  }
-  if(state._editTempIdx!==null&&state._editTempIdx!==undefined) {
-    const existing = state.data[key][bn].temperatures[state._editTempIdx];
-    entry.id = existing && existing.id ? existing.id : uid();
-    state.data[key][bn].temperatures[state._editTempIdx]=entry;
-  } else {
-    if (!entry.id) entry.id = uid();
-    state.data[key][bn].temperatures.push(entry);
-  }
-  state.data[key][bn].temperatures.sort((a,b)=>a.time.localeCompare(b.time));
+  const medOn=document.getElementById("t-med-check").checked && medName;
+  const medDose=document.getElementById("t-med-dose").value.trim();
+  let scritti=0;
+  babies.forEach(b=>{
+    const el=document.getElementById("t-val-"+b);
+    if(!el) return;
+    const temp=parseFloat(el.value.replace(",","."));
+    if(!temp||isNaN(temp)||temp<35||temp>42) return; // campo vuoto o fuori scala: si salta
+    if(!state.data[key]) state.data[key]={};
+    if(!state.data[key][b]) state.data[key][b]={};
+    if(!state.data[key][b].temperatures) state.data[key][b].temperatures=[];
+    const entry={temp, time:ft(h,m), note};
+    if(medOn) entry.medicine={name:medName, dose:medDose};
+    if(editing) {
+      const existing = state.data[key][b].temperatures[state._editTempIdx];
+      entry.id = existing && existing.id ? existing.id : uid();
+      state.data[key][b].temperatures[state._editTempIdx]=entry;
+    } else {
+      entry.id = uid();
+      state.data[key][b].temperatures.push(entry);
+    }
+    state.data[key][b].temperatures.sort((a,b2)=>a.time.localeCompare(b2.time));
+    scritti++;
+  });
+  if(!scritti) return;
   await saveData(); closeModal(); render();
 }
 async function delTemp(bn, idx) {
