@@ -153,34 +153,6 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .baby-pick-btn:active { transform: scale(0.97); }
 .entry-del { border: none; background: var(--red-light); color: var(--red); width: 26px; height: 26px; border-radius: 9px; font-size: 12px; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; transition: transform 0.15s; }
 .entry-del:active { transform: scale(0.85); }
-/* ── Goals (Obiettivi) ── */
-.goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.goal-col-head { font-size: 13px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.01em; text-align: center; }
-.goal-slot { position: relative; background: var(--glass); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 9px 10px 9px 14px; margin-bottom: 7px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.15s; overflow: hidden; box-sizing: border-box; min-height: 68px; display: flex; flex-direction: column; justify-content: center; }
-.goal-slot::before { content: ''; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 3px; background: var(--slotcol,var(--accent)); }
-.goal-slot:active { transform: scale(0.98); }
-.goal-slot.pending { border-style: dashed; opacity: 0.72; background: var(--glass-2); }
-.goal-slot.pending::before { opacity: 0.4; }
-.goal-slot.next { opacity: 1; border-style: solid; border-color: var(--slotcol); box-shadow: 0 0 0 1px var(--slotcol) inset; }
-.goal-slot.done { background: var(--green-light); }
-.goal-slot.done::before { background: var(--green); }
-.goal-slot.leftover { background: var(--red-light); }
-.goal-slot.leftover::before { background: var(--red); }
-.goal-warn { color: var(--red); font-weight: 900; margin-right: 2px; }
-.goal-slot-idx { font-size: 10px; font-weight: 800; color: var(--slotcol,var(--accent)); }
-.goal-slot-main { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-.goal-slot-time { font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
-.goal-slot-ml { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.goal-slot-sub { font-size: 10px; color: var(--hint); margin-top: 1px; }
-.goal-left-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--red); background: var(--red-light); padding: 1px 6px; border-radius: 6px; margin-top: 3px; }
-.goal-more-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--green); background: var(--green-light); padding: 1px 6px; border-radius: 6px; margin-top: 3px; }
-.goal-check { color: var(--green); font-weight: 900; margin-right: 2px; }
-.goal-summary { font-size: 10px; color: var(--sub); text-align: center; margin-top: 4px; font-weight: 600; }
-.goal-snack { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--glass-2); border: 1px dashed var(--glass-brd); border-radius: var(--r-sm); padding: 6px 10px; margin-bottom: 7px; cursor: pointer; }
-.goal-snack-lbl { font-size: 10px; font-weight: 800; color: var(--amber); white-space: nowrap; }
-.goal-snack-main { display: flex; align-items: baseline; gap: 6px; }
-.goal-snack .goal-slot-time { font-size: 12px; }
-.goal-snack .goal-slot-ml { font-size: 12px; color: var(--sub); }
 .fruit-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .fruit-chip { position: relative; display: flex; align-items: center; gap: 6px; padding: 9px 14px 9px 11px; border: 1px solid var(--glass-brd-2); border-radius: var(--r-sm); background: var(--glass-2); color: var(--txt); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform 0.15s; }
 .fruit-chip:active { transform: scale(0.94); }
@@ -270,7 +242,6 @@ details > summary::-webkit-details-marker { display: none; }
 .wk-meal-emo { font-size: 15px; }
 .wk-meal-g { margin-left: auto; font-weight: 700; color: var(--accent); }
 .wk-meal-det { font-size: 11px; color: var(--sub); line-height: 1.5; padding: 0 0 5px 46px; }
-.goal-preview { font-size: 12px; font-weight: 700; color: var(--txt); margin: 2px 0 12px; }
 .therapy-item { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 12px 13px; box-shadow: var(--shadow-sm); margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.15s; position: relative; }
 .therapy-item::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--titem,var(--accent)); }
 .therapy-item:active { transform: scale(0.99); }
@@ -463,7 +434,7 @@ function filteredBabies() { return state.filter === 'both' ? BABIES : [state.fil
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function dkToDate(key){ const p=String(key).split('-'); return new Date(+p[0], (+p[1])-1, +p[2]); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
-// ─── FRUTTA (registro indipendente dai feeds: non influisce su ml/medie/Obiettivi) ───
+// ─── FRUTTA (vecchio registro, indipendente dai pasti: resta in sola lettura) ───
 const FRUIT_PRESETS = [
   {id:'banana', name:'Banana', emoji:'🍌'},
   {id:'pera', name:'Pera', emoji:'🍐'},
@@ -1272,7 +1243,7 @@ function exportCSV() {
   Object.keys(state.data).sort().forEach(date=>{
     BABIES.forEach(bn=>{
       const bd=state.data[date]?.[bn]; if(!bd) return;
-      (bd.feeds||[]).forEach(f=>rows.push([date,bn,"Poppata",f.time,f.ml,f.type,"","","","",f.note||""]));
+      (bd.feeds||[]).forEach(f=>rows.push([date,bn,"Latte",f.time,f.ml||"",f.type||"","","","","",f.note||""]));
       (bd.diapers||[]).forEach(d=>rows.push([date,bn,"Pannolino",d.time,"","",d.dtype,d.color||"","","",d.note||""]));
       if(bd.weight)rows.push([date,bn,"Peso",bd.weight.time,bd.weight.kg,"","","","","",bd.weight.note||""]);
       (bd.temperatures||[]).forEach(t=>rows.push([date,bn,"Temperatura",t.time,t.temp,"","","","","",t.note||""]));
@@ -2320,25 +2291,18 @@ function showPediatricReport() {
     }
     const daysWithData = days.filter(k => state.data[k]?.[bn]);
     const numDays = daysWithData.length || 1;
-    // Feeds
-    let totalMl = 0, totalFeeds = 0, formulaCount = 0, maternoCount = 0;
-    days.forEach(k => {
-      const feeds = state.data[k]?.[bn]?.feeds || [];
-      totalFeeds += feeds.length;
-      feeds.forEach(f => {
-        totalMl += f.ml || 0;
-        if (f.type === "Formula") formulaCount++; else maternoCount++;
-      });
-    });
-    const avgMl = numDays ? Math.round(totalMl / numDays) : 0;
+    // Latte: conta le poppate, non più i ml
+    let totalFeeds = 0;
+    days.forEach(k => { totalFeeds += (state.data[k]?.[bn]?.feeds || []).length; });
     const avgFeeds = numDays ? (totalFeeds / numDays).toFixed(1) : "0";
-    const prevalente = formulaCount >= maternoCount ? "Formula" : "Materno";
     // Pappe (svezzamento): mostrate solo se nel periodo ce n'è almeno una
     let totalMeals = 0, totalGrams = 0;
-    const foodsInPeriod = {};
+    const foodsInPeriod = {}, likingCount = { good:0, ok:0, bad:0, judged:0 };
     days.forEach(k => {
       (state.data[k]?.[bn]?.meals || []).forEach(m => {
         totalMeals++; totalGrams += mealGrams(m);
+        const lk = likingOf(m);
+        if (lk && likingCount[lk] !== undefined) { likingCount[lk]++; likingCount.judged++; }
         (m.items||[]).forEach(i => (i.foods||[]).forEach(f => { foodsInPeriod[f] = (foodsInPeriod[f]||0)+1; }));
       });
     });
@@ -2395,16 +2359,15 @@ function showPediatricReport() {
           <div style="font-size:11px;color:#666;margin-top:2px">Età: ${ageStr} (nato l'8 dicembre 2025)</div>
         </div>
         <div class="report-section">
-          <h3 style="color:${c.acc}">🍼 Alimentazione</h3>
-          <div class="report-stat"><span class="label">Media ml/giorno</span><span class="value">${avgMl} ml</span></div>
-          <div class="report-stat"><span class="label">Media poppate/giorno</span><span class="value">${avgFeeds}</span></div>
-          <div class="report-stat"><span class="label">Tipo prevalente</span><span class="value">${prevalente}</span></div>
-          <div class="report-stat"><span class="label">Totale nel periodo</span><span class="value">${totalMl} ml (${totalFeeds} poppate)</span></div>
+          <h3 style="color:${c.acc}">🍼 Latte</h3>
+          <div class="report-stat"><span class="label">Media al giorno</span><span class="value">${avgFeeds}</span></div>
+          <div class="report-stat"><span class="label">Totale nel periodo</span><span class="value">${totalFeeds}</span></div>
         </div>
         ${totalMeals ? `<div class="report-section">
           <h3 style="color:${c.acc}">🥣 Svezzamento</h3>
           <div class="report-stat"><span class="label">Media pappe/giorno</span><span class="value">${avgMeals}</span></div>
           <div class="report-stat"><span class="label">Totale nel periodo</span><span class="value">${totalMeals} ${totalMeals===1?'pappa':'pappe'}${totalGrams?` (${totalGrams} g)`:''}</span></div>
+          ${likingCount.judged ? `<div class="report-stat"><span class="label">Gradimento</span><span class="value">👍 ${likingCount.good} · 😐 ${likingCount.ok} · 👎 ${likingCount.bad}</span></div>` : ''}
           <div style="font-size:11px;color:#666;margin-top:6px">Alimenti: ${Object.keys(foodsInPeriod).sort((a,b)=>foodsInPeriod[b]-foodsInPeriod[a]).map(id=>{const m=foodMeta(id);return `${m.emoji||''} ${m.name} ×${foodsInPeriod[id]}`;}).join(' · ')}</div>
           ${newTastes.length ? `<div style="font-size:11px;color:#666;margin-top:4px">🆕 Nuovi assaggi: ${newTastes.map(id=>{const m=foodMeta(id),p=firstTaste[id].split('-');return `${m.emoji||''} ${m.name} (${+p[2]}/${+p[1]})`;}).join(' · ')}</div>` : ''}
         </div>` : ''}
@@ -2629,7 +2592,6 @@ function weeklyStats(bn) {
     days.push({
       key, date:d, dow:DAYNAMES[(d.getDay()+6)%7],
       isFuture:key>todayKey, isToday:key===todayKey,
-      ml:feeds.reduce((s,f)=>s+(f.ml||0),0),
       feeds, diapers, meals, temps, weight:bd?.weight||null,
       grams:meals.reduce((s,m)=>s+mealGrams(m),0),
       hasData:!!(feeds.length||diapers.length||meals.length||temps.length||bd?.weight)
@@ -2672,8 +2634,7 @@ function weeklyStats(bn) {
 // tutti i motori (alcuni build senza dati di locale restituiscono "5860").
 function fmtNum(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 const WEEK_METRICS = {
-  milk:    { label:'Latte',     series:d=>d.ml,             unit:'ml', fmt:v=>fmtNum(Math.round(v)),         tot:t=>`${fmtNum(t)} ml in tutto` },
-  feeds:   { label:'Poppate',   series:d=>d.feeds.length,   unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` },
+  feeds:   { label:'Latte',     series:d=>d.feeds.length,   unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` },
   meals:   { label:'Pappe',     series:d=>d.meals.length,   unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` },
   diapers: { label:'Pannolini', series:d=>d.diapers.length, unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` }
 };
@@ -2721,8 +2682,7 @@ function buildWeeklyInline() {
   h += `<button class="wk-disc" onclick="toggleWkDetail(this)"><span class="wk-disc-caret">▸</span> Dettaglio giorno per giorno</button>`;
   const rows=st.days.filter(d=>!d.isFuture).map(d=>{
     const bits=[];
-    if(d.ml) bits.push(`${d.ml} ml`);
-    if(d.feeds.length) bits.push(`${d.feeds.length} ${d.feeds.length===1?'poppata':'poppate'}`);
+    if(d.feeds.length) bits.push(`${d.feeds.length} latte`);
     if(d.meals.length) bits.push(`${d.meals.length} ${d.meals.length===1?'pappa':'pappe'}`);
     if(d.diapers.length) bits.push(`${d.diapers.length} ${d.diapers.length===1?'pannolino':'pannolini'}`);
     return `<div class="wk-row"><span style="font-weight:700">${d.dow} ${d.date.getDate()}</span><span style="color:${bits.length?'var(--sub)':'var(--hint)'};font-size:12px;text-align:right">${bits.join(' · ')||'—'}</span></div>`;
@@ -2784,11 +2744,9 @@ function openMetricDetail(k) {
         return `<button class="wk-meal" onclick="toggleWkMeal('${mm.id}')"><span class="wk-meal-time">${mm.time}</span><span class="wk-meal-emo">${emo}</span><span class="wk-meal-g">${g?g+' g':''}${mealIsSnack(mm)?' 🍎':''}</span></button>`
           + `<div class="wk-meal-det" id="wkm-${mm.id}" hidden>${mealSummary(mm)}${lk?` · ${lk.e} ${lk.l}`:''}${mm.note?` · ${mm.note}`:''}</div>`;
       }).join('');
-    } else if(k==='milk'&&d.feeds.length) {
-      const f=d.feeds.filter(x=>x.type==='Formula').length, mt=d.feeds.length-f;
-      inner=`<div class="wk-day-sub">${d.feeds.length} ${d.feeds.length===1?'poppata':'poppate'}${f?` · 🍼 ${f}`:''}${mt?` · 🤱 ${mt}`:''}</div>`;
     } else if(k==='feeds'&&d.feeds.length) {
-      inner=`<div class="wk-day-sub">${d.feeds.map(x=>`${x.time} · ${x.ml} ml`).join(' · ')}</div>`;
+      // I ml compaiono solo dove erano stati registrati, cioè nelle poppate di prima.
+      inner=`<div class="wk-day-sub">${d.feeds.map(x=>x.ml?`${x.time} · ${x.ml} ml`:x.time).join(' · ')}</div>`;
     } else if(k==='diapers'&&d.diapers.length) {
       const cnt={};
       d.diapers.forEach(x=>{ cnt[x.dtype]=(cnt[x.dtype]||0)+1; });
