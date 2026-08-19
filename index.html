@@ -1512,28 +1512,40 @@ function groupTimeline(rows) {
 }
 // Pastiglia del bambino dentro una riga condivisa: porta con sé il suo valore, così
 // "17:30 · G 7,39 kg · V 5,6 kg" si legge senza aprire nulla.
-function groupChip(r) {
+function groupChip(r, showGrams) {
   const c=COLORS[r.baby], e=r.data;
   let v='';
   if(r.kind==='weight') v=` <b>${itNum(e.kg)} kg</b>`;
   else if(r.kind==='temp') v=` <b style="color:${tempColor(e.temp)}">${itNum(e.temp)}°</b>`;
   else if(r.kind==='feed'&&e.ml) v=` <b>${e.ml} ml</b>`;
-  else if(r.kind==='meal') { const lk=LIKINGS[likingOf(e)]; if(lk) v=` ${lk.e}`; }
+  else if(r.kind==='meal') {
+    const bits=[];
+    if(showGrams) { const gr=mealGrams(e); if(gr) bits.push(`<b>${gr} g</b>`); }
+    const lk=LIKINGS[likingOf(e)];
+    if(lk) bits.push(lk.e);
+    if(bits.length) v=' '+bits.join(' ');
+  }
   return `<span class="baby-chip wide" style="background:${hexA(c.pri,0.16)};color:${c.pri}">${r.baby[0]}${v}</span>`;
 }
 function timelineGroup(g) {
   const first=g.entries[0], e=first.data;
-  let icon='🍼', tag='Latte', body='';
+  let icon='🍼', tag='Latte', body='', perChipGrams=false;
   if(g.kind==='meal') {
-    const snack=mealIsSnack(e), grams=mealGrams(e);
+    const snack=mealIsSnack(e);
     icon=snack?'🍎':'🥣'; tag=snack?'Merenda':'Pappa';
-    if(grams) tag+=` · ${grams} g`;
-    body=`<div class="entry-note wrap">${mealSummary(e)}</div>`;
+    // Gli stessi alimenti possono essere stati pesati diversamente per i due: il totale
+    // sta nell'intestazione solo se è lo stesso, altrimenti va nella pastiglia di ciascuno.
+    const grams=g.entries.map(x=>mealGrams(x.data));
+    if(grams.every(v=>v===grams[0])) { if(grams[0]) tag+=` · ${grams[0]} g`; }
+    else perChipGrams=true;
+    // Quando le quantità differiscono il riassunto porta i soli alimenti: i grammi di
+    // ciascuno sono già nella sua pastiglia, e ripeterne uno solo sarebbe fuorviante.
+    body=`<div class="entry-note wrap">${perChipGrams?(e.items||[]).map(itemFoodLabel).join(' · '):mealSummary(e)}</div>`;
   } else if(g.kind==='diaper') {
     icon=e.dtype==='Cacca'?'💩':e.dtype==='Pipì'?'💧':'💩💧'; tag=e.dtype;
   } else if(g.kind==='weight') { icon='⚖️'; tag='Peso'; }
   else if(g.kind==='temp') { icon='🌡️'; tag='Temperatura'; }
-  const chips=g.entries.map(groupChip).join('');
+  const chips=g.entries.map(r=>groupChip(r,perChipGrams)).join('');
   return `<div class="entry group" onclick="toggleGroup(this)"><div class="entry-icon">${icon}</div><div class="entry-body"><div class="entry-top"><span class="entry-time">${g.time||'—'}</span>${chips}<span class="entry-tag" style="background:var(--glass-2);color:var(--sub)">${tag}</span></div>${body}</div><span class="group-caret">▾</span></div>`
     + `<div class="group-detail" hidden>${g.entries.map(r=>timelineRow(r,true)).join('')}</div>`;
 }
