@@ -697,17 +697,20 @@ async function removeFavMeal(id) {
 }
 function isFavCombo(key) { return getFavMeals().some(f => f.combo === key); }
 // Suggerimenti del modale pappa: prima quelle fissate, poi le combinazioni più usate
-// dal bambino negli ultimi 60 giorni (le fissate non si ripetono fra queste).
-function suggestedMeals(bn, max) {
+// negli ultimi 60 giorni (le fissate non si ripetono fra queste). Accetta un bambino o
+// più d'uno: registrando per tutti e due contano le abitudini di entrambi, altrimenti
+// le solite di chi non è il primo in elenco non comparirebbero mai.
+function suggestedMeals(who, max) {
+  const babies = Array.isArray(who) ? who : [who];
   const fav = getFavMeals().map(f => ({ combo:f.combo, name:f.name, fav:true, favId:f.id }));
   const since = dk(new Date(Date.now() - 60*86400000));
   const counts = {};
   for (const key in state.data) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key < since) continue;
-    (state.data[key]?.[bn]?.meals || []).forEach(m => {
+    babies.forEach(bn => (state.data[key]?.[bn]?.meals || []).forEach(m => {
       const k = comboKey(m);
       if (k) counts[k] = (counts[k]||0) + 1;
-    });
+    }));
   }
   const pinned = new Set(fav.map(f => f.combo));
   const recent = Object.keys(counts)
@@ -1193,18 +1196,20 @@ async function addEntry(entry) {
   // In modifica si tocca una voce sola; inserendo, il bersaglio può essere entrambi.
   const babies = editing ? [state.baby] : targetBabies();
   if(!state.data[key]) state.data[key]={};
+  const saltati=[];
   babies.forEach(bn=>{
     if(!state.data[key][bn]) state.data[key][bn]={};
     if(!state.data[key][bn][sec]) state.data[key][bn][sec]=[];
     const e = { ...entry };
-    // L'impronta di una poppata è ora|ml|tipo (entryContentKey): senza più i ml, due latte
-    // alla stessa ora sarebbero indistinguibili e il dedup ne scarterebbe uno. Il secondo
-    // scivola avanti di un minuto.
-    if(sec==='feeds') {
-      const arr=state.data[key][bn][sec];
-      const clash=t=>arr.some((x,i)=>!(editing && i===state._editIdx) && x.time===t && (x.ml||'')===(e.ml||'') && (x.type||'')===(e.type||''));
-      while(clash(e.time)) e.time=bumpTime(e.time);
-    }
+    const arr=state.data[key][bn][sec];
+    // "Identica" nel senso del dedup: stessa impronta (ora + campi principali).
+    const same=(x,i)=>!(editing && i===state._editIdx) && entryContentKey(x,sec)===entryContentKey(e,sec);
+    // Inserendo per tutti e due, uno dei due può già avere quella voce: aggiungerla di
+    // nuovo creerebbe un doppione. Si salta e lo si dice, invece di spostarlo di un minuto.
+    if(!editing && arr.some(same)) { saltati.push(bn); return; }
+    // In modifica invece la voce esiste già e non si può saltare: se l'ora scelta la fa
+    // coincidere con un'altra, scivola avanti di un minuto per non farla sparire nel dedup.
+    if(editing) { while(arr.some(same)) e.time=bumpTime(e.time); }
     if(editing) {
       const existing = state.data[key][bn][sec][state._editIdx];
       e.id = existing && existing.id ? existing.id : uid();
@@ -1216,7 +1221,14 @@ async function addEntry(entry) {
     state.data[key][bn][sec].sort((a,b)=>a.time.localeCompare(b.time));
     clearEntryTombstones(sec, key, bn, e);
   });
-  await saveData(); closeModal(); render();
+  const cosa = sec==='feeds' ? 'il latte' : 'il pannolino';
+  if(saltati.length===babies.length) { // nulla da salvare: era già tutto segnato
+    showToast(`${saltati.join(' e ')} ${saltati.length>1?'avevano':'aveva'} già ${cosa} alle ${entry.time}`);
+    closeModal(); render(); return;
+  }
+  await saveData();
+  if(saltati.length) showToast(`${saltati.join(' e ')} aveva già ${cosa} alle ${entry.time}`);
+  closeModal(); render();
 }
 async function delEntry(idx) {
   const key=dk(state.selDate), sec=state.tab==="feed"?"feeds":"diapers";
@@ -1964,7 +1976,7 @@ function renderMealModal() {
     ? BABIES.map(bn=>`<div class="liking-for"><span class="liking-who" style="color:${COLORS[bn].pri}">${bn}</span><div class="chips" id="m-liking-${bn}" style="margin-bottom:0">${likingRow(bn)}</div></div>`).join('')
     : `<div class="chips" id="m-liking">${likingRow(null)}</div>`;
   // Le pappe che si ripetono (la merenda di sempre) stanno in cima: un tap le prepara.
-  const sugg=d.editIdx===null?suggestedMeals(state.baby):[];
+  const sugg=d.editIdx===null?suggestedMeals(targetBabies()):[];
   const cur=comboKey({items:d.items});
   const suggHtml=sugg.length?`<div class="form-label">Le solite</div><div class="sugg-strip">${sugg.map(s=>
     `<button class="sugg-card${s.combo===cur?' on':''}" data-combo="${s.combo}" onclick="applySuggestion('${s.combo}')">
@@ -2081,13 +2093,23 @@ async function submitMeal() {
   const editing = d.editIdx!==null;
   const items = d.items.map(({_k,...rest})=>rest);
   const babies = editing ? [state.baby] : targetBabies();
+  const key=dk(state.selDate), saltati=[];
   babies.forEach(bn=>{
     const meal={ time:ft(d.h,d.m), items:JSON.parse(JSON.stringify(items)), note:(d.note||'').trim() };
     const lk = (addForBoth() && !editing) ? d.likingBy[bn] : d.liking;
     if(lk) meal.liking=lk;
+    // Come per il latte: se quel bambino ha già la stessa identica pappa a quell'ora,
+    // registrarla di nuovo creerebbe solo un doppione.
+    if(!editing && getMeals(bn,key).some(m=>entryContentKey(m,'meals')===entryContentKey(meal,'meals'))) { saltati.push(bn); return; }
     putMeal(meal, editing?d.editIdx:null, bn);
   });
-  await saveData(); closeModal(); render();
+  if(saltati.length===babies.length) {
+    showToast(`${saltati.join(' e ')} ${saltati.length>1?'avevano':'aveva'} già questa pappa alle ${ft(d.h,d.m)}`);
+    closeModal(); render(); return;
+  }
+  await saveData();
+  if(saltati.length) showToast(`${saltati.join(' e ')} aveva già questa pappa alle ${ft(d.h,d.m)}`);
+  closeModal(); render();
 }
 // ─── SELETTORE ALIMENTI ───
 // Multi-selezione: più alimenti della stessa categoria possono condividere la stessa
@@ -2227,7 +2249,9 @@ function openWeightModal(bn) {
   const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   const key=dk(state.selDate);
   const anyExisting = babies.some(b=>state.data[key]?.[b]?.weight);
-  const wNote = (babies.map(b=>state.data[key]?.[b]?.weight?.note).find(Boolean))||'';
+  // Con tutti e due a schermo la nota è una sola: mostrare quella di uno la farebbe
+  // finire addosso all'altro al salvataggio. Si riprende solo nel modale di un bambino.
+  const wNote = both ? '' : (state.data[key]?.[bn]?.weight?.note||'');
   const fields = babies.map(b=>{
     const ex=state.data[key]?.[b]?.weight;
     return `<div class="form-label"${both?` style="color:${COLORS[b].pri}"`:''}>Peso${both?' — '+b:''} (kg)</div><input class="form-input big" type="text" inputmode="decimal" id="w-kg-${b}" value="${ex?itNum(ex.kg):''}" placeholder="es. 3,45" style="margin-bottom:12px">`;
@@ -2235,21 +2259,26 @@ function openWeightModal(bn) {
   setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${anyExisting?'Modifica':'Aggiungi'} peso — ${both?BABIES.join(' e '):bn}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div>${fields}<div class="form-label">Note (opzionale)</div><input class="form-input" id="w-note" value="${wNote}" placeholder="es. prima della poppata..." style="margin-bottom:12px"><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitWeight('${bn}')">${anyExisting?'Salva':'Aggiungi'} ⚖️</button></div></div></div>`);
 }
 async function submitWeight(bn) {
-  const babies = bn==='both' ? BABIES : [bn];
+  const both = bn==='both';
+  const babies = both ? BABIES : [bn];
   const h=parseInt(document.getElementById("f-h").value), m=parseInt(document.getElementById("f-m").value);
   const key=dk(state.selDate), note=document.getElementById("w-note").value.trim();
-  let scritti=0;
+  let scritti=0, invariati=0;
   babies.forEach(b=>{
     const el=document.getElementById("w-kg-"+b);
     if(!el) return;
     const kg=parseFloat(el.value.replace(",","."));
     if(!kg||isNaN(kg)) return; // campo vuoto: quel bambino non si pesa
+    const prev=state.data[key]?.[b]?.weight;
+    // Pesata già registrata e lasciata com'era: non va riscritta, altrimenti prenderebbe
+    // l'ora di adesso (e la nota dell'altro) pur non essendo stata toccata.
+    if(both && prev && prev.kg===kg) { invariati++; return; }
     if(!state.data[key]) state.data[key]={};
     if(!state.data[key][b]) state.data[key][b]={};
     state.data[key][b].weight={kg, time:ft(h,m), note, addedAt: Date.now()};
     scritti++;
   });
-  if(!scritti) return;
+  if(!scritti) { if(invariati) closeModal(); return; }
   await saveData(); closeModal(); render();
 }
 async function delWeight(bn) {
