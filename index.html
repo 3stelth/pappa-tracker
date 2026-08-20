@@ -103,6 +103,12 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 /* ── Cards & surfaces ── */
 .cal-wrap { padding: 12px 14px 0; }
 .cal { background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(160%); backdrop-filter: blur(var(--blur)) saturate(160%); border: 1px solid var(--glass-brd); border-radius: var(--r-md); padding: 13px; box-shadow: var(--shadow-sm); }
+/* Calendario ridotto a una barra: giorno corrente e due frecce */
+.cal-bar { display: flex; align-items: center; gap: 6px; padding: 7px 8px; }
+.cal-arrow { border: none; width: 32px; height: 32px; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; background: var(--accent-soft,var(--glass-2)); color: var(--accent); flex-shrink: 0; }
+.cal-date { flex: 1; border: none; background: transparent; font-family: inherit; font-size: 14px; font-weight: 700; color: var(--txt); letter-spacing: -0.01em; cursor: pointer; padding: 8px 4px; }
+.cal-caret { font-size: 9px; color: var(--hint); margin-left: 2px; }
+.cal-today { border: none; background: var(--accent-soft,var(--glass-2)); color: var(--accent); font-family: inherit; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 9px; cursor: pointer; flex-shrink: 0; }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .cal-nav button { border: none; width: 30px; height: 30px; border-radius: 10px; font-size: 15px; cursor: pointer; font-weight: 700; font-family: inherit; background: var(--accent-soft,var(--glass-2)); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; }
 .cal-nav span { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
@@ -147,6 +153,10 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .entry-note.wrap { white-space: normal; overflow: visible; line-height: 1.45; }
 /* Iniziale del bambino sulle righe della giornata condivisa */
 .baby-chip { font-size: 10px; font-weight: 800; width: 18px; height: 18px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* Intestazione di fascia oraria dentro la giornata */
+.tl-band { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--hint); margin: 14px 0 8px; }
+.tl-band:first-child { margin-top: 2px; }
+.tl-band::after { content: ''; flex: 1; height: 1px; background: var(--hair); }
 /* Riga condivisa dai due bambini: la pastiglia si allarga per ospitare il valore */
 .baby-chip.wide { width: auto; height: 20px; padding: 0 8px; gap: 4px; font-size: 11px; }
 .baby-chip.wide b { font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -179,10 +189,6 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .fruit-stepper .entry-del { width: 30px; height: 30px; margin-left: 8px; }
 .fruit-step-count { min-width: 18px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
 .fruit-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-.meal-cat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 13px 0 7px; }
-.meal-cat-name { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; }
-.meal-cat-add { border: none; background: var(--accent-soft); color: var(--accent); width: 28px; height: 28px; border-radius: 9px; font-size: 19px; font-weight: 600; line-height: 1; cursor: pointer; font-family: inherit; flex-shrink: 0; }
-.meal-cat-add:active { transform: scale(0.88); }
 .meal-item-row { display: flex; align-items: center; gap: 8px; background: var(--glass); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
 .meal-item-qty { margin-left: auto; color: var(--sub); font-weight: 800; font-variant-numeric: tabular-nums; }
 .meal-total { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; font-size: 13px; font-weight: 700; }
@@ -216,6 +222,10 @@ details > summary::-webkit-details-marker { display: none; }
 .sugg-emoji { font-size: 17px; display: block; margin-bottom: 4px; line-height: 1.1; }
 .sugg-name { font-size: 11px; font-weight: 700; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sugg-meta { font-size: 9px; color: var(--hint); font-weight: 600; margin-top: 3px; display: block; }
+/* Le categorie della pappa: una fila di pulsanti, non cinque righe fisse */
+.cat-picker { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+.cat-btn { flex: 1 1 auto; padding: 10px 12px; border: 1px solid var(--glass-brd-2); border-radius: var(--r-sm); background: var(--glass-2); color: var(--txt); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; transition: transform 0.15s, border-color 0.2s; }
+.cat-btn:active { transform: scale(0.95); }
 /* Fissa la combinazione */
 .fav-btn { width: 100%; padding: 11px; border: 1px dashed var(--glass-brd); border-radius: var(--r-sm); background: transparent; color: var(--sub); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; margin-bottom: 14px; transition: all 0.2s; }
 .fav-btn.on { border-style: solid; border-color: var(--amber); background: var(--amber-light); color: var(--amber); }
@@ -453,7 +463,7 @@ const STORAGE_KEY = "pappatracker_data_v2";
 // il bambino su cui agisce il modale aperto (i modali riguardano sempre un bambino solo).
 // `addFor` è il bersaglio del modale aperto: un bambino, oppure 'both' quando si sta
 // registrando la stessa cosa per tutti e due. Ogni apertura lo dichiara.
-let state = { data: {}, baby: "Gabriel", filter: "both", addFor: "Gabriel", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calExpanded: false, fabOpen: false };
+let state = { data: {}, baby: "Gabriel", filter: "both", addFor: "Gabriel", tab: "feed", view: "today", trendsBaby: "Gabriel", selDate: new Date(), viewMonth: new Date(), syncStatus: "local", calMode: "day", fabOpen: false };
 function filteredBabies() { return state.filter === 'both' ? BABIES : [state.filter]; }
 function dk(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function dkToDate(key){ const p=String(key).split('-'); return new Date(+p[0], (+p[1])-1, +p[2]); }
@@ -1395,6 +1405,9 @@ function buildTabbar(view) {
 }
 function setView(v) { state.view = v; state.fabOpen = false; window.scrollTo({top:0,behavior:'smooth'}); render(); }
 function setFilter(v) { state.filter = v; if (v !== 'both') state.baby = v; state.fabOpen = false; render(); }
+function setCalMode(m) { state.calMode = m; render(); }
+function shiftDay(n) { const d=state.selDate; state.selDate=new Date(d.getFullYear(), d.getMonth(), d.getDate()+n); render(); }
+function goToday() { state.selDate=new Date(); render(); }
 function toggleFab() { state.fabOpen = !state.fabOpen; render(); }
 // Con la giornata filtrata su un bambino si va dritti al modale; con entrambi a schermo
 // manca un'informazione — per chi — e la si chiede prima.
@@ -1418,38 +1431,55 @@ function pickBabyFor(bn, action) { closeModal(); quickAddAction(bn, action); }
 function buildToday() {
   const key=dk(state.selDate), todayK=dk(new Date());
   const isToday=key===todayK, dateLabel=isToday?"Oggi":`${state.selDate.getDate()} ${MONTHS[state.selDate.getMonth()]}`;
-  const vm=state.viewMonth, calDays=state.calExpanded?getCalDays(vm.getFullYear(),vm.getMonth()):getWeekDays(state.selDate);
+  const vm=state.viewMonth, calDays=state.calMode==='month'?getCalDays(vm.getFullYear(),vm.getMonth()):getWeekDays(state.selDate);
   let h='';
   // Calendar — collapsed (current week) or expanded (full month)
-  let calNav;
-  if (state.calExpanded) {
-    calNav = `<div class="cal-nav">
-      <button onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()-1});render()">‹</button>
-      <span>${MONTHS[vm.getMonth()]} ${vm.getFullYear()}</span>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()+1});render()">›</button>
-        <button title="Comprimi" onclick="state.calExpanded=false;render()">✕</button>
-      </div>
-    </div>`;
+  // Il calendario si apre a fisarmonica: di norma serve solo sapere che giorno si sta
+  // guardando, e quella barra costa una riga invece di un blocco alto mezzo schermo.
+  // Un tap sulla data mostra la settimana coi pallini, un altro il mese intero.
+  const mode=state.calMode||'day';
+  if (mode==='day') {
+    const d=state.selDate;
+    const label=isToday?`Oggi · ${d.getDate()} ${MONTHS[d.getMonth()].toLowerCase()}`
+      :`${DAYNAMES[(d.getDay()+6)%7].toLowerCase()} ${d.getDate()} ${MONTHS[d.getMonth()].toLowerCase()}`;
+    h+=`<div class="cal-wrap"><div class="cal cal-bar">
+      <button class="cal-arrow" onclick="shiftDay(-1)" aria-label="Giorno precedente">‹</button>
+      <button class="cal-date" onclick="setCalMode('week')">${label} <span class="cal-caret">▾</span></button>
+      ${isToday?'':`<button class="cal-today" onclick="goToday()">Oggi</button>`}
+      <button class="cal-arrow" onclick="shiftDay(1)" aria-label="Giorno successivo">›</button>
+    </div></div>`;
   } else {
-    const ws=calDays[0].date, we=calDays[6].date;
-    const wLabel=`${ws.getDate()}/${ws.getMonth()+1} – ${we.getDate()}/${we.getMonth()+1}`;
-    calNav = `<div class="cal-nav">
-      <button onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()-7});render()">‹</button>
-      <span>${wLabel}</span>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()+7});render()">›</button>
-        <button title="Espandi" onclick="state.viewMonth=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},1);state.calExpanded=true;render()">⤢</button>
-      </div>
-    </div>`;
+    let calNav;
+    if (mode==='month') {
+      calNav = `<div class="cal-nav">
+        <button onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()-1});render()">‹</button>
+        <span>${MONTHS[vm.getMonth()]} ${vm.getFullYear()}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button onclick="state.viewMonth=new Date(${vm.getFullYear()},${vm.getMonth()+1});render()">›</button>
+          <button title="Chiudi" onclick="setCalMode('day')">✕</button>
+        </div>
+      </div>`;
+    } else {
+      const ws=calDays[0].date, we=calDays[6].date;
+      const wLabel=`${ws.getDate()}/${ws.getMonth()+1} – ${we.getDate()}/${we.getMonth()+1}`;
+      calNav = `<div class="cal-nav">
+        <button onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()-7});render()">‹</button>
+        <span>${wLabel}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button onclick="state.selDate=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},${state.selDate.getDate()+7});render()">›</button>
+          <button title="Mese intero" onclick="state.viewMonth=new Date(${state.selDate.getFullYear()},${state.selDate.getMonth()},1);setCalMode('month')">⤢</button>
+          <button title="Chiudi" onclick="setCalMode('day')">✕</button>
+        </div>
+      </div>`;
+    }
+    h+=`<div class="cal-wrap"><div class="cal">${calNav}<div class="cal-grid">${DAYNAMES.map(d=>`<div class="cal-head">${d}</div>`).join("")}${calDays.map(day=>{
+      const k2=dk(day.date),isSel=k2===dk(state.selDate),isTod=k2===todayK,hd=hasData(day.date);
+      let st='';
+      if(isSel) st='background:var(--grad);color:#fff;font-weight:700;box-shadow:0 5px 14px -4px var(--accent)';
+      else if(isTod) st='background:var(--accent-soft);color:var(--accent);font-weight:700';
+      return`<button class="cal-day${!day.cur?' other':''}" style="${st}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#3B82F6"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#2DD4BF"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
+    }).join("")}</div></div></div>`;
   }
-  h+=`<div class="cal-wrap"><div class="cal">${calNav}<div class="cal-grid">${DAYNAMES.map(d=>`<div class="cal-head">${d}</div>`).join("")}${calDays.map(day=>{
-    const k2=dk(day.date),isSel=k2===dk(state.selDate),isTod=k2===todayK,hd=hasData(day.date);
-    let st='';
-    if(isSel) st='background:var(--grad);color:#fff;font-weight:700;box-shadow:0 5px 14px -4px var(--accent)';
-    else if(isTod) st='background:var(--accent-soft);color:var(--accent);font-weight:700';
-    return`<button class="cal-day${!day.cur?' other':''}" style="${st}" onclick="state.selDate=new Date(${day.date.getFullYear()},${day.date.getMonth()},${day.date.getDate()});render()">${day.date.getDate()}${!isSel&&(hd.feed||hd.diaper||hd.therapy)?`<div class="cal-dots">${hd.feed?'<div class="cal-dot" style="background:#3B82F6"></div>':''}${hd.diaper?'<div class="cal-dot" style="background:#2DD4BF"></div>':''}${hd.therapy?'<div class="cal-dot" style="background:#10B981"></div>':''}</div>`:''}</button>`;
-  }).join("")}</div></div></div>`;
   // Riepilogo: due righe basse invece di due card alte — bastano i conteggi e da quanto
   // manca il latte. Peso, temperatura e terapie hanno già il loro posto più sotto.
   // Tap su una riga = filtra la giornata su quel bambino.
@@ -1468,7 +1498,12 @@ function buildToday() {
   const groups=groupTimeline(rows);
   h+=`<div class="content"><div class="content-title">🕒 Giornata · ${dateLabel}</div>`;
   if(!rows.length) h+=`<div class="empty">Ancora nulla. Tocca + per segnare qualcosa.</div>`;
-  groups.forEach(g=>{ h+= g.entries.length>1 ? timelineGroup(g) : timelineRow(g.entries[0],showBadge); });
+  let band='';
+  groups.forEach(g=>{
+    const b=bandOf(g.time);
+    if(b && b.id!==band) { band=b.id; h+=`<div class="tl-band">${b.emoji} ${b.name}</div>`; }
+    h+= g.entries.length>1 ? timelineGroup(g) : timelineRow(g.entries[0],showBadge);
+  });
   // Frutta del vecchio registro: niente orario, sola lettura, in coda alla giornata.
   const legacyRows=[];
   babies.forEach(bn=>legacyFruitRows(bn,key).forEach(r=>legacyRows.push({ ...r, baby:bn })));
@@ -1482,6 +1517,21 @@ function buildToday() {
   // Terapie: non hanno un orario, quindi restano fuori dalla timeline.
   babies.forEach(bn=>{ h+=buildTherapySection(bn,key,dateLabel,showBadge); });
   return h;
+}
+// Le fasce della giornata: con una quindicina di voci al giorno un elenco piatto si
+// scorre a fatica, mentre "dov'era la merenda del pomeriggio?" ha una risposta a colpo
+// d'occhio. L'intestazione compare solo quando la fascia cambia davvero.
+const DAY_BANDS = [
+  { id:'notte',      name:'Notte',      emoji:'🌙', to:6 },
+  { id:'mattina',    name:'Mattina',    emoji:'🌅', to:12 },
+  { id:'pomeriggio', name:'Pomeriggio', emoji:'☀️', to:18 },
+  { id:'sera',       name:'Sera',       emoji:'🌆', to:24 }
+];
+function bandOf(time) {
+  if(!time) return null;
+  const h=parseInt(time.split(':')[0]);
+  if(isNaN(h)) return null;
+  return DAY_BANDS.find(b=>h<b.to) || DAY_BANDS[DAY_BANDS.length-1];
 }
 // Pastiglia con l'iniziale del bambino: compare solo quando la giornata mostra entrambi.
 function babyChip(bn) {
@@ -1897,9 +1947,11 @@ function renderMealModal() {
   const hO=Array.from({length:24},(_,i)=>`<option value="${i}"${i===d.h?' selected':''}>${String(i).padStart(2,'0')}</option>`).join('');
   const mins=[0,15,30,45], nearM=mins.reduce((a,b)=>Math.abs(b-d.m)<Math.abs(a-d.m)?b:a);
   const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join('');
-  const cats=MEAL_CATS.map(cat=>
-    `<div class="meal-cat-row"><span class="meal-cat-name">${cat.emoji} ${cat.name}</span><button class="meal-cat-add" onclick="openFoodPicker('${cat.id}')">+</button></div><div id="m-items-${cat.id}">${mealItemRows(cat.id)}</div>`
-  ).join('');
+  // Le cinque categorie stavano in cinque righe sempre aperte, anche per una pappa di
+  // due alimenti: ora sono una fila di pulsanti e sotto restano solo gli alimenti scelti.
+  const cats=`<div class="form-label">Aggiungi</div><div class="cat-picker">${MEAL_CATS.map(cat=>
+    `<button class="cat-btn" onclick="openFoodPicker('${cat.id}')">${cat.emoji} ${cat.name}</button>`).join('')}</div>`
+    + MEAL_CATS.map(cat=>`<div id="m-items-${cat.id}">${mealItemRows(cat.id)}</div>`).join('');
   const twoWay = addForBoth() && d.editIdx===null;
   const likingRow = bn => Object.keys(LIKINGS).map(k=>{
     const on = bn ? d.likingBy[bn]===k : d.liking===k;
