@@ -8,8 +8,11 @@
 <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>🍼 Pappa Tracker</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍼</text></svg>">
+<title>🥣 Pappa V2</title>
+<!-- Icona e nome diversi dalla versione completa: sulla schermata Home le due app
+     devono distinguersi a colpo d'occhio, altrimenti sono due 🍼 identici. -->
+<meta name="apple-mobile-web-app-title" content="Pappa V2">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥣</text></svg>">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1368,7 +1371,7 @@ function render() {
   ) : '<span class="sync-status sync-wait">📱</span>';
   let h = `<div class="header">
     <div class="header-top">
-      <div><div class="app-title">🍼 Pappa Tracker</div><div class="app-sub">Gabriel &amp; Vittorio · ${APP_VERSION}</div></div>
+      <div><div class="app-title">🥣 Pappa V2</div><div class="app-sub">Gabriel &amp; Vittorio · ${APP_VERSION}</div></div>
       <div class="header-btns">${syncBadge}<button onclick="toggleDark()" aria-label="Cambia tema">${dark?'☀️':'🌙'}</button></div>
     </div>
   </div>`;
@@ -1775,7 +1778,7 @@ function buildSettings() {
   h+=`<button class="weight-btn" onclick="toggleDark()">${dark?'☀️&nbsp;&nbsp;Tema chiaro':'🌙&nbsp;&nbsp;Tema scuro'}</button>`;
   h+=`<button class="weight-btn" onclick="syncFromCloud()">☁️&nbsp;&nbsp;Sincronizza adesso</button>`;
   h+=`<button class="weight-btn" style="color:var(--red)" onclick="resetAll()">🗑️&nbsp;&nbsp;Cancella tutti i dati</button>`;
-  h+=`<div style="text-align:center;color:var(--hint);font-size:12px;margin-top:18px;line-height:1.7">🍼 Pappa Tracker<br>Gabriel &amp; Vittorio</div>`;
+  h+=`<div style="text-align:center;color:var(--hint);font-size:12px;margin-top:18px;line-height:1.7">🥣 Pappa V2<br>Gabriel &amp; Vittorio</div>`;
   h+=`</div>`;
   return h;
 }
@@ -3030,8 +3033,8 @@ function isAuthenticated() {
 }
 function showLockScreen() {
   document.getElementById("app").innerHTML = `<div class="lock-screen">
-    <div class="lock-icon">🍼</div>
-    <div class="lock-title">Pappa Tracker</div>
+    <div class="lock-icon">🥣</div>
+    <div class="lock-title">Pappa V2</div>
     <div class="lock-sub">Gabriel & Vittorio</div>
     <input class="lock-input" type="password" id="lock-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()">
     <button class="lock-btn" onclick="checkPassword()">Accedi</button>
