@@ -205,6 +205,7 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .recap-who { font-size: 13px; font-weight: 700; color: var(--bcol); letter-spacing: -0.01em; flex-shrink: 0; }
 .recap-nums { font-size: 12px; font-weight: 500; color: var(--sub); font-variant-numeric: tabular-nums; }
 .recap-nums b { color: var(--txt); font-weight: 700; }
+.recap-ml { font-size: 11px; font-weight: 700; color: var(--bcol); }
 .recap-ago { font-size: 10px; font-weight: 700; margin-left: auto; flex-shrink: 0; }
 /* Scheda Gradimento: una riga per combinazione di alimenti */
 .like-row { display: flex; align-items: center; gap: 11px; background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%); backdrop-filter: blur(var(--blur)) saturate(150%); border: 1px solid var(--glass-brd); border-radius: var(--r-sm); padding: 11px 13px; box-shadow: var(--shadow-sm); margin-bottom: 8px; cursor: pointer; transition: transform 0.15s; }
@@ -1171,11 +1172,13 @@ function getLastFeedAgo(bn) {
       const lastFeed = feeds[feeds.length - 1];
       const [hh, mm] = lastFeed.time.split(':').map(Number);
       const feedDate = new Date(parseInt(dateKey.split('-')[0]), parseInt(dateKey.split('-')[1])-1, parseInt(dateKey.split('-')[2]), hh, mm);
-      const diffMs = now - feedDate;
+      // L'ora si sceglie a scatti di cinque minuti, quindi capita di segnare le 14:00
+      // alle 13:58: senza questo, il riepilogo direbbe "-2min fa".
+      const diffMs = Math.max(0, now - feedDate);
       const diffH = Math.floor(diffMs / 3600000);
       const diffM = Math.floor((diffMs % 3600000) / 60000);
       const color = diffH < 3 ? '#10B981' : diffH < 4 ? '#F59E0B' : '#EF4444';
-      const text = diffH > 0 ? `${diffH}h ${diffM}min fa` : `${diffM}min fa`;
+      const text = diffMs < 60000 ? 'adesso' : diffH > 0 ? `${diffH}h ${diffM}min fa` : `${diffM}min fa`;
       return { text, color };
     }
   }
@@ -1190,7 +1193,9 @@ async function toggleTherapy(bn, tid) {
   state.data[key][bn].therapies[tid]=!state.data[key][bn].therapies[tid];
   await saveData(); render();
 }
-async function addEntry(entry) {
+// `perBaby` porta i campi che cambiano da un bambino all'altro (oggi i ml del latte):
+// { Gabriel:{ml:120}, Vittorio:{ml:90} }. Il resto della voce è uguale per tutti e due.
+async function addEntry(entry, perBaby) {
   const key=dk(state.selDate), sec=state.tab==="feed"?"feeds":"diapers";
   const editing = state._editIdx!==null && state._editIdx!==undefined;
   // In modifica si tocca una voce sola; inserendo, il bersaglio può essere entrambi.
@@ -1200,7 +1205,7 @@ async function addEntry(entry) {
   babies.forEach(bn=>{
     if(!state.data[key][bn]) state.data[key][bn]={};
     if(!state.data[key][bn][sec]) state.data[key][bn][sec]=[];
-    const e = { ...entry };
+    const e = { ...entry, ...((perBaby && perBaby[bn]) || {}) };
     const arr=state.data[key][bn][sec];
     // "Identica" nel senso del dedup: stessa impronta (ora + campi principali).
     const same=(x,i)=>!(editing && i===state._editIdx) && entryContentKey(x,sec)===entryContentKey(e,sec);
@@ -1504,7 +1509,7 @@ function buildToday() {
     const ago=getLastFeedAgo(bn);
     return`<button class="recap-line-btn${on?' on':''}" style="--bcol:${bc.pri}${dim?';opacity:.45':''}" onclick="setFilter('${on?'both':bn}')">
       <span class="recap-who">${bn}</span>
-      <span class="recap-nums">🍼 <b>${d.feeds.length}</b> &nbsp;🥣 <b>${ms.length}</b> &nbsp;💩 <b>${d.totalDiapers}</b></span>
+      <span class="recap-nums">🍼 <b>${d.feeds.length}</b>${d.totalMl?` <span class="recap-ml">${d.totalMl} ml</span>`:''} &nbsp;🥣 <b>${ms.length}</b> &nbsp;💩 <b>${d.totalDiapers}</b></span>
       <span class="recap-ago" style="color:${ago.color}">${ago.text}</span>
     </button>`;
   }).join("")}</div>`;
@@ -1907,7 +1912,15 @@ function showModal(h,m,fnote,dtype,dcolor,dnote){
   // Passo di 5 minuti: l'ora del latte è l'unico dato che resta, tanto vale che sia giusta.
   const mins=Array.from({length:12},(_,i)=>i*5),nearM=mins.reduce((a,b)=>Math.abs(b-m)<Math.abs(a-m)?b:a);const mO=mins.map(i=>`<option value="${i}"${i===nearM?' selected':''}>${String(i).padStart(2,'0')}</option>`).join("");
   let fields="";
-  if(isF){fields=`<div class="form-label">Note (opzionale)</div><input class="form-input" id="f-note" value="${fnote}" placeholder="es. rigurgito..." style="margin-bottom:12px">`;}
+  if(isF){
+    // Quantità facoltativa, un campo per bambino: registrando per tutti e due i due
+    // valori stanno nella stessa schermata, uno sotto l'altro, senza passaggi.
+    const both=addForBoth(), babies=state._editIdx!==null?[state.baby]:targetBabies();
+    const prevMl=(state._editEntry&&state._editEntry.ml)||'';
+    const mlFields=babies.map(b=>
+      `<div class="form-label"${both?` style="color:${COLORS[b].pri}"`:''}>Quantità${both?' — '+b:''} <span style="color:var(--hint);font-weight:500">(ml, facoltativa)</span></div><input class="form-input big" type="number" inputmode="numeric" id="f-ml-${b}" value="${both?'':prevMl}" placeholder="es. 120" style="margin-bottom:12px">`).join('');
+    fields=`${mlFields}<div class="form-label">Note (opzionale)</div><input class="form-input" id="f-note" value="${fnote}" placeholder="es. rigurgito..." style="margin-bottom:12px">`;
+  }
   else{fields=`<div class="form-label">Tipo</div><div class="chips" id="d-type-chips">${DIAPER_TYPES.map(t=>`<button class="chip${dtype===t?' on':''}" data-val="${t}" onclick="pickChip('d-type-chips','${t}')">${t==='Cacca'?'💩 Cacca':t==='Pipì'?'💧 Pipì':'💩💧 Entrambi'}</button>`).join("")}</div><div class="form-label">Colore (opzionale)</div><input class="form-input" id="d-color" value="${dcolor}" placeholder="es. giallo, verde..." style="margin-bottom:12px"><div class="form-label">Note (opzionale)</div><input class="form-input" id="d-note" value="${dnote}" placeholder="es. diarrea..." style="margin-bottom:12px">`;}
   setModal(`<div class="modal-bg" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title" style="color:${c.acc}">${title}</div><div class="form-label">Ora</div><div class="form-row"><select class="form-select" id="f-h">${hO}</select><span style="font-size:18px;font-weight:800;color:#999">:</span><select class="form-select" id="f-m">${mO}</select></div>${fields}<div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Annulla</button><button class="btn-save" style="background:${c.grad}" onclick="submitForm()">${state._editIdx!==null?'Salva':'Aggiungi'} ${isF?'🍼':'💩'}</button></div></div></div>`);
 }
@@ -1918,13 +1931,19 @@ function getChip(id){const o=document.querySelector(`#${id} .chip.on`);return o?
 function submitForm(){
   const h=parseInt(document.getElementById("f-h").value),m=parseInt(document.getElementById("f-m").value),time=ft(h,m);
   if(state.tab==="feed"){
-    // Una poppata registrata prima della semplificazione porta ml, tipo ed eventuale
-    // spuntino: chi la riapre per correggere l'ora non deve perderli.
+    // Il tipo storico (Formula/Materno) e lo spuntino non si perdono riaprendo una
+    // poppata di prima; la quantità ora ha il suo campo, uno per bambino.
     const prev=state._editEntry||{};
     const entry={time,type:prev.type||"Latte",note:document.getElementById("f-note").value.trim()};
-    if(prev.ml)entry.ml=prev.ml;
     if(prev.snack)entry.snack=true;
-    addEntry(entry);
+    const perBaby={};
+    (state._editIdx!==null?[state.baby]:targetBabies()).forEach(b=>{
+      const el=document.getElementById("f-ml-"+b);
+      if(!el) return;
+      const v=parseInt(el.value);
+      if(v>0 && !isNaN(v)) perBaby[b]={ml:v};
+    });
+    addEntry(entry, perBaby);
   }
   else{addEntry({time,dtype:getChip("d-type-chips")||"Cacca",color:document.getElementById("d-color").value.trim(),note:document.getElementById("d-note").value.trim()});}
 }
