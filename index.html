@@ -2570,10 +2570,17 @@ function showPediatricReport() {
     }
     const daysWithData = days.filter(k => state.data[k]?.[bn]);
     const numDays = daysWithData.length || 1;
-    // Latte: conta le poppate, non più i ml
-    let totalFeeds = 0;
-    days.forEach(k => { totalFeeds += (state.data[k]?.[bn]?.feeds || []).length; });
+    // Latte: poppate e millilitri (la quantità è facoltativa, quindi il totale copre
+    // solo le poppate in cui è stata segnata)
+    let totalFeeds = 0, totalMl = 0, feedsConMl = 0;
+    days.forEach(k => {
+      (state.data[k]?.[bn]?.feeds || []).forEach(f => {
+        totalFeeds++;
+        if (f.ml) { totalMl += f.ml; feedsConMl++; }
+      });
+    });
     const avgFeeds = numDays ? (totalFeeds / numDays).toFixed(1) : "0";
+    const avgMl = numDays ? Math.round(totalMl / numDays) : 0;
     // Pappe (svezzamento): mostrate solo se nel periodo ce n'è almeno una
     let totalMeals = 0, totalGrams = 0;
     const foodsInPeriod = {}, likingCount = { good:0, ok:0, bad:0, judged:0 };
@@ -2639,8 +2646,10 @@ function showPediatricReport() {
         </div>
         <div class="report-section">
           <h3 style="color:${c.acc}">🍼 Latte</h3>
-          <div class="report-stat"><span class="label">Media al giorno</span><span class="value">${avgFeeds}</span></div>
-          <div class="report-stat"><span class="label">Totale nel periodo</span><span class="value">${totalFeeds}</span></div>
+          ${totalMl ? `<div class="report-stat"><span class="label">Media ml/giorno</span><span class="value">${avgMl} ml</span></div>` : ''}
+          <div class="report-stat"><span class="label">Media poppate/giorno</span><span class="value">${avgFeeds}</span></div>
+          <div class="report-stat"><span class="label">Totale nel periodo</span><span class="value">${totalMl?`${totalMl} ml (${totalFeeds} ${totalFeeds===1?'poppata':'poppate'})`:`${totalFeeds} ${totalFeeds===1?'poppata':'poppate'}`}</span></div>
+          ${totalMl && feedsConMl < totalFeeds ? `<div style="font-size:10px;color:#888;margin-top:4px">La quantità è segnata in ${feedsConMl} poppate su ${totalFeeds}.</div>` : ''}
         </div>
         ${totalMeals ? `<div class="report-section">
           <h3 style="color:${c.acc}">🥣 Svezzamento</h3>
@@ -2889,6 +2898,7 @@ function weeklyStats(bn) {
     days.push({
       key, date:d, dow:DAYNAMES[(d.getDay()+6)%7],
       isFuture:key>todayKey, isToday:key===todayKey,
+      ml:feeds.reduce((s,f)=>s+(f.ml||0),0),
       feeds, diapers, meals, temps, weight:bd?.weight||null,
       grams:meals.reduce((s,m)=>s+mealGrams(m),0),
       hasData:!!(feeds.length||diapers.length||meals.length||temps.length||bd?.weight)
@@ -2931,7 +2941,8 @@ function weeklyStats(bn) {
 // tutti i motori (alcuni build senza dati di locale restituiscono "5860").
 function fmtNum(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 const WEEK_METRICS = {
-  feeds:   { label:'Latte',     series:d=>d.feeds.length,   unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` },
+  milk:    { label:'Latte',     series:d=>d.ml,             unit:'ml', fmt:v=>fmtNum(Math.round(v)),         tot:t=>`${fmtNum(t)} ml in tutto` },
+  feeds:   { label:'Poppate',   series:d=>d.feeds.length,   unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` },
   meals:   { label:'Pappe',     series:d=>d.meals.length,   unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` },
   diapers: { label:'Pannolini', series:d=>d.diapers.length, unit:'',   fmt:v=>v.toFixed(1).replace('.',','), tot:t=>`${t} in tutto` }
 };
@@ -2979,7 +2990,8 @@ function buildWeeklyInline() {
   h += `<button class="wk-disc" onclick="toggleWkDetail(this)"><span class="wk-disc-caret">▸</span> Dettaglio giorno per giorno</button>`;
   const rows=st.days.filter(d=>!d.isFuture).map(d=>{
     const bits=[];
-    if(d.feeds.length) bits.push(`${d.feeds.length} latte`);
+    if(d.ml) bits.push(`${d.ml} ml`);
+    if(d.feeds.length) bits.push(`${d.feeds.length} ${d.feeds.length===1?'poppata':'poppate'}`);
     if(d.meals.length) bits.push(`${d.meals.length} ${d.meals.length===1?'pappa':'pappe'}`);
     if(d.diapers.length) bits.push(`${d.diapers.length} ${d.diapers.length===1?'pannolino':'pannolini'}`);
     return `<div class="wk-row"><span style="font-weight:700">${d.dow} ${d.date.getDate()}</span><span style="color:${bits.length?'var(--sub)':'var(--hint)'};font-size:12px;text-align:right">${bits.join(' · ')||'—'}</span></div>`;
@@ -3041,8 +3053,8 @@ function openMetricDetail(k) {
         return `<button class="wk-meal" onclick="toggleWkMeal('${mm.id}')"><span class="wk-meal-time">${mm.time}</span><span class="wk-meal-emo">${emo}</span><span class="wk-meal-g">${g?g+' g':''}${mealIsSnack(mm)?' 🍎':''}</span></button>`
           + `<div class="wk-meal-det" id="wkm-${mm.id}" hidden>${mealSummary(mm)}${lk?` · ${lk.e} ${lk.l}`:''}${mm.note?` · ${mm.note}`:''}</div>`;
       }).join('');
-    } else if(k==='feeds'&&d.feeds.length) {
-      // I ml compaiono solo dove erano stati registrati, cioè nelle poppate di prima.
+    } else if((k==='feeds'||k==='milk')&&d.feeds.length) {
+      // La quantità è facoltativa: dove non è stata segnata resta il solo orario.
       inner=`<div class="wk-day-sub">${d.feeds.map(x=>x.ml?`${x.time} · ${x.ml} ml`:x.time).join(' · ')}</div>`;
     } else if(k==='diapers'&&d.diapers.length) {
       const cnt={};
