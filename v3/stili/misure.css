@@ -1,0 +1,49 @@
+/* Sezione Misure: elenco e tendina di inserimento.
+   Riferimento visivo: mockup v3b.html, frame «3 · Misure».
+   I token (var(--...)) e le classi comuni (.card .chip .who-pick .rowline .save .sect)
+   stanno in base.css. Qui ci sono solo le parti di questa sezione, con un prefisso
+   (.misure per l'elenco, .ins per la tendina) perché le altre sezioni usano nomi uguali. */
+
+/* ── elenco ── */
+.misure .wrow{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--hair);
+  cursor:pointer;user-select:none;-webkit-user-select:none;transition:background .12s ease-out}
+.misure .wrow:last-child{border-bottom:none}
+.misure .wrow:active{background:rgba(255,255,255,0.55)}
+.misure .wrow .d{font-size:12px;font-weight:700;flex:1}
+.misure .wrow .kg{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.misure .card{overflow:hidden}
+
+/* ── tendina ── */
+.ins{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.ins .mbtns{display:flex;gap:9px;margin-top:14px}
+.ins .mbtn{flex:1;padding:15px 8px 13px;text-align:center;cursor:pointer}
+.ins .mbtn .e{font-size:24px;display:block;line-height:1}
+.ins .mbtn .t{font-size:11.5px;font-weight:800;margin-top:7px}
+.ins .mbtn.on{outline:2px solid var(--g-pri);outline-offset:-2px;background:#fff}
+
+.ins .stepper{display:flex;align-items:center;gap:12px;justify-content:center;margin:14px 0 10px}
+.ins .step-b{width:64px;height:56px;border-radius:18px;background:var(--glass-2);border:1px solid var(--glass-brd-2);
+  display:grid;place-items:center;font-size:25px;font-weight:700;color:var(--g-pri);
+  touch-action:manipulation;cursor:pointer;transition:transform .09s ease-out}
+.ins .step-b:active{transform:scale(0.94)}
+.ins .val{flex:1;text-align:center}
+.ins .val .n{font-size:44px;font-weight:800;letter-spacing:-0.05em;font-variant-numeric:tabular-nums;line-height:1}
+.ins .val .u{font-size:13px;font-weight:700;color:var(--sub);margin-top:2px}
+
+.ins .quick{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.ins .quick b{padding:8px 12px;border-radius:10px;background:var(--glass-2);border:1px solid var(--glass-brd-2);
+  font-size:11px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums;
+  touch-action:manipulation;cursor:pointer;transition:transform .09s ease-out}
+.ins .quick b:active{transform:scale(0.94)}
+
+/* La riga della data: il campo vero sta sopra, trasparente, e prende il tocco. */
+.ins .rowline{position:relative}
+.ins .rowline input.data{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;cursor:pointer;
+  font-size:16px}
+
+/* Cancella: stesso peso di Salva ma spento, e senza rosso. Dopo il primo tocco si accende. */
+.ins .elimina{width:100%;margin-top:10px;padding:13px;border-radius:17px;background:var(--glass-2);
+  border:1px solid var(--glass-brd-2);color:var(--sub);font-size:13.5px;font-weight:800;text-align:center;
+  cursor:pointer;transition:transform .09s ease-out}
+.ins .elimina:active{transform:scale(0.98)}
+.ins .elimina.chiede{color:var(--txt);background:#fff;border-color:var(--amber)}
