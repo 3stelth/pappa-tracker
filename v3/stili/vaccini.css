@@ -1,0 +1,51 @@
+/* Pappa Tracker v3 — sezione Vaccini.
+   Classi dal mockup .claude/mockup/v3b.html, frame «4 · Vaccini»; le vx-* sono nuove.
+   Colori solo dai token di base.css. */
+
+.search{display:flex;align-items:center;gap:8px;padding:10px 13px;margin-top:14px}
+/* 16px: sotto questa misura Safari su iPhone ingrandisce la pagina quando il campo prende il fuoco */
+.search input{flex:1;border:none;background:transparent;font-family:inherit;font-size:16px;font-weight:600;
+  color:var(--txt);outline:none;min-width:0}
+.search input::placeholder{color:var(--hint);font-weight:600}
+.vx-lente{font-size:14px}
+.vx-x{font-size:15px;color:var(--hint);font-weight:700;cursor:pointer;padding:2px 4px;user-select:none}
+.vx-x[hidden]{display:none}
+.vx-conto{text-align:left;margin:8px 0 0 4px}
+.vx-conto[hidden]{display:none}
+
+.ok-badge{display:flex;align-items:center;gap:10px;padding:13px 14px;margin-top:10px;
+  background:rgba(16,185,129,0.13);border:1px solid rgba(16,185,129,0.32);border-radius:var(--r-md)}
+.ok-badge .ic{width:34px;height:34px;border-radius:11px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:17px;flex-shrink:0}
+.ok-badge b{font-size:13.5px;font-weight:800;display:block}
+.ok-badge span{font-size:10.5px;color:var(--sub);font-weight:600}
+
+.tl-day{display:flex;gap:11px;padding:10px 0 2px}
+.tl-rail{width:20px;display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.tl-pin{width:11px;height:11px;border-radius:50%;background:var(--g-pri);box-shadow:0 0 0 3px rgba(59,130,246,0.18);margin-top:4px}
+.tl-line{flex:1;width:2px;background:var(--hair);margin:5px 0 0}
+.tl-day:last-child .tl-line{display:none}
+.tl-body{flex:1;padding-bottom:10px;min-width:0}
+.tl-date{font-size:11.5px;font-weight:800}
+.tl-age{font-size:9.5px;color:var(--hint);font-weight:600;margin-bottom:7px}
+
+.vax{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px}
+.vax .ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:15px;flex-shrink:0;background:var(--g-light)}
+.vax .nm{font-size:12.5px;font-weight:800;flex:1;min-width:0;overflow-wrap:anywhere}
+.vax .sub{font-size:9.5px;color:var(--sub);font-weight:600;margin-top:1px}
+.vax .dose{font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px;background:var(--glass-2);color:var(--sub);flex-shrink:0}
+.covers{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.covers i{font-style:normal;font-size:9px;font-weight:700;padding:3px 6px;border-radius:7px;background:var(--glass-2);color:var(--sub)}
+
+.vx-programma[hidden]{display:none}
+.vx-niente{padding:16px 14px;text-align:center;color:var(--hint);font-size:11.5px;font-weight:600;line-height:1.5}
+
+/* ── modulo di aggiunta (dentro la tendina) ── */
+.vx-form{display:flex;flex-direction:column;gap:10px}
+.vx-form .who-pick,.vx-form .seg{margin-top:0}
+.vx-campo{display:block;min-width:0}
+.vx-campo .lbl{display:block;margin:0 0 4px 2px}
+.vx-campo input{width:100%;padding:11px 12px;border-radius:var(--r-sm);border:1px solid var(--hair);
+  background:var(--glass-strong);font-family:inherit;font-size:16px;font-weight:600;color:var(--txt);
+  outline:none;min-width:0}
+.vx-campo input:focus{border-color:var(--g-pri)}
+.vx-due{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}
