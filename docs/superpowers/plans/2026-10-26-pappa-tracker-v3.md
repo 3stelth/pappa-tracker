@@ -26,7 +26,7 @@
 - Riga di attribuzione in fondo alla schermata Crescita: `Curve: WHO Child Growth Standards 2006, Organizzazione Mondiale della Sanità. CC BY-NC-SA 3.0 IGO.`
 - Riga fissa sotto i percentili: `Percentile e punteggio z sono descrizioni statistiche, da leggere insieme al pediatra. Non sono un voto e non sono una diagnosi.`
 - **Proprietà dei file:** ogni task scrive solo i file elencati sotto «Files». Nessun task diverso dal Task 3 modifica `index.html`. Ogni sezione mette il suo CSS nel suo foglio. Nessuna sezione importa un'altra sezione: si parlano solo attraverso `app.js` e `dati.js`.
-- **Il repository è pubblico.** Nessun codice fiscale e nessun dato di salute oltre a quello già deciso nella specifica. Nessun peso dei bambini nei file di test.
+- **Il repository è pubblico** e GitHub Pages ne serve i file. Nessun codice fiscale e nessun peso dei bambini nei file di test. `v3/dati/vaccini.json` contiene dati sanitari di due minori (date, prodotti, lotti): sta in `.gitignore`, resta sul computer e **non entra in cronologia**. L'app lo legge se lo trova; sul sito pubblicato non lo trova, e la sezione Vaccini parte vuota con il `+` per aggiungere a mano. Questa scelta cambia solo se l'utente dice di pubblicarlo.
 - Nessun task esegue comandi `git`. I commit li fa chi coordina, a ondata finita.
 
 ## Review Focus
@@ -633,7 +633,7 @@ Atteso: le pappe dello storico raggruppate per alimenti, con i gradimenti veri. 
 **Files:**
 - Create: `v3/vaccini.js`, `v3/stili/vaccini.css`
 - Test: `v3/test/vaccini.test.js`
-- `v3/dati/vaccini.json` **è già scritto e già verificato** contro i due PDF dei certificati: cinque sedute, dieci somministrazioni, ogni lotto, ogni data, ogni dose e ogni prodotto confrontati a macchina. Non riscriverlo e non cambiarne un carattere. Leggilo per conoscere i nomi dei campi: `nome`, `prodotto`, `sigla`, `dose`, `lotto`, `tipo` (`vaccino` o `profilassi`), `via` (`iniezione` o `bocca`), `copre`.
+- `v3/dati/vaccini.json` **è già scritto e già verificato** contro i due PDF dei certificati: cinque sedute, dieci somministrazioni, ogni lotto, ogni data, ogni dose e ogni prodotto confrontati a macchina. Non riscriverlo e non cambiarne un carattere. Leggilo per conoscere i nomi dei campi: `nome`, `prodotto`, `sigla`, `dose`, `lotto`, `tipo` (`vaccino` o `profilassi`), `via` (`iniezione` o `bocca`), `copre`. Il file sta in `.gitignore`: c'è sul computer, non nel repository pubblico. Quindi la sezione deve funzionare **anche senza di lui**: senza vaccini mostra «nessun vaccino ancora» e il `+` per aggiungerli a mano.
 
 **Interfaces:**
 - Consumes: `app.js` (`registraSezione`, `apriTendina`, `chiudiTendina`, `dataLunga`, `BAMBINI`), `dati.js` (`vaccini`, `onCambio`), `crescita.js` (`NASCITA`, `TERMINE`, `etaScritta`).
@@ -670,7 +670,8 @@ Una iniezione, una voce: l'esavalente è **una** riga con sotto le sei malattie,
 - [ ] **Step 1: scrivi `v3/test/vaccini.test.js`**
 
 ```
- 1. dati/vaccini.json si legge e ha aggiornatoAl '2026-10-26'
+ 0. senza vaccini nei dati, la sezione mostra «nessun vaccino ancora» e non va in errore
+ 1. dati/vaccini.json si legge e ha aggiornatoAl '2026-10-26'  (salta il caso se il file non c'è)
  2. contaVoci(): 5 sedute e 10 somministrazioni
  3. l'esavalente del 3 marzo è una voce sola, con sei malattie in 'copre'
  4. il Beyfortus ha tipo 'profilassi', non 'vaccino'
