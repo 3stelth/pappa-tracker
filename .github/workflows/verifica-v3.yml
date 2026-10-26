@@ -1,0 +1,28 @@
+# Verifica la v3 a ogni modifica. Il test più importante ricalcola dalle LMS i valori
+# che l'OMS pubblica: 25.998 confronti. Se un valore non torna, il test fallisce e la
+# modifica non si pubblica, perché un percentile sbagliato è l'anti-obiettivo numero
+# uno del progetto.
+# Nessuna dipendenza da installare: i test girano con Node da solo.
+name: Verifica v3
+
+on:
+  push:
+    paths:
+      - "v3/**"
+      - ".github/workflows/verifica-v3.yml"
+  pull_request:
+    paths:
+      - "v3/**"
+      - ".github/workflows/verifica-v3.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Lancia i test della v3
+        run: node v3/test/esegui.mjs

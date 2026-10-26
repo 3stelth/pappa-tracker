@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>in corso…</title>
+<style>
+  body{margin:0;padding:20px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    background:#EAF0FB;color:#0C1222}
+  h1{font-size:19px;margin:0 0 4px}
+  p.sub{margin:0 0 16px;color:#5C6678}
+  pre{background:#fff;border:1px solid rgba(12,18,34,.09);border-radius:12px;padding:14px;
+    overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .ok{color:#0B7A5A} .no{color:#B4234A;font-weight:700}
+  #totale{margin-top:14px;font-size:16px;font-weight:800}
+</style>
+</head>
+<body>
+<h1>Test della v3, nel browser</h1>
+<p class="sub">Gli stessi moduli che gira <code>node v3/test/esegui.mjs</code>. Qui servono perché nel
+browser i JSON passano da <code>fetch</code> e i percorsi sono diversi da quelli di Node.</p>
+<pre id="esito">in corso…</pre>
+<div id="totale"></div>
+<script type="module">
+// L'elenco è scritto a mano: nel browser non si può leggere una cartella.
+const MODULI = ['tabelle', 'crescita', 'dati', 'misure', 'oggi', 'grafico', 'pappe', 'vaccini'];
+
+const esito = document.getElementById('esito');
+const righe = [];
+let passati = 0, falliti = 0;
+const saltati = [], rotti = [];
+
+function scrivi(testo, classe) {
+  righe.push(classe ? `<span class="${classe}">${testo}</span>` : testo);
+  esito.innerHTML = righe.join('\n');
+}
+
+for (const nome of MODULI) {
+  let modulo;
+  try {
+    modulo = await import(`./${nome}.test.js`);
+  } catch (errore) {
+    // Un modulo che non esiste ancora si salta; uno che esiste ma è rotto è un fallimento.
+    const risposta = await fetch(`./${nome}.test.js`, { method: 'HEAD' }).catch(() => null);
+    if (!risposta || !risposta.ok) {
+      saltati.push(nome);
+      scrivi(`- ${nome}: il modulo non c'è ancora, lo salto`);
+    } else {
+      rotti.push(nome);
+      scrivi(`\n== ${nome} ==`);
+      scrivi(`  FALLITO  il modulo non si carica`, 'no');
+      scrivi(`       ${errore.message}`, 'no');
+    }
+    continue;
+  }
+
+  scrivi(`\n== ${modulo.nome || nome} ==`);
+  if (!Array.isArray(modulo.casi)) {
+    rotti.push(nome);
+    scrivi(`  FALLITO  il modulo non esporta 'casi'`, 'no');
+    continue;
+  }
+  for (const caso of modulo.casi) {
+    try {
+      await caso.prova();
+      passati += 1;
+      scrivi(`  ok   ${caso.nome}`, 'ok');
+    } catch (errore) {
+      falliti += 1;
+      scrivi(`  FALLITO  ${caso.nome}`, 'no');
+      scrivi(`       ${errore.message}`, 'no');
+    }
+  }
+}
+
+const tutto = falliti === 0 && rotti.length === 0;
+document.title = tutto ? 'OK' : 'FALLITO';
+let coda = `${passati} casi su ${passati + falliti}`;
+if (saltati.length) coda += ` · non ancora scritti: ${saltati.join(', ')}`;
+if (rotti.length) coda += ` · non si caricano: ${rotti.join(', ')}`;
+const totale = document.getElementById('totale');
+totale.textContent = (tutto ? 'OK — ' : 'FALLITO — ') + coda;
+totale.className = tutto ? 'ok' : 'no';
+</script>
+</body>
+</html>
