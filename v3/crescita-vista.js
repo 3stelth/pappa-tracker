@@ -1,13 +1,22 @@
 // La sezione Crescita: le due età, gli interruttori, il grafico, i percentili, le
 // spiegazioni.
 //
-// Due regole guidano tutto questo file.
+// Tre regole guidano tutto questo file.
 //
 // 1. Finché le tabelle dell'OMS non sono caricate non si scrive nessun percentile.
 //    Un numero calcolato senza tabella sarebbe il danno peggiore che questa app può
 //    fare: al suo posto va un segnaposto.
-// 2. Al tocco di un interruttore la schermata non si rifà. Cambiano le classi degli
+// 2. **Lo schermo e lo stato non possono dire due cose diverse.** Le classi `on` degli
+//    interruttori nascono sempre dallo stato, nel markup e in `aggiorna()`. Lo stato
+//    sopravvive all'uscita dalla sezione, perché `app.js` svuota `#vista` e richiama
+//    `disegna()` a ogni ritorno: un `class="on"` scritto fisso nel markup mostrerebbe
+//    «Età corretta» acceso sopra percentili contati dalla nascita.
+// 3. Al tocco di un interruttore la schermata non si rifà. Cambiano le classi degli
 //    interruttori, il contenuto del grafico e quello dei percentili. Il resto sta fermo.
+//
+// Le decisioni pure stanno in funzioni esportate: da quale data si conta l'età, quale
+// interruttore è accesso, quale percentile va in quale carta. Così si provano con Node,
+// senza DOM, in test/grafico.test.js.
 
 import {
   BAMBINI,
@@ -41,18 +50,20 @@ const PEDIATRA =
 const FONTE =
   'Curve: WHO Child Growth Standards 2006, Organizzazione Mondiale della Sanità. ' +
   'CC BY-NC-SA 3.0 IGO.';
-const ATTESA = 'Sto caricando le curve dell’OMS.';
+
+export const TESTO_ATTESA = 'Sto caricando le curve dell’OMS.';
+export const TESTO_ERRORE =
+  'Non riesco a caricare le curve dell’OMS. Senza le curve non mostro percentili: ' +
+  'controlla la rete e riapri la sezione.';
 
 const PREMATURITA = giorniDa(NASCITA, TERMINE);
 const SETTIMANE = Math.floor(PREMATURITA / 7);
 const GIORNI_IN_PIU = PREMATURITA % 7;
 
 // ── stato della sezione ────────────────────────────────────────────────────
+// Sopravvive all'uscita dalla sezione. Lo schermo lo rilegge sempre da qui.
 
-let misura = 'peso';
-let periodo = 'tutto';
-let eta = 'corretta';
-let tabellePronte = false;
+const stato = { misura: 'peso', periodo: 'tutto', eta: 'corretta', tabelle: 'attesa' };
 
 // I riferimenti agli elementi, riempiti da disegna(). Il DOM si tocca solo lì dentro
 // e dentro i gestori: questo modulo si importa anche con Node, dove non c'è.
@@ -62,152 +73,113 @@ const el = {};
 // null e la sezione non mostrerebbe mai un percentile.
 caricaTabelle()
   .then(() => {
-    tabellePronte = true;
+    stato.tabelle = 'pronte';
     aggiorna();
   })
   .catch(() => {
-    tabellePronte = false;
+    // Non è più un'attesa: è un errore, e si scrive in modo diverso. Altrimenti chi è
+    // senza rete legge «sto caricando» per sempre.
+    stato.tabelle = 'errore';
     aggiorna();
   });
 
 onCambio(() => aggiorna());
 
-// ── lettura dei dati ───────────────────────────────────────────────────────
+// ── decisioni pure ─────────────────────────────────────────────────────────
 
-function chiave() {
-  return misura === 'peso' ? 'kg' : 'cm';
-}
-
-function righeDi(bambino) {
-  return misura === 'peso' ? pesate(bambino) : lunghezze(bambino);
-}
-
-function partenza() {
+/** Da quale data si contano i giorni di età. */
+export function partenzaDi(eta) {
   return eta === 'corretta' ? TERMINE : NASCITA;
 }
 
-/** Le serie per il grafico: i giorni di età contati dalla partenza scelta. */
-function serieDi() {
-  const k = chiave();
-  const da = partenza();
-  const out = {};
-  for (const bambino of BAMBINI) {
-    out[bambino] = righeDi(bambino).map((r) => ({
-      giorni: giorniDa(da, r.iso),
-      valore: r[k],
-    }));
-  }
-  return out;
+/** L'unità di una misura, come chiave delle righe di dati.js. */
+export function chiaveDi(misura) {
+  return misura === 'peso' ? 'kg' : 'cm';
 }
 
 /** Punteggio z e percentile di una misura. Torna null fuori dalle tabelle. */
-function pctDi(valore, iso) {
-  const terna = lms(misura, giorniDa(partenza(), iso));
+export function pctDi(misura, eta, valore, iso) {
+  const terna = lms(misura, giorniDa(partenzaDi(eta), iso));
   if (!terna) return null;
   const z = zDa(valore, terna);
   return { z, p: percentile(z) };
 }
 
-// ── percentili ─────────────────────────────────────────────────────────────
+/** Il testo del riquadro che prende il posto del grafico della lunghezza. */
+export function invitoLunghezza(quante) {
+  const quante0 = quante === 1;
+  return (
+    `<b>${quante0 ? 'Una sola lunghezza nel registro.' : 'Nessuna lunghezza nel registro.'}</b><br>` +
+    `Con due misure compare la curva. Tocca qui per inserire ` +
+    `${quante0 ? 'la seconda' : 'la prima'}.`
+  );
+}
 
-function cartaDi(bambino) {
-  const sigla = SIGLA[bambino];
-  const testa = `<span class="chip ${sigla}">${sigla.toUpperCase()}</span>`;
-  const righe = righeDi(bambino);
-  const k = chiave();
-
-  if (!righe.length) {
-    return `<div class="card">${testa}<div class="cr-fuori">—</div>
-      <div class="t">nessuna misura di ${misura}</div></div>`;
+/**
+ * Che cosa va scritto nella carta di un bambino. Torna dati, non HTML: così si prova
+ * senza DOM. `righe` sono quelle di dati.js, in ordine di data crescente.
+ *
+ * Il campo `eta` esce insieme ai numeri: chi disegna non può etichettare un percentile
+ * contato dalla nascita come «età corretta».
+ */
+export function cartaPercentile({ bambino, righe, misura, eta, tabelle }) {
+  if (tabelle !== 'pronte') {
+    return { bambino, eta, nota: tabelle === 'errore' ? TESTO_ERRORE : TESTO_ATTESA };
+  }
+  if (!righe || !righe.length) {
+    return { bambino, eta, nota: `Nessuna misura di ${misura}.` };
   }
 
+  const k = chiaveDi(misura);
   const ultima = righe[righe.length - 1];
-  const ora = pctDi(ultima[k], ultima.iso);
   const quanto = `${numero(ultima[k], misura === 'peso' ? 3 : 1)} ${k} il ${dataCorta(ultima.iso)}`;
 
+  const ora = pctDi(misura, eta, ultima[k], ultima.iso);
   if (!ora) {
-    return `<div class="card">${testa}
-      <div class="cr-fuori">fuori dalle tabelle OMS</div>
-      <div class="t">${quanto}<br>${MOTIVO_FUORI_TABELLA}</div></div>`;
+    return { bambino, eta, quanto, fuori: 'fuori dalle tabelle OMS', motivo: MOTIVO_FUORI_TABELLA };
   }
+
+  const carta = {
+    bambino,
+    eta,
+    quanto,
+    percentile: percentileScritto(ora.p),
+    z: zScritto(ora.z),
+    // Il numero porta addosso la data da cui è contato. Così non basta un interruttore
+    // sbagliato per far leggere un percentile anagrafico come se fosse corretto.
+    etaNota: eta === 'corretta' ? undefined : 'contato dall’età anagrafica',
+  };
 
   // Il percentile di partenza si mostra solo con almeno due misure: con una sola non
   // c'è nessun «prima» da confrontare.
-  let prima = '';
   if (righe.length > 1) {
-    const inizio = righe[0];
-    const q = pctDi(inizio[k], inizio.iso);
-    prima = q
-      ? `<br>alla prima misura ${percentileScritto(q.p)}, ${zScritto(q.z)}`
-      : '<br>la prima misura è fuori dalle tabelle OMS';
+    const q = pctDi(misura, eta, righe[0][k], righe[0].iso);
+    carta.prima = q
+      ? `alla prima misura ${percentileScritto(q.p)}, ${zScritto(q.z)}`
+      : 'la prima misura è fuori dalle tabelle OMS';
   }
-
-  return `<div class="card">${testa}
-    <div class="p" style="color:${COLORE[bambino]}">${percentileScritto(ora.p)}</div>
-    <div class="t">${zScritto(ora.z)}<br>${quanto}${prima}</div></div>`;
+  return carta;
 }
 
-function percentiliHtml() {
-  if (!tabellePronte) return `<div class="card cr-attesa">${ATTESA}</div>`;
-  return BAMBINI.map(cartaDi).join('');
-}
-
-// ── grafico ────────────────────────────────────────────────────────────────
-
-function quanteMisure() {
-  return BAMBINI.reduce((somma, bambino) => somma + righeDi(bambino).length, 0);
-}
-
-const INVITO =
-  '<b>Nessuna lunghezza nel registro.</b><br>' +
-  'Con due misure compare la curva. Tocca qui per inserire la prima.';
-
-function aggiornaGrafico() {
-  const invito = misura === 'lunghezza' && quanteMisure() < 2;
-  el.grafico.classList.toggle('card', !invito);
-  el.grafico.classList.toggle('chart', !invito);
-  el.grafico.classList.toggle('cr-invito', invito);
-  if (invito) {
-    el.grafico.innerHTML = INVITO;
-    return;
-  }
-  const serie = serieDi();
-  const { giorniDa: da, giorniA: a } = finestra(periodo, serie);
-  el.grafico.innerHTML = disegnaGrafico({ misura, serie, giorniDa: da, giorniA: a });
-}
-
-// ── aggiornamento sul posto ────────────────────────────────────────────────
-
-function aggiorna() {
-  if (!el.grafico || !el.grafico.isConnected) return;
-  const oggi = isoOggi();
-  el.nCorretta.textContent = etaScritta(TERMINE, oggi);
-  el.nAnagrafica.textContent = etaScritta(NASCITA, oggi);
-  el.nota.hidden = eta === 'corretta';
-  aggiornaGrafico();
-  el.percentili.innerHTML = percentiliHtml();
-}
-
-// ── markup ─────────────────────────────────────────────────────────────────
-
-function markup() {
+/** Il markup della sezione. Le classi `on` nascono dallo stato, mai fisse. */
+export function markup({ eta, misura, periodo } = {}) {
+  const on = (atteso, valore) => (atteso === valore ? ' on' : '');
   return `
 <div class="agebox" data-cr="eta">
-  <div class="card on" data-eta="corretta" role="button" tabindex="0">
+  <div class="card${on(eta, 'corretta')}" data-eta="corretta" role="button" tabindex="0">
     <div class="lbl">Età corretta</div><div class="n" data-n="corretta">—</div>
   </div>
-  <div class="card" data-eta="anagrafica" role="button" tabindex="0">
+  <div class="card${on(eta, 'anagrafica')}" data-eta="anagrafica" role="button" tabindex="0">
     <div class="lbl">Età anagrafica</div><div class="n" data-n="anagrafica">—</div>
   </div>
 </div>
 
 <div class="seg" data-cr="misura">
-  <b class="on" data-misura="peso">Peso</b><b data-misura="lunghezza">Lunghezza</b>
+  <b class="${on(misura, 'peso').trim()}" data-misura="peso">Peso</b><b class="${on(misura, 'lunghezza').trim()}" data-misura="lunghezza">Lunghezza</b>
 </div>
 
 <div class="seg" data-cr="periodo">
-  <b data-periodo="1m">1 mese</b><b data-periodo="3m">3 mesi</b>
-  <b data-periodo="6m">6 mesi</b><b class="on" data-periodo="tutto">Tutto</b>
+  <b class="${on(periodo, '1m').trim()}" data-periodo="1m">1 mese</b><b class="${on(periodo, '3m').trim()}" data-periodo="3m">3 mesi</b><b class="${on(periodo, '6m').trim()}" data-periodo="6m">6 mesi</b><b class="${on(periodo, 'tutto').trim()}" data-periodo="tutto">Tutto</b>
 </div>
 
 <div class="cr-nota" data-cr="nota" hidden>
@@ -242,10 +214,125 @@ function markup() {
 <div class="src">${FONTE}</div>`;
 }
 
+// ── lettura dei dati ───────────────────────────────────────────────────────
+
+function righeDi(bambino) {
+  return stato.misura === 'peso' ? pesate(bambino) : lunghezze(bambino);
+}
+
+/** Le serie per il grafico: i giorni di età contati dalla partenza scelta. */
+function serieDi() {
+  const k = chiaveDi(stato.misura);
+  const da = partenzaDi(stato.eta);
+  const out = {};
+  for (const bambino of BAMBINI) {
+    out[bambino] = righeDi(bambino).map((r) => ({
+      giorni: giorniDa(da, r.iso),
+      valore: r[k],
+    }));
+  }
+  return out;
+}
+
+// ── disegno dei percentili ─────────────────────────────────────────────────
+
+function cartaHtml(carta) {
+  const sigla = SIGLA[carta.bambino];
+  const testa = `<span class="chip ${sigla}">${sigla.toUpperCase()}</span>`;
+
+  if (carta.nota) {
+    return `<div class="card">${testa}<div class="cr-fuori">—</div>
+      <div class="t">${carta.nota}</div></div>`;
+  }
+  if (carta.fuori) {
+    return `<div class="card">${testa}<div class="cr-fuori">${carta.fuori}</div>
+      <div class="t">${carta.quanto}<br>${carta.motivo}</div></div>`;
+  }
+  const prima = carta.prima ? `<br>${carta.prima}` : '';
+  const quale = carta.etaNota ? `<br>${carta.etaNota}` : '';
+  return `<div class="card">${testa}
+    <div class="p" style="color:${COLORE[carta.bambino]}">${carta.percentile}</div>
+    <div class="t">${carta.z}<br>${carta.quanto}${prima}${quale}</div></div>`;
+}
+
+function percentiliHtml() {
+  if (stato.tabelle !== 'pronte') {
+    const testo = stato.tabelle === 'errore' ? TESTO_ERRORE : TESTO_ATTESA;
+    return `<div class="card cr-attesa">${testo}</div>`;
+  }
+  return BAMBINI.map((bambino) =>
+    cartaHtml(
+      cartaPercentile({
+        bambino,
+        righe: righeDi(bambino),
+        misura: stato.misura,
+        eta: stato.eta,
+        tabelle: stato.tabelle,
+      })
+    )
+  ).join('');
+}
+
+// ── disegno del grafico ────────────────────────────────────────────────────
+
+function quanteMisure() {
+  return BAMBINI.reduce((somma, bambino) => somma + righeDi(bambino).length, 0);
+}
+
+function aggiornaGrafico() {
+  const quante = quanteMisure();
+  const invito = stato.misura === 'lunghezza' && quante < 2;
+  el.grafico.classList.toggle('card', !invito);
+  el.grafico.classList.toggle('chart', !invito);
+  el.grafico.classList.toggle('cr-invito', invito);
+  if (invito) {
+    el.grafico.innerHTML = invitoLunghezza(quante);
+    return;
+  }
+  const serie = serieDi();
+  const { giorniDa: da, giorniA: a } = finestra(stato.periodo, serie);
+  el.grafico.innerHTML = disegnaGrafico({
+    misura: stato.misura,
+    serie,
+    giorniDa: da,
+    giorniA: a,
+    // Senza bande il grafico non si disegna. Qui si dice perché mancano: chi disegna
+    // non lo sa, lo sa questa sezione.
+    messaggio: stato.tabelle === 'errore' ? TESTO_ERRORE : TESTO_ATTESA,
+  });
+}
+
+// ── aggiornamento sul posto ────────────────────────────────────────────────
+
+function accendi(contenitore, chiave, valore) {
+  for (const figlio of contenitore.children) {
+    figlio.classList.toggle('on', figlio.dataset[chiave] === valore);
+  }
+}
+
+function aggiorna() {
+  if (!el.grafico || !el.grafico.isConnected) return;
+
+  // L'ordine conta. Prima i numeri, poi le etichette che li spiegano, poi il grafico.
+  // Se un passo lancia un errore, quello che resta sullo schermo è coerente: non si
+  // vede mai un percentile vecchio sotto un'etichetta nuova.
+  el.percentili.innerHTML = percentiliHtml();
+
+  const oggi = isoOggi();
+  el.nCorretta.textContent = etaScritta(TERMINE, oggi);
+  el.nAnagrafica.textContent = etaScritta(NASCITA, oggi);
+  accendi(el.eta, 'eta', stato.eta);
+  accendi(el.segMisura, 'misura', stato.misura);
+  accendi(el.segPeriodo, 'periodo', stato.periodo);
+  el.nota.hidden = stato.eta === 'corretta';
+
+  aggiornaGrafico();
+}
+
 // ── costruzione e tocchi ───────────────────────────────────────────────────
 
 function disegna(contenitore) {
-  contenitore.innerHTML = markup();
+  contenitore.innerHTML = markup(stato);
 
   const q = (sel) => contenitore.querySelector(sel);
   el.eta = q('[data-cr="eta"]');
@@ -257,30 +344,19 @@ function disegna(contenitore) {
   el.grafico = q('[data-cr="grafico"]');
   el.percentili = q('[data-cr="percentili"]');
 
-  // I tocchi rispondono su pointerdown, non al rilascio.
-  el.eta.addEventListener('pointerdown', (e) => {
-    const b = e.target.closest('[data-eta]');
-    if (!b || b.dataset.eta === eta) return;
-    eta = b.dataset.eta;
-    for (const d of el.eta.children) d.classList.toggle('on', d.dataset.eta === eta);
-    aggiorna();
-  });
-
-  el.segMisura.addEventListener('pointerdown', (e) => {
-    const b = e.target.closest('[data-misura]');
-    if (!b || b.dataset.misura === misura) return;
-    misura = b.dataset.misura;
-    for (const d of el.segMisura.children) d.classList.toggle('on', d.dataset.misura === misura);
-    aggiorna();
-  });
-
-  el.segPeriodo.addEventListener('pointerdown', (e) => {
-    const b = e.target.closest('[data-periodo]');
-    if (!b || b.dataset.periodo === periodo) return;
-    periodo = b.dataset.periodo;
-    for (const d of el.segPeriodo.children) d.classList.toggle('on', d.dataset.periodo === periodo);
-    aggiornaGrafico();
-  });
+  // I tocchi rispondono su pointerdown, non al rilascio. Nessun gestore tocca le classi
+  // `on`: cambiano lo stato e chiamano aggiorna(), che le rilegge da lì.
+  const interruttore = (contenitore2, chiave) => {
+    contenitore2.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest(`[data-${chiave}]`);
+      if (!b || b.dataset[chiave] === stato[chiave]) return;
+      stato[chiave] = b.dataset[chiave];
+      aggiorna();
+    });
+  };
+  interruttore(el.eta, 'eta');
+  interruttore(el.segMisura, 'misura');
+  interruttore(el.segPeriodo, 'periodo');
 
   // Al posto del grafico della lunghezza, finché non ci sono due misure, c'è l'invito
   // a inserirne una. Il tocco lo prende l'inserimento di misure.js.

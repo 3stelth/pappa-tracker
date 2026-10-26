@@ -197,6 +197,53 @@ function applicaPietre(dati, pietre) {
   }
 }
 
+// ─── vaccini ───
+// I vaccini non si fondono a blocco intero: il blocco con modificatoAt più grande
+// cancellerebbe l'altro (per esempio il blocco dei certificati contro una voce
+// aggiunta a mano sul telefono). Si uniscono per seduta e, dentro la seduta, per voce.
+
+function chiaveSeduta(s) {
+  const chi = Array.isArray(s.bambini) ? [...s.bambini].sort().join('+') : '';
+  return `${s.data}|${chi}`;
+}
+
+function chiaveVoceVaccino(v) {
+  return [v.nome, v.prodotto, v.dose, v.lotto].map((x) => String(x == null ? '' : x).toLowerCase()).join('|');
+}
+
+/**
+ * Unisce due blocchi vaccini. I campi del blocco (stato, emessoDa, aggiornatoAl...) li
+ * porta il più recente, ma solo quelli che ha: gli altri restano dal più vecchio.
+ * Le sedute si uniscono per data e bambini, le voci per nome, prodotto, dose e lotto.
+ * Una voce uguale non si duplica; se due voci hanno la stessa chiave vince la più recente.
+ * Niente sparisce. Non modifica gli argomenti.
+ */
+export function fondiVaccini(x, y) {
+  if (!piano(x)) return piano(y) ? copia(y) : x;
+  if (!piano(y)) return copia(x);
+  const [vecchio, nuovo] = (x.modificatoAt || 0) <= (y.modificatoAt || 0) ? [x, y] : [y, x];
+  const fuso = { ...copia(vecchio), ...copia(nuovo) };
+  fuso.modificatoAt = Math.max(x.modificatoAt || 0, y.modificatoAt || 0);
+
+  const sedute = new Map();
+  for (const blocco of [vecchio, nuovo]) {
+    for (const s of Array.isArray(blocco.sedute) ? blocco.sedute : []) {
+      if (!piano(s)) continue;
+      const k = chiaveSeduta(s);
+      const presente = sedute.get(k);
+      const voci = new Map(presente ? presente.voci.map((v) => [chiaveVoceVaccino(v), v]) : []);
+      for (const v of Array.isArray(s.voci) ? s.voci : []) {
+        if (piano(v)) voci.set(chiaveVoceVaccino(v), copia(v));
+      }
+      sedute.set(k, { ...copia(presente || {}), ...copia(s), voci: [...voci.values()] });
+    }
+  }
+  fuso.sedute = [...sedute.entries()]
+    .sort((p, q) => (p[1].data < q[1].data ? -1 : p[1].data > q[1].data ? 1 : p[0] < q[0] ? -1 : 1))
+    .map(([, s]) => s);
+  return fuso;
+}
+
 /**
  * Fonde due copie dei dati. Non modifica gli argomenti. Niente si cancella mai solo
  * perché manca da una parte: solo una tombstone cancella.
@@ -209,8 +256,8 @@ export function fondi(mio, altrui) {
     if (k === '_tombstones') continue;
     if (isGiorno(k)) {
       fuso[k] = fondiGiorno(a[k], b[k]);
-    } else if (k === 'vaccini' && piano(a[k]) && piano(b[k])) {
-      fuso[k] = (a[k].modificatoAt || 0) >= (b[k].modificatoAt || 0) ? a[k] : b[k];
+    } else if (k === 'vaccini' && (piano(a[k]) || piano(b[k]))) {
+      fuso[k] = fondiVaccini(a[k], b[k]);
     } else {
       fuso[k] = k in a ? a[k] : b[k];
     }
@@ -294,9 +341,23 @@ async function semeDeiVaccini() {
   return r.json();
 }
 
-/** Mette il seme dei vaccini una volta sola. Se il file non si legge, non mette niente. */
+function ugualiProfondi(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((k) => k in b && ugualiProfondi(a[k], b[k]));
+}
+
+/**
+ * Mette il seme dei vaccini. Se il blocco manca, lo copia. Se c'è già, lo fonde col seme
+ * (fondiVaccini è ripetibile) e scrive solo se l'unione cambia qualcosa: così le sedute
+ * dei certificati non si perdono nemmeno quando un altro telefono ha scritto per primo.
+ * Scrive solo in locale: la risalita remota la fa sincronizza() alla prossima scrittura.
+ * Se il file non si legge, non mette niente.
+ */
 async function semina(opzioni) {
-  if (piano(stato.data.vaccini)) return;
   const leggi = 'leggiSeme' in opzioni ? opzioni.leggiSeme : semeDeiVaccini;
   if (typeof leggi !== 'function') return;
   let seme = null;
@@ -307,7 +368,15 @@ async function semina(opzioni) {
     return;
   }
   if (!piano(seme)) return;
-  stato.data.vaccini = { ...seme, modificatoAt: momento() };
+  if (!piano(stato.data.vaccini)) {
+    stato.data.vaccini = { ...seme, modificatoAt: momento() };
+    salvaLocale();
+    return;
+  }
+  const attuale = stato.data.vaccini;
+  const fuso = fondiVaccini(attuale, seme);
+  if (ugualiProfondi(fuso, fondiVaccini(attuale, attuale))) return;
+  stato.data.vaccini = { ...fuso, modificatoAt: momento() };
   salvaLocale();
 }
 
@@ -542,7 +611,15 @@ export function scriviMisura(bambino, tipo, valore, iso) {
     if (!Array.isArray(bd.temperatures)) bd.temperatures = [];
     bd.temperatures.push({ id: nuovoId(), temp: valore, time: oraLocale(), note: '' });
   } else {
-    bd[campo] = { [UNITA[tipo]]: valore, time: oraLocale(), note: '', addedAt: momento() };
+    // Se la misura del giorno esiste già, ne tiene l'ora e la nota: cambiano solo valore e addedAt.
+    const prima = piano(bd[campo]) ? bd[campo] : {};
+    bd[campo] = {
+      ...prima,
+      [UNITA[tipo]]: valore,
+      time: prima.time !== undefined ? prima.time : oraLocale(),
+      note: prima.note !== undefined ? prima.note : '',
+      addedAt: momento(),
+    };
     togliPietra(campo, iso, bambino);
   }
   dopoScrittura({ bambino, tipo, valore, iso });

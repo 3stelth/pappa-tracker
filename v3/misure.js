@@ -41,7 +41,8 @@ const GIRO_MS = 120;
 const GIRI_LENTI = 8;
 const FATTORE = 5;
 
-const ELENCO_RIGHE = 40;
+// Nell'elenco restano le ultime misure di ogni tipo, così molte temperature non spingono fuori le pesate.
+const RIGHE_PER_TIPO = 12;
 
 // ── funzioni pure ──────────────────────────────────────────────────────────
 
@@ -83,8 +84,8 @@ export function passoSicuro(tipo, valore, delta) {
   return Math.min(t.max, Math.max(t.min, arrotonda(tipo, valore + delta)));
 }
 
-/** Le `quante` misure più recenti, dei tre tipi e dei due bambini mescolati. */
-export function ultimeMisure(quante) {
+/** Tutte le misure dei tre tipi e dei due bambini, dalla più recente. Ha ancora l'ora, che serve a ordinare. */
+function tutteLeMisure() {
   const tutte = [];
   for (const bambino of BAMBINI) {
     for (const p of pesate(bambino)) {
@@ -104,7 +105,54 @@ export function ultimeMisure(quante) {
       ORDINE_TIPI.indexOf(a.tipo) - ORDINE_TIPI.indexOf(b.tipo) ||
       BAMBINI.indexOf(a.bambino) - BAMBINI.indexOf(b.bambino)
   );
-  return tutte.slice(0, quante).map(({ ora, ...m }) => m);
+  return tutte;
+}
+
+function senzaOra({ ora, ...m }) { return m; }
+
+/** Le `quante` misure più recenti, dei tre tipi e dei due bambini mescolati. */
+export function ultimeMisure(quante) {
+  return tutteLeMisure().slice(0, quante).map(senzaOra);
+}
+
+/** Le `quante` misure più recenti di ogni tipo, sempre mescolate in ordine di data. */
+export function ultimePerTipo(quante) {
+  const contate = {};
+  return tutteLeMisure()
+    .filter((m) => (contate[m.tipo] = (contate[m.tipo] || 0) + 1) <= quante)
+    .map(senzaOra);
+}
+
+/**
+ * Le misure che un nuovo salvataggio sostituirebbe. Peso e lunghezza sono una per
+ * bambino e per giorno: scriverne una nuova cancella la vecchia. Le temperature sono
+ * una lista, si aggiungono e non sostituiscono mai niente.
+ */
+export function misureDaSostituire(tipo, bambini, iso) {
+  if (tipo === 'temperatura') return [];
+  const out = [];
+  for (const bambino of bambini) {
+    const trovata = ultimeMisureDi(bambino, tipo).find((m) => m.iso === iso);
+    if (trovata) out.push({ bambino, valore: trovata.valore });
+  }
+  return out;
+}
+
+/** La domanda che si fa prima di sostituire, con il valore che sparirebbe. */
+export function testoSostituzione(tipo, iso, sostituite) {
+  const t = TIPI[tipo];
+  const frasi = sostituite.map(
+    (m) => m.bambino + ' ha già ' + testoValore(tipo, m.valore) + ' ' + t.unita + ' il ' + dataCorta(iso) + '.'
+  );
+  return frasi.join(' ') + (sostituite.length > 1 ? ' Li sostituisco?' : ' Lo sostituisco?');
+}
+
+/** L'avviso dopo il salvataggio: che cosa è stato scritto e per chi. */
+export function testoSalvato(tipo, valore, bambini, iso, sostituite) {
+  const t = TIPI[tipo];
+  return 'Salvato: ' + t.nome.toLowerCase() + ' ' + testoValore(tipo, valore) + ' ' + t.unita +
+    ' per ' + bambini.join(' e ') + ', ' + dataCorta(iso) + '.' +
+    (sostituite ? ' Ha sostituito il valore di prima.' : '');
 }
 
 /** Il valore scritto per lo schermo: virgola decimale, zeri inutili tolti. */
@@ -185,6 +233,7 @@ function htmlInserimento(f) {
       '<span class="k">Quando</span><span class="v">' + testoData(f.iso) + '</span>' +
       (f.modifica ? '' : '<input class="data" type="date" value="' + esc(f.iso) + '" max="' + isoOggi() + '" aria-label="Data della misura">') +
     '</div>' +
+    '<div class="src conferma" style="font-size:12.5px;color:var(--txt);margin:0 0 10px" hidden></div>' +
     '<div class="save" role="button">Salva</div>' +
     (f.modifica ? '<div class="elimina" role="button">Cancella</div>' : '') +
     '</div>'
@@ -208,6 +257,7 @@ export function apriInserimento({ tipo, bambino, iso, id } = {}) {
     toccato: false,
     fatto: false,
     conferma: false,
+    sostituzione: null, // la domanda già fatta e confermata dal secondo tocco
   };
 
   if (f.modifica) {
@@ -232,6 +282,8 @@ export function apriInserimento({ tipo, bambino, iso, id } = {}) {
   const chipBambini = [...radice.querySelectorAll('.who-pick b')];
   const chipTipi = [...radice.querySelectorAll('.mbtn')];
   const elElimina = radice.querySelector('.elimina');
+  const elSalva = radice.querySelector('.save');
+  const elConferma = radice.querySelector('.conferma');
   let orologio = null;
   let orologioConferma = null;
 
@@ -245,13 +297,23 @@ export function apriInserimento({ tipo, bambino, iso, id } = {}) {
     mostraValore();
   }
 
+  // Cambiando bambino, tipo o data la domanda di prima non vale più.
+  function azzeraSostituzione() {
+    if (f.sostituzione === null) return;
+    f.sostituzione = null;
+    elConferma.hidden = true;
+    elSalva.textContent = 'Salva';
+  }
+
   function scegliBambino(b) {
+    azzeraSostituzione();
     f.bambino = b;
     for (const c of chipBambini) c.classList.toggle('on', c.dataset.b === b);
     if (!f.toccato) { f.valore = valorePartenza(f.tipo, b); mostraValore(); }
   }
 
   function scegliTipo(k) {
+    azzeraSostituzione();
     f.tipo = k;
     f.toccato = false;
     for (const c of chipTipi) c.classList.toggle('on', c.dataset.t === k);
@@ -283,6 +345,19 @@ export function apriInserimento({ tipo, bambino, iso, id } = {}) {
       avviso('Il valore deve stare fra ' + testoValore(f.tipo, t.min) + ' e ' + testoValore(f.tipo, t.max) + ' ' + t.unita + '.');
       return;
     }
+    const bambini = f.bambino === TUTTI ? BAMBINI : [f.bambino];
+    const sostituite = f.modifica ? [] : misureDaSostituire(f.tipo, bambini, f.iso);
+    // Una misura già scritta non sparisce in silenzio: il primo tocco chiede, il secondo sostituisce.
+    if (sostituite.length) {
+      const chiave = JSON.stringify(sostituite);
+      if (f.sostituzione !== chiave) {
+        f.sostituzione = chiave;
+        elConferma.textContent = testoSostituzione(f.tipo, f.iso, sostituite);
+        elConferma.hidden = false;
+        elSalva.textContent = 'Sostituisci';
+        return;
+      }
+    }
     f.fatto = true;
     if (f.modifica) {
       // Una misura che non è cambiata non si riscrive: la temperatura perderebbe l'ora.
@@ -293,8 +368,8 @@ export function apriInserimento({ tipo, bambino, iso, id } = {}) {
       }
       avviso('Misura aggiornata.');
     } else {
-      for (const b of f.bambino === TUTTI ? BAMBINI : [f.bambino]) scriviMisura(b, f.tipo, f.valore, f.iso);
-      avviso('Misura salvata.');
+      for (const b of bambini) scriviMisura(b, f.tipo, f.valore, f.iso);
+      avviso(testoSalvato(f.tipo, f.valore, bambini, f.iso, sostituite.length > 0));
     }
     ferma();
     chiudiTendina();
@@ -343,6 +418,7 @@ export function apriInserimento({ tipo, bambino, iso, id } = {}) {
   if (elInputData) {
     elInputData.addEventListener('change', () => {
       if (!elInputData.value) return;
+      azzeraSostituzione();
       f.iso = elInputData.value;
       elData.textContent = testoData(f.iso);
     });
@@ -365,7 +441,7 @@ function ultimeMisureDi(bambino, tipo) {
 let radiceSezione = null;
 
 function riempi() {
-  const misure = ultimeMisure(ELENCO_RIGHE);
+  const misure = ultimePerTipo(RIGHE_PER_TIPO);
   radiceSezione.innerHTML = misure.length
     ? '<div class="sect">Ultime misure</div><div class="card">' + misure.map(rigaMisura).join('') + '</div>'
     : '<div class="card vuoto">Non c’è ancora nessuna misura.<br>Tocca + in alto per aggiungerne una.</div>';

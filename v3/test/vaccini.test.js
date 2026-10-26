@@ -2,8 +2,9 @@
 //
 // I casi 1-9 e 13 leggono dati/vaccini.json. Quel file sta in .gitignore (lotti e date
 // di due minori): c'è sul computer di famiglia, non nel repository pubblico. Senza di lui
-// questi casi si saltano e lo dicono. I casi 14-17 usano invece dati inventati e
-// girano sempre.
+// questi casi non affermano niente e il loro nome dice «SALTATO». I casi 12 e 14-19
+// usano dati inventati e girano sempre. Nessun lotto vero sta in questo file: i casi
+// che cercano un lotto lo leggono dal file dei dati.
 //
 // Nessun caso usa la rete o il localStorage vero: i casi che scrivono accendono prima
 // provaSenzaScritture.
@@ -15,29 +16,28 @@ import { NASCITA, TERMINE, etaScritta } from '../crescita.js';
 import { dataLunga } from '../app.js';
 import {
   cerca, evidenzia, contaVoci, rigaSeduta, cronologia, aggiungiVoce, salvaVoce,
+  controllaData,
 } from '../vaccini.js';
 
 export const nome = 'vaccini';
 
-/** Legge il file dei vaccini. Torna null se non c'è (il caso allora si salta). */
+/** Legge il file dei vaccini. Torna null se non c'è. */
 async function leggiFile() {
   try {
     return await leggiJson('dati/vaccini.json');
   } catch (errore) {
-    if (errore && (errore.code === 'ENOENT' || /ENOENT|404/.test(String(errore.message)))) {
-      console.log('       (dati/vaccini.json non c\'è su questo computer: caso saltato)');
-      return null;
-    }
+    if (errore && (errore.code === 'ENOENT' || /ENOENT|404/.test(String(errore.message)))) return null;
     throw errore;
   }
 }
 
-/** Esegue `f(dati)` col file letto; se il file manca, il caso passa senza controlli. */
+const FILE = await leggiFile();
+const SALTATO = FILE ? '' : ' [SALTATO: manca dati/vaccini.json]';
+
+/** Esegue `f(dati)` col file letto. Se il file manca il caso non afferma niente: il nome lo dichiara. */
 function conFile(f) {
   return async () => {
-    const dati = await leggiFile();
-    if (!dati) return;
-    await f(dati);
+    if (FILE) await f(FILE);
   };
 }
 
@@ -100,19 +100,19 @@ export const casi = [
     },
   },
   {
-    nome: '1. dati/vaccini.json si legge e ha aggiornatoAl 2026-10-26',
+    nome: '1. dati/vaccini.json si legge e ha aggiornatoAl 2026-10-26' + SALTATO,
     prova: conFile((dati) => {
       uguale(dati.aggiornatoAl, '2026-10-26', 'aggiornatoAl');
     }),
   },
   {
-    nome: '2. contaVoci(): 5 sedute e 10 somministrazioni',
+    nome: '2. contaVoci(): 5 sedute e 10 somministrazioni' + SALTATO,
     prova: conFile((dati) => {
       uguali(contaVoci(dati.sedute), { sedute: 5, somministrazioni: 10 }, 'conteggio');
     }),
   },
   {
-    nome: '3. l\'esavalente del 3 marzo è una voce sola, con sei malattie in copre',
+    nome: '3. l\'esavalente del 3 marzo è una voce sola, con sei malattie in copre' + SALTATO,
     prova: conFile((dati) => {
       const seduta = dati.sedute.find((s) => s.data === '2026-03-03');
       vero(seduta, 'manca la seduta del 3 marzo');
@@ -122,7 +122,7 @@ export const casi = [
     }),
   },
   {
-    nome: '4. il Beyfortus ha tipo profilassi, non vaccino',
+    nome: '4. il Beyfortus ha tipo profilassi, non vaccino' + SALTATO,
     prova: conFile((dati) => {
       const voci = dati.sedute.flatMap((s) => s.voci).filter((v) => v.nome === 'Beyfortus');
       uguale(voci.length, 1, 'voci Beyfortus');
@@ -130,23 +130,26 @@ export const casi = [
     }),
   },
   {
-    nome: '5. ogni seduta ha bambini Gabriel e Vittorio',
+    nome: '5. ogni seduta ha bambini Gabriel e Vittorio' + SALTATO,
     prova: conFile((dati) => {
       for (const s of dati.sedute) uguali(s.bambini, ['Gabriel', 'Vittorio'], 'bambini del ' + s.data);
     }),
   },
   {
-    nome: '6. cerca(sedute, (omesso)) trova una voce sola, quella del 3 marzo',
+    nome: '6. cerca(sedute, lotto della prima dose di esavalente) trova una voce sola, quella del 3 marzo' + SALTATO,
     prova: conFile((dati) => {
-      const r = cerca(dati.sedute, '(omesso)');
+      // Il lotto si legge dal file: nel codice del repository pubblico non ne sta nessuno.
+      const esa = dati.sedute.find((x) => x.data === '2026-03-03').voci.find((v) => v.nome === 'Esavalente' && v.dose === 1);
+      vero(esa && esa.lotto, "nel file manca l'esavalente dose 1 del 3 marzo");
+      const r = cerca(dati.sedute, esa.lotto);
       uguale(r.length, 1, 'sedute trovate');
       uguale(r[0].data, '2026-03-03', 'data');
       uguale(r[0].voci.length, 1, 'voci trovate');
-      uguale(r[0].voci[0].lotto, '(omesso)', 'lotto');
+      uguale(r[0].voci[0].lotto, esa.lotto, 'lotto');
     }),
   },
   {
-    nome: '7. cerca(sedute, difterite) trova le due voci dell\'esavalente',
+    nome: '7. cerca(sedute, difterite) trova le due voci dell\'esavalente' + SALTATO,
     prova: conFile((dati) => {
       const voci = cerca(dati.sedute, 'difterite').flatMap((s) => s.voci);
       uguale(voci.length, 2, 'voci trovate');
@@ -154,13 +157,13 @@ export const casi = [
     }),
   },
   {
-    nome: '8. cerca(sedute, pippo) non trova niente',
+    nome: '8. cerca(sedute, pippo) non trova niente' + SALTATO,
     prova: conFile((dati) => {
       uguali(cerca(dati.sedute, 'pippo'), [], 'risultato');
     }),
   },
   {
-    nome: '9. cerca(sedute, "") torna tutte le cinque sedute',
+    nome: '9. cerca(sedute, "") torna tutte le cinque sedute' + SALTATO,
     prova: conFile((dati) => {
       uguale(cerca(dati.sedute, '').length, 5, 'sedute');
       uguale(cerca(dati.sedute, '   ').length, 5, 'sedute con soli spazi');
@@ -180,18 +183,21 @@ export const casi = [
     },
   },
   {
-    nome: '12. etaScritta(TERMINE, 23 febbraio) è «non ancora al termine»; nessuna data dà Invalid Date',
-    prova: conFile((dati) => {
+    nome: '12. etaScritta(TERMINE, 23 febbraio) è «non ancora al termine»; nessuna data di seduta dà Invalid Date',
+    prova: () => {
       uguale(etaScritta(TERMINE, '2026-02-23'), 'non ancora al termine', 'età corretta del 23 febbraio');
-      for (const s of dati.sedute) {
-        for (const t of [dataLunga(s.data), etaScritta(NASCITA, s.data), etaScritta(TERMINE, s.data)]) {
-          vero(!/Invalid|NaN|undefined/.test(t), `data ${s.data}: «${t}»`);
+      // Le sedute del file se c'è, altrimenti le date del brief: nessuna è un dato sanitario.
+      const date = FILE ? FILE.sedute.map((x) => x.data)
+        : ['2026-02-23', '2026-03-03', '2026-04-03', '2026-05-19', '2026-06-23'];
+      for (const data of date) {
+        for (const t of [dataLunga(data), etaScritta(NASCITA, data), etaScritta(TERMINE, data)]) {
+          vero(!/Invalid|NaN|undefined/.test(t), `data ${data}: «${t}»`);
         }
       }
-    }),
+    },
   },
   {
-    nome: '13. rigaSeduta() non contiene undefined, NaN o Invalid Date',
+    nome: '13. rigaSeduta() non contiene undefined, NaN o Invalid Date' + SALTATO,
     prova: conFile((dati) => {
       for (const s of dati.sedute) {
         const html = rigaSeduta(s, '');
@@ -256,16 +262,46 @@ export const casi = [
     prova: async () => {
       const prima = stato.data;
       stato.data = { vaccini: finti() };
-      provaSenzaScritture(true);
       try {
-        await zitto(() => salvaVoce('2026-06-23', ['Gabriel', 'Vittorio'], {
-          nome: 'Prova', lotto: 'PROVA777', tipo: 'vaccino', via: 'iniezione', copre: [],
-        }));
+        await zitto(() => {
+          provaSenzaScritture(true);
+          try {
+            salvaVoce('2026-06-23', ['Gabriel', 'Vittorio'], {
+              nome: 'Prova', lotto: 'PROVA777', tipo: 'vaccino', via: 'iniezione', copre: [],
+            });
+          } finally {
+            provaSenzaScritture(false);
+          }
+        });
         uguali(contaVoci(vaccini().sedute), { sedute: 3, somministrazioni: 4 }, 'dopo la scrittura');
         vero(typeof vaccini().modificatoAt === 'number', 'scriviVaccini segna modificatoAt');
       } finally {
-        provaSenzaScritture(false);
         stato.data = prima;
+      }
+    },
+  },
+  {
+    nome: '18. la parola «lotto» non trova tutte le voci; il numero di lotto sì',
+    prova: () => {
+      const d = finti();
+      uguali(cerca(d.sedute, 'lotto'), [], 'l\'etichetta non si cerca');
+      uguale(cerca(d.sedute, 'PROVA002').flatMap((x) => x.voci).length, 1, 'il lotto si trova');
+      vero(rigaSeduta(d.sedute[0], '').includes('lotto PROVA001'), 'l\'etichetta si legge ancora');
+      vero(rigaSeduta(d.sedute[0], 'otto').includes('lotto PROVA001'), 'la ricerca non evidenzia l\'etichetta');
+    },
+  },
+  {
+    nome: '19. controllaData rifiuta date impossibili, future o prima della nascita',
+    prova: () => {
+      const oggi = '2026-10-26';
+      uguale(controllaData('2026-06-23', oggi), '', 'data buona');
+      uguale(controllaData(NASCITA, oggi), '', 'il giorno della nascita va bene');
+      uguale(controllaData(oggi, oggi), '', 'oggi va bene');
+      vero(controllaData('2026-10-27', oggi) !== '', 'domani');
+      vero(controllaData('2025-12-07', oggi) !== '', 'prima della nascita');
+      vero(controllaData('2026-02-30', oggi) !== '', '30 febbraio');
+      for (const brutta of ['', 'ieri', '23/06/2026', null, undefined]) {
+        vero(controllaData(brutta, oggi) !== '', `«${brutta}»`);
       }
     },
   },

@@ -12,6 +12,10 @@ import {
   entroLimiti,
   passoSicuro,
   ultimeMisure,
+  ultimePerTipo,
+  misureDaSostituire,
+  testoSostituzione,
+  testoSalvato,
   rigaMisura,
 } from '../misure.js';
 
@@ -138,6 +142,66 @@ export const casi = [
       });
       const m = ultimeMisure(5);
       uguali(m.map((x) => x.id), ['b', 'a']);
+    },
+  },
+  {
+    nome: '11. misureDaSostituire trova peso e lunghezza già scritti, per ogni bambino; la temperatura mai',
+    prova() {
+      metti({
+        '2026-10-25': {
+          Gabriel: { weight: peso(8.29), length: lunghezza(70), temperatures: [temp(37.1, '09:00', 't1')] },
+        },
+        '2026-10-24': { Vittorio: { weight: peso(6.4) } },
+      });
+      uguali(misureDaSostituire('peso', ['Gabriel', 'Vittorio'], '2026-10-25'), [{ bambino: 'Gabriel', valore: 8.29 }]);
+      uguali(misureDaSostituire('peso', ['Vittorio'], '2026-10-25'), [], 'Vittorio quel giorno non ha il peso');
+      uguali(misureDaSostituire('peso', ['Gabriel', 'Vittorio'], '2026-10-24'), [{ bambino: 'Vittorio', valore: 6.4 }]);
+      uguali(misureDaSostituire('lunghezza', ['Gabriel'], '2026-10-25'), [{ bambino: 'Gabriel', valore: 70 }]);
+      uguali(misureDaSostituire('temperatura', ['Gabriel'], '2026-10-25'), [], 'le temperature si aggiungono');
+      uguali(misureDaSostituire('peso', ['Gabriel'], '2026-10-26'), [], 'giorno senza misure');
+    },
+  },
+  {
+    nome: '12. testoSostituzione nomina il valore che sparirebbe, per uno e per due bambini',
+    prova() {
+      uguale(
+        testoSostituzione('peso', '2026-10-25', [{ bambino: 'Gabriel', valore: 8.29 }]),
+        'Gabriel ha già 8,29 kg il 25 ott. Lo sostituisco?'
+      );
+      uguale(
+        testoSostituzione('peso', '2026-10-25', [
+          { bambino: 'Gabriel', valore: 8.29 },
+          { bambino: 'Vittorio', valore: 6.45 },
+        ]),
+        'Gabriel ha già 8,29 kg il 25 ott. Vittorio ha già 6,45 kg il 25 ott. Li sostituisco?'
+      );
+    },
+  },
+  {
+    nome: '13. testoSalvato dice che cosa è stato scritto e per chi',
+    prova() {
+      uguale(
+        testoSalvato('peso', 8.3, ['Gabriel', 'Vittorio'], '2026-10-25', false),
+        'Salvato: peso 8,30 kg per Gabriel e Vittorio, 25 ott.'
+      );
+      const t = testoSalvato('lunghezza', 70.5, ['Gabriel'], '2026-10-12', true);
+      vero(t.includes('lunghezza 70,5 cm per Gabriel, 12 ott.'), t);
+      vero(t.includes('sostituito'), 'deve dire che ha sostituito');
+    },
+  },
+  {
+    nome: '14. ultimePerTipo tiene le ultime di ogni tipo: molte temperature non cacciano le pesate',
+    prova() {
+      const temps = [];
+      for (let i = 1; i <= 6; i += 1) temps.push(temp(36 + i / 10, '0' + i + ':00', 't' + i));
+      metti({
+        '2026-10-20': { Gabriel: { weight: peso(8.1) } },
+        '2026-10-25': { Gabriel: { temperatures: temps } },
+      });
+      // Con il taglio sul totale, 2 righe sarebbero due temperature e la pesata sparirebbe.
+      const m = ultimePerTipo(2);
+      uguali(m.map((x) => x.tipo), ['temperatura', 'temperatura', 'peso']);
+      uguali(ultimeMisure(2).map((x) => x.tipo), ['temperatura', 'temperatura'], 'ultimeMisure taglia ancora sul totale');
     },
   },
 ];

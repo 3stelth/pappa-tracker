@@ -137,13 +137,16 @@ export const casi = [
     },
   },
   {
-    nome: 'gruppo(): con meno di due giudizi sono poche; poi si decide dal punteggio',
+    nome: 'gruppo(): con meno di due giudizi sono poche; poi gradite, rivedere o neutre dal punteggio',
     prova: () => {
       uguale(gruppo({ good: 0, ok: 0, bad: 0 }), 'poche', 'nessun giudizio');
       uguale(gruppo({ good: 1, ok: 0, bad: 0 }), 'poche', 'un giudizio buono');
       uguale(gruppo({ good: 0, ok: 0, bad: 1 }), 'poche', 'un giudizio cattivo');
       uguale(gruppo({ good: 2, ok: 0, bad: 0 }), 'gradite', 'due buoni');
       uguale(gruppo({ good: 0, ok: 0, bad: 2 }), 'rivedere', 'due cattivi');
+      uguale(gruppo({ good: 0, ok: 3, bad: 0 }), 'neutre', 'tutti così così: punteggio zero, non è un giudizio negativo');
+      uguale(gruppo({ good: 1, ok: 0, bad: 1 }), 'neutre', 'pareri che si annullano');
+      uguale(gruppo({ good: 0, ok: 2, bad: 1 }), 'rivedere', 'sotto zero: da rivedere');
       uguale(gruppo({ good: 3, ok: 1, bad: 1 }), 'gradite', 'più buoni che cattivi');
     },
   },
@@ -161,6 +164,51 @@ export const casi = [
       uguale(righe[0].gruppo, 'poche', 'senza giudizi: poche');
       const c = righe[0].conteggi.Gabriel;
       uguale(c.good + c.ok + c.bad, 0, 'zero giudizi');
+    },
+  },
+  {
+    nome: 'alimento(): un personalizzato dello storico si legge col suo nome, senza entrare in ALIMENTI',
+    prova: () => {
+      metti({ customFoods: [{ id: 'mspwb9hcpv5yjb', name: 'Brodo vegetale', emoji: '🔥', cat: 'veg' }] });
+      const a = alimento('mspwb9hcpv5yjb');
+      uguale(a.nome, 'Brodo vegetale', 'nome dal campo name');
+      uguale(a.emoji, '🔥', 'emoji del personalizzato');
+      uguale(nomePappa(['pastina', 'mspwb9hcpv5yjb']), 'Pastina + Brodo vegetale', 'il nome entra nel nome della pappa');
+      uguale(ALIMENTI.some((x) => x.id === 'mspwb9hcpv5yjb'), false, 'il catalogo resta di 54');
+      uguale(alimento('riso').nome, 'Riso', 'i preset vincono e restano');
+      metti({});
+      uguale(alimento('mspwb9hcpv5yjb').nome, 'mspwb9hcpv5yjb', "senza customFoods torna il nome uguale all'id");
+    },
+  },
+  {
+    nome: 'elenco(): una frase libera del vecchio registro frutta rende la riga solo lettura; un personalizzato no',
+    prova: () => {
+      metti({
+        customFoods: [{ id: 'cf1', name: 'Brodo vegetale', emoji: '🔥', cat: 'veg' }],
+        customFruits: [{ id: '30 g di zucchine e patate', name: '30 g di zucchine e patate', emoji: '🍽️' }],
+        '2026-10-01': { Gabriel: { meals: [
+          nuova('a', ['30 g di zucchine e patate'], 'good'),
+          nuova('b', ['pastina', 'cf1'], 'good'),
+          nuova('c', ['pastina', 'zucchina'], 'good'),
+        ] } },
+      });
+      const per = {};
+      for (const r of elenco()) per[r.chiave] = r;
+      uguale(per['30 g di zucchine e patate'].soloLettura, true, 'la frase libera non si tocca');
+      uguale(per[chiavePappa(['pastina', 'cf1'])].soloLettura, false, 'il personalizzato è un alimento vero');
+      uguale(per[chiavePappa(['pastina', 'zucchina'])].soloLettura, false, 'i preset sono toccabili');
+      uguale(per['30 g di zucchine e patate'].nome, '30 g di zucchine e patate', 'la riga resta leggibile');
+      uguale(ALIMENTI.length, 54, 'la frase non entra nel catalogo');
+    },
+  },
+  {
+    nome: 'elenco(): una pappa con tutti così così sta nel gruppo neutre',
+    prova: () => {
+      metti({
+        '2026-10-01': { Gabriel: { meals: [nuova('a', ['riso', 'pollo'], 'ok')] } },
+        '2026-10-02': { Vittorio: { meals: [nuova('b', ['riso', 'pollo'], 'ok')] } },
+      });
+      uguale(elenco()[0].gruppo, 'neutre', 'due così così');
     },
   },
   {

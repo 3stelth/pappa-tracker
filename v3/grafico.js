@@ -45,6 +45,8 @@ const PASSI_Y = { peso: [0.5, 1, 2, 5], lunghezza: [2, 5, 10, 20] };
 
 const GIORNI_PERIODO = { '1m': 30, '3m': 91, '6m': 183 };
 
+export const SENZA_BANDE = 'Le bande dell’OMS non sono disponibili: il grafico non si può leggere.';
+
 function n1(x) {
   return x.toFixed(1);
 }
@@ -133,25 +135,29 @@ function mesiAsse(giorniDa, giorniA) {
  * Il grafico intero, come stringa SVG.
  * `serie` è `{Gabriel:[{giorni,valore}], Vittorio:[…]}`; i punti fuori dalla finestra
  * e quelli prima del termine non entrano nel disegno.
+ * `messaggio` è il testo da scrivere quando le bande mancano: chi chiama sa perché.
  */
-export function disegnaGrafico({ misura, serie, giorniDa, giorniA }) {
+export function disegnaGrafico({ misura, serie, giorniDa, giorniA, messaggio }) {
   const da = Number.isFinite(giorniDa) ? giorniDa : 0;
   const a = Number.isFinite(giorniA) && giorniA > da ? giorniA : da + 30;
 
   const passo = Math.max(1, Math.round((a - da) / PUNTI_BANDA));
   const curve = bande(misura, da, a, passo).filter((b) => b.punti.length > 1);
 
+  // Senza le bande il grafico non si può leggere: tutto il suo senso è dove passa la
+  // linea del bambino rispetto alle bande. Con la sola linea l'asse y si scalerebbe
+  // sui pesi del bambino, la linea finirebbe in alto nel riquadro e sembrerebbe alta.
+  // Meglio dirlo che disegnare una posizione che non vuol dire niente.
+  if (!curve.length) return vuoto(messaggio || SENZA_BANDE);
+
   const linee = BAMBINI.map((nome) => ({
     nome,
     punti: puntiDentro(serie && serie[nome], da, a),
   }));
 
-  // Senza bande e senza punti non c'è nessuna scala vera: meglio dirlo che disegnare
-  // un asse inventato.
   const valori = [];
   for (const b of curve) for (const [, v] of b.punti) valori.push(v);
   for (const l of linee) for (const [, v] of l.punti) valori.push(v);
-  if (!valori.length) return vuoto('Sto caricando le curve dell’OMS.');
 
   const p = passoY(misura, Math.min(...valori), Math.max(...valori));
   const yMin = Math.floor(Math.min(...valori) / p) * p;
@@ -234,9 +240,25 @@ function cornice(dentro) {
   );
 }
 
+/** Spezza un messaggio in righe corte: nell'SVG il testo non va a capo da sé. */
+function righe(testo, quanti = 38) {
+  const out = [''];
+  for (const parola of String(testo).split(' ')) {
+    const ultima = out[out.length - 1];
+    if (!ultima) out[out.length - 1] = parola;
+    else if ((ultima + ' ' + parola).length <= quanti) out[out.length - 1] = ultima + ' ' + parola;
+    else out.push(parola);
+  }
+  return out;
+}
+
 function vuoto(testo) {
+  const r = righe(testo);
+  const primo = ALT / 2 - ((r.length - 1) * 15) / 2;
   return cornice(
-    `<text x="${LARG / 2}" y="${ALT / 2}" text-anchor="middle" font-size="11"` +
-      ` font-weight="700" fill="#98A0B2">${testo}</text>`
+    `<text class="messaggio" x="${LARG / 2}" y="${n1(primo)}" text-anchor="middle"` +
+      ` font-size="11" font-weight="700" fill="#98A0B2">` +
+      r.map((t, i) => `<tspan x="${LARG / 2}" dy="${i ? 15 : 0}">${t}</tspan>`).join('') +
+      '</text>'
   );
 }

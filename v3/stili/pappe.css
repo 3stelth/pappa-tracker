@@ -6,6 +6,8 @@
 .pp .meal{display:flex;align-items:center;gap:11px;padding:12px 13px;margin-bottom:8px;
   cursor:pointer;user-select:none;transition:transform .09s ease-out}
 .pp .meal:active{transform:scale(0.98)}
+.pp .meal.sola-lettura{cursor:default}
+.pp .meal.sola-lettura:active{transform:none}
 .pp .meal .em{font-size:19px;flex-shrink:0;letter-spacing:1px}
 .pp .meal .nm{font-size:12.5px;font-weight:700;flex:1;min-width:0;line-height:1.35}
 .pp .meal .st{display:flex;gap:4px;flex-shrink:0}
@@ -29,7 +31,6 @@
 .pp .face .t{font-size:9.5px;font-weight:700;color:var(--sub);margin-top:4px;display:block}
 .pp .judge.g .face.sel{background:#fff;border-color:var(--g-pri);box-shadow:0 4px 14px rgba(59,130,246,0.22)}
 .pp .judge.v .face.sel{background:#fff;border-color:var(--v-pri);box-shadow:0 4px 14px rgba(20,184,166,0.22)}
-.pp .taps{display:flex;gap:6px;margin-top:4px;font-size:10px;font-weight:700;color:var(--hint)}
 
 /* ── pappa nuova: alimenti per categoria ── */
 .pp .comp-nome{font-size:13px;font-weight:800;line-height:1.35;margin-bottom:10px;min-height:18px}

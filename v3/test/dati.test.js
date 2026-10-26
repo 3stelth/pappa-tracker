@@ -180,6 +180,56 @@ export const casi = [
     },
   },
   {
+    nome: 'fondi: i vaccini si uniscono per seduta, non a blocco (il seme non sparisce)',
+    prova: () => {
+      const bb = ['Gabriel', 'Vittorio'];
+      const voce = (nome, lotto, dose) => ({ nome, prodotto: nome, dose, lotto, tipo: 'vaccino', via: 'iniezione', copre: [nome] });
+      const seme = {
+        aggiornatoAl: '2026-10-26', stato: 'In regola', emessoDa: 'Ente di prova', modificatoAt: 10,
+        sedute: [1, 2, 3, 4, 5].map((n) => ({ data: `2026-0${n}-10`, bambini: bb, voci: [voce('Uno', `PROVA10${n}`, n)] })),
+      };
+      const aMano = { sedute: [{ data: '2026-08-01', bambini: ['Gabriel'], voci: [voce('Nuovo', 'PROVA999', 1)] }], modificatoAt: 99 };
+      const f = fondi({ vaccini: aMano }, { vaccini: seme }).vaccini;
+      uguale(f.sedute.length, 6, 'cinque del seme più una a mano');
+      uguali(f.sedute.map((x) => x.data), ['2026-01-10', '2026-02-10', '2026-03-10', '2026-04-10', '2026-05-10', '2026-08-01'], 'in ordine di data');
+      uguale(f.stato, 'In regola', 'lo stato del seme resta, anche se il blocco nuovo non lo ha');
+      uguale(f.aggiornatoAl, '2026-10-26', 'aggiornatoAl resta');
+      uguale(f.modificatoAt, 99, 'modificatoAt è il più grande');
+      const al_contrario = fondi({ vaccini: seme }, { vaccini: aMano }).vaccini;
+      uguali(al_contrario.sedute, f.sedute, 'stesso risultato scambiando le parti');
+      uguali(fondi({ vaccini: aMano }, {}).vaccini.sedute, aMano.sedute, 'se sta in una parte sola resta');
+    },
+  },
+  {
+    nome: 'fondi: i vaccini identici non si duplicano; voci diverse della stessa seduta si sommano',
+    prova: () => {
+      const bb = ['Vittorio', 'Gabriel'];
+      const v1 = { nome: 'Uno', prodotto: 'Uno', dose: 1, lotto: 'PROVA201', tipo: 'vaccino', copre: [] };
+      const v2 = { nome: 'Due', prodotto: 'Due', dose: 1, lotto: 'PROVA202', tipo: 'vaccino', copre: [] };
+      const a = { vaccini: { modificatoAt: 1, sedute: [{ data: '2026-06-01', bambini: ['Gabriel', 'Vittorio'], voci: [v1] }] } };
+      const b = { vaccini: { modificatoAt: 2, sedute: [{ data: '2026-06-01', bambini: bb, voci: [v1, v2] }] } };
+      const f = fondi(a, b).vaccini;
+      uguale(f.sedute.length, 1, 'stessa data e stessi bambini (in altro ordine): una seduta');
+      uguali(f.sedute[0].voci.map((v) => v.lotto), ['PROVA201', 'PROVA202'], 'la voce uguale una volta, la nuova aggiunta');
+      const di_nuovo = fondi({ vaccini: f }, b).vaccini;
+      uguali(di_nuovo.sedute, f.sedute, 'fondere ancora non cambia niente');
+    },
+  },
+  {
+    nome: 'fondi: i vaccini non modificano gli oggetti che ricevono',
+    prova: () => {
+      const a = { vaccini: { modificatoAt: 1, stato: 'X', sedute: [{ data: '2026-06-01', bambini: ['Gabriel'], voci: [{ nome: 'Uno', lotto: 'PROVA301' }] }] } };
+      const b = { vaccini: { modificatoAt: 2, sedute: [{ data: '2026-06-01', bambini: ['Gabriel'], voci: [{ nome: 'Due', lotto: 'PROVA302' }] }] } };
+      const pa = JSON.stringify(a);
+      const pb = JSON.stringify(b);
+      const f = fondi(a, b);
+      f.vaccini.sedute[0].voci[0].nome = 'cambiato';
+      f.vaccini.sedute.push({});
+      uguale(JSON.stringify(a), pa, 'a è intatto');
+      uguale(JSON.stringify(b), pb, 'b è intatto');
+    },
+  },
+  {
     nome: 'fondi: non modifica gli oggetti che riceve',
     prova: () => {
       const mio = {
@@ -193,6 +243,95 @@ export const casi = [
       f['2026-06-01'].Gabriel.weight.kg = 99;
       uguale(JSON.stringify(mio), primaMio, 'mio è intatto');
       uguale(JSON.stringify(altrui), primaAltrui, 'altrui è intatto');
+    },
+  },
+  {
+    nome: 'scriviMisura: riscrivendo una misura esistente restano la sua nota e la sua ora',
+    prova: () => senzaMondo(() => {
+      provaSenzaScritture(true);
+      try {
+        metti({ '2026-10-20': { Gabriel: {
+          weight: { kg: 7.1, time: '08:15', note: 'dopo il bagno', addedAt: 5 },
+          length: { cm: 66, time: '08:20', note: 'a pancia in su', addedAt: 6 },
+        } } });
+        scriviMisura('Gabriel', 'peso', 7.2, '2026-10-20');
+        const w = stato.data['2026-10-20'].Gabriel.weight;
+        uguale(w.kg, 7.2, 'il valore cambia');
+        uguale(w.note, 'dopo il bagno', 'la nota resta');
+        uguale(w.time, '08:15', "l'ora vera resta");
+        vero(w.addedAt > 5, 'addedAt cresce');
+        scriviMisura('Gabriel', 'lunghezza', 67, '2026-10-20');
+        const l = stato.data['2026-10-20'].Gabriel.length;
+        uguali([l.cm, l.note, l.time], [67, 'a pancia in su', '08:20'], 'vale anche per la lunghezza');
+      } finally {
+        provaSenzaScritture(false);
+      }
+    }),
+  },
+  {
+    nome: 'avvia() + seme: blocco già presente e seme uguale, nessuna scrittura',
+    prova: async () => {
+      const bb = ['Gabriel', 'Vittorio'];
+      const seme = { aggiornatoAl: '2026-10-26', stato: 'In regola', sedute: [
+        { data: '2026-03-03', bambini: bb, voci: [{ nome: 'Uno', lotto: 'PROVA401', dose: 1 }] },
+        { data: '2026-05-19', bambini: bb, voci: [{ nome: 'Uno', lotto: 'PROVA402', dose: 2 }] },
+      ] };
+      const remoto = { vaccini: { ...JSON.parse(JSON.stringify(seme)), modificatoAt: 5 } };
+      const rete = finta((url) => (url.includes('id=eq.v3') ? [{ data: remoto }] : []));
+      await senzaMondo(async () => {
+        metti({});
+        await avvia({ fetch: rete, leggiSeme: async () => seme });
+      });
+      uguale(stato.data.vaccini.modificatoAt, 5, 'modificatoAt non cambia: niente da scrivere');
+      uguale(stato.data.vaccini.sedute.length, 2, 'due sedute');
+      uguale(rete.post().length, 0, 'nessuna POST');
+    },
+  },
+  {
+    nome: 'avvia() + seme: blocco presente senza una seduta del seme, la seduta entra',
+    prova: async () => {
+      const bb = ['Gabriel', 'Vittorio'];
+      const seme = { aggiornatoAl: '2026-10-26', stato: 'In regola', sedute: [
+        { data: '2026-03-03', bambini: bb, voci: [{ nome: 'Uno', lotto: 'PROVA401', dose: 1 }] },
+        { data: '2026-05-19', bambini: bb, voci: [{ nome: 'Uno', lotto: 'PROVA402', dose: 2 }] },
+      ] };
+      // un altro telefono ha scritto una voce sua, senza il seme
+      const remoto = { vaccini: { modificatoAt: 5, sedute: [
+        { data: '2026-08-01', bambini: ['Gabriel'], voci: [{ nome: 'Mano', lotto: 'PROVA499' }] },
+        seme.sedute[0],
+      ] } };
+      const rete = finta((url) => (url.includes('id=eq.v3') ? [{ data: remoto }] : []));
+      await senzaMondo(async () => {
+        metti({});
+        await avvia({ fetch: rete, leggiSeme: async () => seme });
+      });
+      const v = stato.data.vaccini;
+      uguali(v.sedute.map((x) => x.data), ['2026-03-03', '2026-05-19', '2026-08-01'], 'la seduta del seme che mancava è entrata, in ordine');
+      uguale(v.stato, 'In regola', 'lo stato del seme entra');
+      vero(v.modificatoAt > 5, 'modificatoAt avanza: il blocco è cambiato');
+      uguale(rete.post().length, 0, 'avvia non scrive niente di remoto');
+      vero(!haScrittoMain(rete), 'la riga main non si scrive');
+    },
+  },
+  {
+    nome: 'avvia() + seme: senza blocco il seme viene copiato; con la rete che fallisce non entra niente',
+    prova: async () => {
+      const seme = { aggiornatoAl: '2026-10-26', sedute: [{ data: '2026-03-03', bambini: ['Gabriel'], voci: [{ nome: 'Uno', lotto: 'PROVA401' }] }] };
+      const rete = finta((url) => (url.includes('id=eq.v3') ? [{ data: { goals: { pappe: 1 } } }] : []));
+      await senzaMondo(async () => {
+        metti({});
+        await avvia({ fetch: rete, leggiSeme: async () => seme });
+      });
+      uguale(stato.data.vaccini.sedute.length, 1, 'il seme è copiato');
+      uguale(rete.post().length, 0, 'nessuna POST');
+
+      const guasta = finta(() => null);
+      await senzaMondo(async () => {
+        metti({});
+        await avvia({ fetch: guasta, leggiSeme: async () => seme });
+      });
+      uguale(stato.data.vaccini, undefined, 'con la rete guasta avvia() si ferma prima del seme');
+      uguale(guasta.post().length, 0, 'nessuna POST');
     },
   },
   {

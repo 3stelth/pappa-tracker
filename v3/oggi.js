@@ -16,7 +16,7 @@ import {
   dataLunga, dataCorta, numero, isoOggi,
 } from './app.js';
 import { pesate, lunghezze, onCambio } from './dati.js';
-import { TERMINE, etaScritta, isoDi } from './crescita.js';
+import { TERMINE, etaScritta, giorniDa, isoDi } from './crescita.js';
 
 // ── la sagoma ──────────────────────────────────────────────────────────────
 
@@ -118,6 +118,23 @@ export function riferimentiMesi(isoDa, isoA) {
   return out;
 }
 
+/**
+ * La scritta dell'età corretta a una data. Prima del termine non c'è età corretta:
+ * lo si decide confrontando le date, non leggendo la frase di `etaScritta`.
+ */
+export function etaCorretta(iso) {
+  if (giorniDa(TERMINE, iso) < 0) return 'non ancora al termine';
+  return `corretta ${etaScritta(TERMINE, iso)}`;
+}
+
+/** Quanto può muoversi il dito, in px, fra pressione e rilascio perché sia un tocco e non uno scorrimento. */
+export const SOGLIA_TOCCO = 10;
+
+/** Vero se il dito è rimasto quasi fermo fra la pressione (x0, y0) e il rilascio (x1, y1). */
+export function eUnTocco(x0, y0, x1, y1, soglia = SOGLIA_TOCCO) {
+  return Math.hypot(x1 - x0, y1 - y0) < soglia;
+}
+
 // ── la schermata ───────────────────────────────────────────────────────────
 
 const ALTEZZA_SCENA = 214;     // px, come .stage nel CSS
@@ -160,7 +177,7 @@ function markupBambino(b) {
   </div>`;
 }
 
-const MARKUP = `
+const MARKUP = `<div class="oggi">
   <div class="twins">${BAMBINI.map(markupBambino).join('')}</div>
   <div class="timebar card">
     <div class="timebar-top">
@@ -173,7 +190,8 @@ const MARKUP = `
     </div>
   </div>
   <div class="sect">Ultime pesate</div>
-  <div class="card ultime"></div>`;
+  <div class="card ultime"></div>
+</div>`;
 
 function righeUltimePesate(quante) {
   const righe = [];
@@ -231,10 +249,13 @@ onCambio(() => {
 
 function disegnaOggi(contenitore) {
   contenitore.innerHTML = MARKUP;
+  // La radice è il blocco .oggi, non il contenitore: il contenitore (#vista) è sempre lo
+  // stesso elemento e resta in pagina anche quando si cambia sezione, il blocco no.
+  const radice = contenitore.querySelector('.oggi');
 
   const schede = {};
   for (const b of BAMBINI) {
-    const el = contenitore.querySelector(`.twin[data-bambino="${b}"]`);
+    const el = radice.querySelector(`.twin[data-bambino="${b}"]`);
     const scheda = {
       palco: el.querySelector('.stage'),
       cm: el.querySelector('.cmbox .n'),
@@ -250,18 +271,26 @@ function disegnaOggi(contenitore) {
     schede[b] = scheda;
     // la sagoma grigia ha sempre la stessa altezza: dice solo «qui manca la misura»
     scheda.figVuota.style.transform = `scale(${((ALTEZZA_VUOTA * ALTEZZA_SCENA) / ALTEZZA_SVG).toFixed(4)})`;
-    scheda.palco.addEventListener('pointerdown', () => {
-      if (scheda.palco.classList.contains('manca')) {
+    // Si apre al rilascio, e solo se il dito si è mosso poco: chi scorre la pagina con il
+    // dito sulla sagoma non deve vedersi aprire la tendina.
+    let giu = null;
+    scheda.palco.addEventListener('pointerdown', (e) => { giu = { x: e.clientX, y: e.clientY }; });
+    scheda.palco.addEventListener('pointerup', (e) => {
+      const partenza = giu;
+      giu = null;
+      if (!partenza || !scheda.palco.classList.contains('manca')) return;
+      if (eUnTocco(partenza.x, partenza.y, e.clientX, e.clientY)) {
         apriInserimentoMisura({ tipo: 'lunghezza', bambino: b });
       }
     });
+    scheda.palco.addEventListener('pointercancel', () => { giu = null; });
   }
 
-  const elData = contenitore.querySelector('.timebar-date');
-  const elEta = contenitore.querySelector('.timebar-age');
-  const elTacche = contenitore.querySelector('.ticks');
-  const barra = contenitore.querySelector('input[type=range]');
-  const elUltime = contenitore.querySelector('.ultime');
+  const elData = radice.querySelector('.timebar-date');
+  const elEta = radice.querySelector('.timebar-age');
+  const elTacche = radice.querySelector('.ticks');
+  const barra = radice.querySelector('input[type=range]');
+  const elUltime = radice.querySelector('.ultime');
 
   let t0 = 0;
   let t1 = 0;
@@ -320,8 +349,7 @@ function disegnaOggi(contenitore) {
     }
 
     imposta(elData, dataLunga(iso));
-    const eta = etaScritta(TERMINE, iso);
-    imposta(elEta, eta.startsWith('non') ? eta : `corretta ${eta}`);
+    imposta(elEta, etaCorretta(iso));
   }
 
   // Ricalcola quello che dipende dai dati: l'intervallo della barra, le tacche dei
@@ -365,10 +393,12 @@ function disegnaOggi(contenitore) {
     trascina = false;
     if (rimandato) aggiorna();
   };
-  barra.addEventListener('pointerup', rilascio);
-  barra.addEventListener('pointercancel', rilascio);
+  // Il rilascio può avvenire fuori dalla barra: si ascoltano tutti i modi in cui il gesto finisce.
+  for (const evento of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    barra.addEventListener(evento, rilascio);
+  }
 
-  attuale = { radice: contenitore, aggiorna };
+  attuale = { radice, aggiorna };
   aggiorna();
 }
 

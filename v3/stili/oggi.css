@@ -3,70 +3,70 @@
    Colori e raggi vengono dai token di base.css: qui non ce ne sono di nuovi. */
 
 /* ── le due schede con le sagome ── */
-.twins{display:flex;gap:10px;margin-top:14px}
-.twin{flex:1;min-width:0;padding:13px 11px 12px;position:relative;overflow:hidden}
-.twin::before{content:'';position:absolute;inset:0 0 auto;height:3px}
-.twin.g::before{background:linear-gradient(135deg,var(--g-2),var(--g-pri))}
-.twin.v::before{background:linear-gradient(135deg,var(--v-2),var(--v-pri))}
-.twin-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:5px}
-.dot{width:8px;height:8px;border-radius:50%}
-.twin.g .dot{background:var(--g-pri)}
-.twin.v .dot{background:var(--v-pri)}
+.oggi .twins{display:flex;gap:10px;margin-top:14px}
+.oggi .twin{flex:1;min-width:0;padding:13px 11px 12px;position:relative;overflow:hidden}
+.oggi .twin::before{content:'';position:absolute;inset:0 0 auto;height:3px}
+.oggi .twin.g::before{background:linear-gradient(135deg,var(--g-2),var(--g-pri))}
+.oggi .twin.v::before{background:linear-gradient(135deg,var(--v-2),var(--v-pri))}
+.oggi .twin-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:5px}
+.oggi .dot{width:8px;height:8px;border-radius:50%}
+.oggi .twin.g .dot{background:var(--g-pri)}
+.oggi .twin.v .dot{background:var(--v-pri)}
 
-.stage{height:214px;margin:8px 0 0;position:relative}
-.stage.manca{cursor:pointer}
+.oggi .stage{height:214px;margin:8px 0 0;position:relative}
+.oggi .stage.manca{cursor:pointer}
 /* La sagoma colorata e quella grigia stanno una sull'altra: se ne mostra una sola.
    Il fondo della sagoma sta sul fondo della scena; la scala la dà oggi.js. */
-.fig{position:absolute;bottom:0;left:50%;width:110px;height:220px;margin-left:-55px;
+.oggi .fig{position:absolute;bottom:0;left:50%;width:110px;height:220px;margin-left:-55px;
   transform-origin:50% 100%;will-change:transform}
-.fig svg{display:block;width:110px}
-.fig.vuota{opacity:0.35}
-.fig[hidden]{display:none}
-.cmbox{position:absolute;left:0;top:0;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+.oggi .fig svg{display:block;width:110px}
+.oggi .fig.vuota{opacity:0.35}
+.oggi .fig[hidden]{display:none}
+.oggi .cmbox{position:absolute;left:0;top:0;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:1px;
   pointer-events:none}
-.cmbox .n{font-size:15px;font-weight:800;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
-.cmbox .d{font-size:9px;font-weight:700;color:var(--hint)}
-.stage.manca .cmbox{color:var(--sub) !important}
-.stage.manca .cmbox .n{font-size:12.5px;letter-spacing:-0.01em}
-.hline{position:absolute;left:0;right:6px;border-top:1.5px dashed currentColor;opacity:0.45;pointer-events:none}
-.hline[hidden]{display:none}
+.oggi .cmbox .n{font-size:15px;font-weight:800;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
+.oggi .cmbox .d{font-size:9px;font-weight:700;color:var(--hint)}
+.oggi .stage.manca .cmbox{color:var(--sub) !important}
+.oggi .stage.manca .cmbox .n{font-size:12.5px;letter-spacing:-0.01em}
+.oggi .hline{position:absolute;left:0;right:6px;border-top:1.5px dashed currentColor;opacity:0.45;pointer-events:none}
+.oggi .hline[hidden]{display:none}
 
-.kgrow{margin-top:9px;padding-top:9px;border-top:1px solid var(--hair)}
-.big{font-size:26px;font-weight:800;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;line-height:1}
-.big small{font-size:12.5px;font-weight:700}
-.delta{font-size:10.5px;font-weight:700;color:var(--sub);margin-top:3px;min-height:1.2em}
-.delta.su{color:var(--green)}
-.when{font-size:9.5px;color:var(--hint);font-weight:600;margin-top:2px}
+.oggi .kgrow{margin-top:9px;padding-top:9px;border-top:1px solid var(--hair)}
+.oggi .big{font-size:26px;font-weight:800;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;line-height:1}
+.oggi .big small{font-size:12.5px;font-weight:700}
+.oggi .delta{font-size:10.5px;font-weight:700;color:var(--sub);margin-top:3px;min-height:1.2em}
+.oggi .delta.su{color:var(--green)}
+.oggi .when{font-size:9.5px;color:var(--hint);font-weight:600;margin-top:2px}
 
 /* ── barra del tempo con i riferimenti dei mesi ── */
-.timebar{margin-top:12px;padding:12px 14px 8px}
-.timebar-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px}
-.timebar-date{font-size:13px;font-weight:800}
-.timebar-age{font-size:10px;color:var(--sub);font-weight:600;text-align:right}
-.track{position:relative;height:50px;margin-top:2px}
+.oggi .timebar{margin-top:12px;padding:12px 14px 8px}
+.oggi .timebar-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px}
+.oggi .timebar-date{font-size:13px;font-weight:800}
+.oggi .timebar-age{font-size:10px;color:var(--sub);font-weight:600;text-align:right}
+.oggi .track{position:relative;height:50px;margin-top:2px}
 /* Il centro del cursore (26 px) corre da 13 px dal bordo a 13 px dall'altro bordo:
    le tacche seguono la stessa corsa, così una data sta sotto il cursore che la indica. */
-.ticks{position:absolute;inset:0 13px auto 13px;height:22px;pointer-events:none}
-.ticks i{position:absolute;top:2px;width:2px;height:7px;margin-left:-1px;border-radius:1px;opacity:.5;
+.oggi .ticks{position:absolute;inset:0 13px auto 13px;height:22px;pointer-events:none}
+.oggi .ticks i{position:absolute;top:2px;width:2px;height:7px;margin-left:-1px;border-radius:1px;opacity:.5;
   background:var(--hint)}
-.ticks b{position:absolute;top:11px;transform:translateX(-50%);font-size:8.5px;font-weight:800;
+.oggi .ticks b{position:absolute;top:11px;transform:translateX(-50%);font-size:8.5px;font-weight:800;
   color:var(--hint);text-transform:uppercase;letter-spacing:.04em}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;
+.oggi input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;
   margin:0;position:absolute;left:0;bottom:0}
-input[type=range]:disabled{opacity:0.5}
-input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;
+.oggi input[type=range]:disabled{opacity:0.5}
+.oggi input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;
   background:linear-gradient(90deg,var(--g-2),var(--v-2))}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;
+.oggi input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;
   background:#fff;box-shadow:0 3px 10px rgba(22,32,72,0.3);border:1px solid var(--glass-brd);margin-top:-10px}
-input[type=range]::-moz-range-track{height:6px;border-radius:3px;
+.oggi input[type=range]::-moz-range-track{height:6px;border-radius:3px;
   background:linear-gradient(90deg,var(--g-2),var(--v-2))}
-input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
+.oggi input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
   background:#fff;box-shadow:0 3px 10px rgba(22,32,72,0.3);border:1px solid var(--glass-brd)}
 
 /* ── ultime pesate ── */
-.wrow{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--hair)}
-.wrow:last-child{border-bottom:none}
-.wrow .d{font-size:12px;font-weight:700;flex:1}
-.wrow .kg{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
-.wrow .dl{font-size:10.5px;font-weight:700;color:var(--sub);width:56px;text-align:right;font-variant-numeric:tabular-nums}
-.wrow .dl.su{color:var(--green)}
+.oggi .wrow{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--hair)}
+.oggi .wrow:last-child{border-bottom:none}
+.oggi .wrow .d{font-size:12px;font-weight:700;flex:1}
+.oggi .wrow .kg{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.oggi .wrow .dl{font-size:10.5px;font-weight:700;color:var(--sub);width:56px;text-align:right;font-variant-numeric:tabular-nums}
+.oggi .wrow .dl.su{color:var(--green)}

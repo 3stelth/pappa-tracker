@@ -9,7 +9,7 @@ import {
   BAMBINI, SIGLA, registraSezione, apriTendina, chiudiTendina, avviso, dataLunga, isoOggi,
 } from './app.js';
 import { vaccini, scriviVaccini, onCambio } from './dati.js';
-import { NASCITA, TERMINE, etaScritta } from './crescita.js';
+import { NASCITA, TERMINE, etaScritta, isoDi } from './crescita.js';
 
 // ── testo sicuro ───────────────────────────────────────────────────────────
 // Le voci aggiunte a mano contengono testo libero: ogni pezzo scritto in pagina
@@ -28,14 +28,13 @@ const DATA_OK = /^\d{4}-\d{2}-\d{2}$/;
 function elenco(sedute) { return Array.isArray(sedute) ? sedute : []; }
 function vociDi(seduta) { return seduta && Array.isArray(seduta.voci) ? seduta.voci : []; }
 
-/** I pezzi di testo che si leggono sotto il nome della voce. Sono anche quelli che la ricerca guarda. */
+/** I pezzi di testo che si leggono sotto il nome della voce, senza l'etichetta «lotto». */
 function partiVoce(v) {
   const p = [];
   if (v.tipo === 'profilassi') p.push('profilassi');
   if (v.prodotto && v.prodotto !== v.nome) p.push(v.prodotto);
   if (v.sigla) p.push(v.sigla);
   if (v.via === 'bocca') p.push('per bocca');
-  if (v.lotto) p.push('lotto ' + v.lotto);
   return p;
 }
 
@@ -48,7 +47,8 @@ function copreVisibile(v) {
 
 function pagliaio(v) {
   const c = Array.isArray(v.copre) ? v.copre : [];
-  return [v.nome, ...partiVoce(v), ...c].filter(Boolean).join(' ').toLowerCase();
+  // L'etichetta «lotto» non si cerca: la parola «lotto» le troverebbe tutte.
+  return [v.nome, ...partiVoce(v), v.lotto, ...c].filter(Boolean).join(' ').toLowerCase();
 }
 
 export function contaVoci(sedute) {
@@ -88,9 +88,9 @@ export function evidenzia(testo, query) {
 
 function rigaVoce(v, q) {
   const icona = v.tipo === 'profilassi' ? '🛡️' : v.via === 'bocca' ? '💧' : '💉';
-  const parti = partiVoce(v);
-  const sotto = parti.length
-    ? `<div class="sub">${parti.map((p) => evidenzia(p, q)).join(' · ')}</div>` : '';
+  const parti = partiVoce(v).map((p) => evidenzia(p, q));
+  if (v.lotto) parti.push('lotto ' + evidenzia(v.lotto, q));
+  const sotto = parti.length ? `<div class="sub">${parti.join(' · ')}</div>` : '';
   const copre = copreVisibile(v);
   const chip = copre.length
     ? `<div class="covers">${copre.map((c) => `<i>${evidenzia(c, q)}</i>`).join('')}</div>` : '';
@@ -147,6 +147,15 @@ function testa(dati) {
   const s = c.sedute === 1 ? '1 seduta' : `${c.sedute} sedute`;
   const n = c.somministrazioni === 1 ? '1 somministrazione' : `${c.somministrazioni} somministrazioni`;
   return `${badge}<div class="sect">${s} · ${n}</div>`;
+}
+
+/** Controlla la data scelta nel modulo. Torna il testo dell'errore, o '' se va bene. */
+export function controllaData(data, oggi) {
+  const d = String(data || '');
+  if (!DATA_OK.test(d) || isoDi(new Date(d + 'T00:00:00')) !== d) return 'Scegli la data.';
+  if (d < NASCITA) return 'La data è prima della nascita.';
+  if (d > oggi) return 'La data è nel futuro.';
+  return '';
 }
 
 /**
@@ -210,6 +219,9 @@ function disegna(contenitore) {
     lista.innerHTML = cronologia(dati, testoRicerca);
     programma.hidden = !!testoRicerca;
     x.hidden = !q.value;
+    // L'intestazione sta nel guscio: all'avvio i dati arrivano dopo il primo disegno.
+    const elSotto = document.getElementById('sotto');
+    if (elSotto) elSotto.textContent = sotto();
     if (testoRicerca && dati) {
       const n = contaVoci(cerca(dati.sedute, testoRicerca)).somministrazioni;
       conto.textContent = n === 1 ? '1 somministrazione trovata' : `${n} somministrazioni trovate`;
@@ -243,7 +255,7 @@ function formAggiunta() {
     + `<div class="who-pick vx-chi">`
     + BAMBINI.map((b) => `<b class="${SIGLA[b]}" data-chi="${b}">${b}</b>`).join('')
     + `<b class="on" data-chi="tutti">Tutti e due</b></div>`
-    + campo('vx-data', 'Data', `type="date" value="${isoOggi()}" max="${isoOggi()}"`)
+    + campo('vx-data', 'Data', `type="date" value="${isoOggi()}" min="${NASCITA}" max="${isoOggi()}"`)
     + campo('vx-nome', 'Nome (per esempio Esavalente)')
     + campo('vx-prodotto', 'Prodotto (facoltativo)')
     + `<div class="vx-due">`
@@ -260,7 +272,8 @@ function formAggiunta() {
 function leggiForm(t) {
   const val = (id) => t.querySelector('#' + id).value.trim();
   const data = val('vx-data');
-  if (!DATA_OK.test(data) || Number.isNaN(Date.parse(data))) return { errore: 'Scegli la data.' };
+  const erroreData = controllaData(data, isoOggi());
+  if (erroreData) return { errore: erroreData };
   const nome = val('vx-nome');
   if (!nome) return { errore: 'Scrivi il nome del vaccino.' };
   const scelto = t.querySelector('.vx-chi b.on').dataset.chi;

@@ -8,7 +8,7 @@
 // con Node il modulo si importa e le funzioni pure si provano.
 
 import { registraSezione, apriTendina, chiudiTendina, avviso, BAMBINI, SIGLA, isoOggi } from './app.js';
-import { pappe, scriviGiudizio, onCambio } from './dati.js';
+import { stato, pappe, scriviGiudizio, onCambio } from './dati.js';
 
 // ─── catalogo ───────────────────────────────────────────────────────────────
 
@@ -88,11 +88,28 @@ export const GIUDIZI = {
 
 const PER_ID = new Map(ALIMENTI.map((a, i) => [a.id, { ...a, posto: i }]));
 
-/** Un alimento dal suo id. Un id sconosciuto (testo libero dello storico) si legge e basta. */
+/** Gli alimenti personalizzati dello storico (stato.data.customFoods): solo da leggere. */
+function personalizzato(id) {
+  const lista = stato.data && Array.isArray(stato.data.customFoods) ? stato.data.customFoods : [];
+  return lista.find((c) => c && typeof c === 'object' && c.id === id && c.name);
+}
+
+/**
+ * Un alimento dal suo id: prima i preset, poi i personalizzati dello storico, in lettura.
+ * Un id che non è né l'uno né l'altro (testo libero del vecchio registro frutta) torna col
+ * nome uguale all'id e l'emoji generica. I personalizzati NON entrano in ALIMENTI.
+ */
 export function alimento(id) {
   const a = PER_ID.get(id);
   if (a) return { id: a.id, nome: a.nome, emoji: a.emoji, cat: a.cat };
+  const c = personalizzato(id);
+  if (c) return { id, nome: String(c.name), emoji: c.emoji || '🍽️', cat: c.cat };
   return { id, nome: id, emoji: '🍽️' };
+}
+
+/** Vero se l'id è un alimento vero (preset o personalizzato) e non una frase libera. */
+function alimentoNoto(id) {
+  return PER_ID.has(id) || !!personalizzato(id);
 }
 
 // ─── pappe, chiavi e nomi ───────────────────────────────────────────────────
@@ -122,13 +139,16 @@ export function punteggio(conteggi) {
 }
 
 /**
- * Dove sta una pappa: con meno di due giudizi è «poche»; altrimenti è «gradite»
- * se il punteggio è sopra zero e «rivedere» se è zero o sotto.
+ * Dove sta una pappa: con meno di due giudizi è «poche»; poi «gradite» se il punteggio
+ * è sopra zero, «rivedere» se è sotto zero, «neutre» se è zero (tutti così così,
+ * oppure pareri che si annullano). Un esito neutro non è un giudizio negativo.
  */
 export function gruppo(conteggi) {
   const n = conteggi.good + conteggi.ok + conteggi.bad;
   if (n < 2) return 'poche';
-  return punteggio(conteggi) > 0 ? 'gradite' : 'rivedere';
+  const p = punteggio(conteggi);
+  if (p > 0) return 'gradite';
+  return p < 0 ? 'rivedere' : 'neutre';
 }
 
 function conteggiVuoti() {
@@ -138,6 +158,7 @@ function conteggiVuoti() {
 /**
  * Tutte le pappe dello storico, una riga per combinazione di alimenti, dalla più gradita.
  * `conteggi` ha una voce per bambino e una `totale`; punteggio e gruppo guardano il totale.
+ * `soloLettura` è vero se la riga contiene id che non sono alimenti (frasi libere dello storico).
  */
 export function elenco() {
   const righe = new Map();
@@ -147,7 +168,11 @@ export function elenco() {
     let r = righe.get(chiave);
     if (!r) {
       const alimenti = inOrdineDiCatalogo(p.alimenti);
-      r = { chiave, alimenti, nome: nomePappa(alimenti), conteggi: { totale: conteggiVuoti() } };
+      r = {
+        chiave, alimenti, nome: nomePappa(alimenti), conteggi: { totale: conteggiVuoti() },
+        // Una frase libera del vecchio registro frutta non è un alimento: la riga si legge e basta.
+        soloLettura: !alimenti.every(alimentoNoto),
+      };
       for (const b of BAMBINI) r.conteggi[b] = conteggiVuoti();
       righe.set(chiave, r);
     }
@@ -172,6 +197,7 @@ export function elenco() {
 const BLOCCHI = [
   { gruppo: 'gradite',  titolo: 'Le più gradite' },
   { gruppo: 'rivedere', titolo: 'Da rivedere' },
+  { gruppo: 'neutre',   titolo: 'Così così' },
   { gruppo: 'poche',    titolo: 'Ancora poche prove' },
 ];
 
@@ -207,7 +233,8 @@ function rigaHtml(r) {
     const d = dominante(r.conteggi[b]);
     return d ? `<span class="pill-like ${SIGLA[b]}">${GIUDIZI[d.giudizio].e} ${d.n}</span>` : '';
   }).join('');
-  return `<div class="meal card" role="button" data-chiave="${esc(r.chiave)}">` +
+  const tocca = r.soloLettura ? ' sola-lettura' : '';
+  return `<div class="meal card${tocca}"${r.soloLettura ? '' : ' role="button"'} data-chiave="${esc(r.chiave)}">` +
     `<span class="em">${esc(emoji)}</span><span class="nm">${esc(r.nome)}</span>` +
     `<span class="st">${pillole}</span></div>`;
 }
@@ -265,16 +292,43 @@ function disegna(contenitore) {
   const radice = document.createElement('div');
   radice.className = 'pp';
   riempi(radice);
-  sulTocco(radice, '.meal', (riga) => apriGiudizio(righeAttive.get(riga.dataset.chiave)));
+  sulTocco(radice, '.meal:not(.sola-lettura)', (riga) => apriGiudizio(righeAttive.get(riga.dataset.chiave)));
   contenitore.textContent = '';
   contenitore.append(radice);
   radiceAttiva = radice;
+  daRidisegnare = false;
+  osservaTendina();
 }
 
 // I dati arrivano dopo il disegno e ogni scrittura li cambia. Si ridisegna solo la lista,
-// mai la tendina: la faccina si accende da sola, sul posto.
+// mai la tendina. Finché la tendina è aperta la lista non si tocca: le righe non cambiano
+// posto sotto le dita e niente sfarfalla. Il ridisegno rimandato parte alla chiusura.
+let daRidisegnare = false;
+let osservatore = null;
+
+function elTendina() {
+  return typeof document !== 'undefined' ? document.getElementById('tendina') : null;
+}
+
+function osservaTendina() {
+  const t = elTendina();
+  if (!t || osservatore) return;
+  osservatore = new MutationObserver(() => {
+    if (!t.hidden || !daRidisegnare) return;
+    daRidisegnare = false;
+    if (radiceAttiva && radiceAttiva.isConnected) riempi(radiceAttiva);
+  });
+  osservatore.observe(t, { attributes: true, attributeFilter: ['hidden'] });
+}
+
 onCambio(() => {
-  if (radiceAttiva && radiceAttiva.isConnected) riempi(radiceAttiva);
+  if (!radiceAttiva || !radiceAttiva.isConnected) return;
+  const t = elTendina();
+  if (t && !t.hidden) {
+    daRidisegnare = true;
+    return;
+  }
+  riempi(radiceAttiva);
 });
 
 // ─── tendina del giudizio ───────────────────────────────────────────────────
@@ -295,7 +349,7 @@ function chiudiSeFinito(radice) {
 }
 
 function apriGiudizio(riga) {
-  if (!riga) return;
+  if (!riga || riga.soloLettura) return;
   const oggi = isoOggi();
   const html = `<div class="pp pp-giudizio">` +
     BAMBINI.map((b) => facceHtml(b, giudizioDelGiorno(b, oggi, riga.chiave))).join('') + `</div>`;

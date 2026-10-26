@@ -11,6 +11,9 @@ import {
   statoAlGiorno,
   altezzaSagoma,
   riferimentiMesi,
+  etaCorretta,
+  eUnTocco,
+  SOGLIA_TOCCO,
 } from '../oggi.js';
 
 export const nome = 'oggi';
@@ -127,6 +130,26 @@ export const casi = [
       uguale(r[7].etichetta, 'ott', 'l\'ultima');
       for (const { frazione } of r) vero(frazione >= 0 && frazione <= 1, `frazione ${frazione}`);
       uguale(r[0].frazione, 0, 'la prima sta all\'inizio');
+    },
+  },
+  {
+    nome: 'etaCorretta: prima del termine non esiste età corretta; dal termine in poi sì',
+    prova() {
+      uguale(etaCorretta('2026-03-04'), 'non ancora al termine', 'il giorno prima del termine');
+      uguale(etaCorretta('2025-12-08'), 'non ancora al termine', 'alla nascita');
+      uguale(etaCorretta('2026-03-05'), 'corretta 0 gg', 'il giorno del termine');
+      uguale(etaCorretta('2026-10-25'), 'corretta 7 mesi e 20 gg', 'il 25 ottobre');
+    },
+  },
+  {
+    nome: 'eUnTocco: sotto i 10 px è un tocco, da 10 px in su è uno scorrimento',
+    prova() {
+      uguale(SOGLIA_TOCCO, 10, 'soglia');
+      vero(eUnTocco(100, 200, 100, 200), 'dito fermo');
+      vero(eUnTocco(100, 200, 103, 204), 'spostamento di 5 px');
+      vero(!eUnTocco(100, 200, 100, 210), 'spostamento di 10 px in verticale');
+      vero(!eUnTocco(100, 200, 140, 200), 'spostamento di 40 px in orizzontale');
+      vero(!eUnTocco(100, 200, 90, 190), 'spostamento in diagonale oltre la soglia (14 px)');
     },
   },
 ];
