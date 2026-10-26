@@ -1,0 +1,51 @@
+/* Pappa Tracker v3 — sezione Pappe.
+   Classi dal mockup .claude/mockup/v3.html, frame «4 · Pappe». Tutto sta sotto .pp
+   perché la tendina e la lista condividono il guscio con le altre sezioni. */
+
+/* ── righe delle pappe ── */
+.pp .meal{display:flex;align-items:center;gap:11px;padding:12px 13px;margin-bottom:8px;
+  cursor:pointer;user-select:none;transition:transform .09s ease-out}
+.pp .meal:active{transform:scale(0.98)}
+.pp .meal .em{font-size:19px;flex-shrink:0;letter-spacing:1px}
+.pp .meal .nm{font-size:12.5px;font-weight:700;flex:1;min-width:0;line-height:1.35}
+.pp .meal .st{display:flex;gap:4px;flex-shrink:0}
+.pp .pill-like{font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px}
+.pp .pill-like.g{background:var(--g-light);color:var(--g-pri)}
+.pp .pill-like.v{background:var(--v-light);color:var(--v-pri)}
+
+/* ── una fila di faccine per bambino ── */
+.pp .judge{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.pp .judge .who{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;
+  font-size:12px;font-weight:800;flex-shrink:0}
+.pp .judge .who.g{background:var(--g-light);color:var(--g-pri)}
+.pp .judge .who.v{background:var(--v-light);color:var(--v-pri)}
+.pp .faces{flex:1;display:flex;gap:7px}
+.pp .face{flex:1;padding:13px 0 11px;border-radius:15px;background:var(--glass-2);
+  border:1px solid var(--glass-brd-2);text-align:center;cursor:pointer;user-select:none;
+  touch-action:manipulation;transition:transform .09s ease-out,background .15s ease,
+  border-color .15s ease,box-shadow .15s ease}
+.pp .face:active{transform:scale(0.96)}
+.pp .face .e{font-size:21px;display:block;line-height:1}
+.pp .face .t{font-size:9.5px;font-weight:700;color:var(--sub);margin-top:4px;display:block}
+.pp .judge.g .face.sel{background:#fff;border-color:var(--g-pri);box-shadow:0 4px 14px rgba(59,130,246,0.22)}
+.pp .judge.v .face.sel{background:#fff;border-color:var(--v-pri);box-shadow:0 4px 14px rgba(20,184,166,0.22)}
+.pp .taps{display:flex;gap:6px;margin-top:4px;font-size:10px;font-weight:700;color:var(--hint)}
+
+/* ── pappa nuova: alimenti per categoria ── */
+.pp .comp-nome{font-size:13px;font-weight:800;line-height:1.35;margin-bottom:10px;min-height:18px}
+.pp .comp-nome.vuoto-nome{color:var(--hint);font-weight:600}
+.pp .griglia{max-height:38vh;overflow-y:auto;overscroll-behavior:contain;margin:0 -4px 12px;padding:0 4px}
+.pp .cat-t{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;
+  color:var(--hint);margin:10px 0 6px 2px}
+.pp .cat-t:first-child{margin-top:0}
+.pp .icone{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pp .ico{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 3px 7px;
+  border-radius:13px;background:var(--glass-2);border:1px solid var(--glass-brd-2);
+  text-align:center;cursor:pointer;user-select:none;
+  transition:transform .09s ease-out,background .15s ease,border-color .15s ease,box-shadow .15s ease}
+.pp .ico:active{transform:scale(0.96)}
+.pp .ico .e{font-size:21px;line-height:1}
+.pp .ico .t{font-size:9.5px;font-weight:700;color:var(--sub);line-height:1.2}
+.pp .ico.on{background:#fff;border-color:var(--g-pri);box-shadow:0 4px 14px rgba(59,130,246,0.22)}
+.pp .ico.on .t{color:var(--txt)}
+.pp.fermo .ico:not(.on){opacity:0.45}
