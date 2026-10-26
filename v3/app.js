@@ -43,18 +43,26 @@ export function numero(valore, decimali) {
 
 // ── elementi del guscio ────────────────────────────────────────────────────
 
-const vista    = document.getElementById('vista');
-const barra    = document.getElementById('barra');
-const elTitolo = document.getElementById('titolo');
-const elSotto  = document.getElementById('sotto');
-const elPiu    = document.getElementById('piu');
-const elIngr   = document.getElementById('ingranaggio');
-const tendina  = document.getElementById('tendina');
-const tTitolo  = document.getElementById('tendina-titolo');
-const tSotto   = document.getElementById('tendina-sotto');
-const tCorpo   = document.getElementById('tendina-corpo');
-const velo     = document.getElementById('velo');
-const elAvviso = document.getElementById('avviso');
+// Con Node il DOM non c'è. I test delle sezioni importano le sezioni, e ogni sezione
+// importa questo modulo: senza guscio in pagina le funzioni pure restano usabili e
+// tutto il resto sta fermo.
+const DOC = typeof document !== 'undefined' ? document : null;
+function trova(id) { return DOC ? DOC.getElementById(id) : null; }
+
+const vista    = trova('vista');
+const barra    = trova('barra');
+const elTitolo = trova('titolo');
+const elSotto  = trova('sotto');
+const elPiu    = trova('piu');
+const elIngr   = trova('ingranaggio');
+const tendina  = trova('tendina');
+const tTitolo  = trova('tendina-titolo');
+const tSotto   = trova('tendina-sotto');
+const tCorpo   = trova('tendina-corpo');
+const velo     = trova('velo');
+const elAvviso = trova('avviso');
+
+const inPagina = !!vista;
 
 // ── registro delle sezioni ─────────────────────────────────────────────────
 
@@ -95,7 +103,7 @@ function segnaposto(nome) {
 
 export function vaA(nome) {
   const s = SEZIONI[nome];
-  if (!s) return;
+  if (!s || !inPagina) return;
   corrente = nome;
   chiudiTendina();
   for (const b of barra.querySelectorAll('.tb')) b.classList.toggle('on', b.dataset.sezione === nome);
@@ -158,7 +166,7 @@ export function apriTendina(html, { titolo = '', sotto = '' } = {}) {
 }
 
 export function chiudiTendina() {
-  if (tendina.hidden) return;
+  if (!inPagina || tendina.hidden) return;
   tendina.dataset.verso = 'giu';
   velo.classList.remove('on');
   const a = animaA(tendina, fuoriSchermo(), 240);
@@ -172,7 +180,8 @@ export function chiudiTendina() {
 
 // trascinamento 1:1 col dito sulla presa
 (function presaTendina() {
-  const presa = document.getElementById('presa');
+  if (!inPagina) return;
+  const presa = trova('presa');
   let y0 = 0, base = 0, dy = 0, attivo = false;
   presa.addEventListener('pointerdown', (e) => {
     attivo = true; dy = 0; y0 = e.clientY;
@@ -200,6 +209,7 @@ export function chiudiTendina() {
 let orologioAvviso = null;
 
 export function avviso(testoAvviso) {
+  if (!inPagina) return;
   elAvviso.textContent = testoAvviso;
   elAvviso.hidden = false;
   requestAnimationFrame(() => elAvviso.classList.add('on'));
@@ -220,6 +230,7 @@ export function apriInserimentoMisura(opzioni) {
 
 // ── tocchi: rispondono su pointerdown, non al rilascio ─────────────────────
 
+if (inPagina) {
 barra.addEventListener('pointerdown', (e) => {
   const b = e.target.closest('.tb');
   if (b) vaA(b.dataset.sezione);
@@ -235,3 +246,4 @@ elIngr.addEventListener('pointerdown', () => avviso('Impostazioni: ancora da far
 velo.addEventListener('pointerdown', () => chiudiTendina());
 
 vaA('oggi');
+}

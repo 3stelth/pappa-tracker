@@ -570,6 +570,17 @@ function chiaveAlimenti(alimenti) {
   return [...new Set((Array.isArray(alimenti) ? alimenti : []).filter(Boolean))].sort().join('+');
 }
 
+/**
+ * Sostituisce il blocco dei vaccini e ne segna il momento: nella fusione vince quello
+ * con `modificatoAt` più grande. Le sedute le compone chi conosce il dominio, qui si
+ * salvano e si sincronizzano.
+ */
+export function scriviVaccini(dati) {
+  if (!piano(dati)) return;
+  stato.data.vaccini = { ...dati, modificatoAt: momento() };
+  dopoScrittura({ vaccini: `${Array.isArray(dati.sedute) ? dati.sedute.length : 0} sedute` });
+}
+
 export function scriviGiudizio(bambino, iso, alimenti, giudizio) {
   const bd = cartella(bambino, iso);
   if (!Array.isArray(bd.meals)) bd.meals = [];
