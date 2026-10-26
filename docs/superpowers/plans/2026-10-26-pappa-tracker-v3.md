@@ -631,8 +631,9 @@ Atteso: le pappe dello storico raggruppate per alimenti, con i gradimenti veri. 
 ## Task 9: sezione Vaccini — cronologia, ricerca, seme dai certificati
 
 **Files:**
-- Create: `v3/vaccini.js`, `v3/stili/vaccini.css`, `v3/dati/vaccini.json`
+- Create: `v3/vaccini.js`, `v3/stili/vaccini.css`
 - Test: `v3/test/vaccini.test.js`
+- `v3/dati/vaccini.json` **è già scritto e già verificato** contro i due PDF dei certificati: cinque sedute, dieci somministrazioni, ogni lotto, ogni data, ogni dose e ogni prodotto confrontati a macchina. Non riscriverlo e non cambiarne un carattere. Leggilo per conoscere i nomi dei campi: `nome`, `prodotto`, `sigla`, `dose`, `lotto`, `tipo` (`vaccino` o `profilassi`), `via` (`iniezione` o `bocca`), `copre`.
 
 **Interfaces:**
 - Consumes: `app.js` (`registraSezione`, `apriTendina`, `chiudiTendina`, `dataLunga`, `BAMBINI`), `dati.js` (`vaccini`, `onCambio`), `crescita.js` (`NASCITA`, `TERMINE`, `etaScritta`).
@@ -688,7 +689,7 @@ Una iniezione, una voce: l'esavalente è **una** riga con sotto le sei malattie,
 
 Run: `node v3/test/esegui.mjs vaccini`
 
-- [ ] **Step 3: scrivi `v3/dati/vaccini.json`, `v3/vaccini.js` e `v3/stili/vaccini.css`**
+- [ ] **Step 3: scrivi `v3/vaccini.js` e `v3/stili/vaccini.css`**
 
 Markup e stili dal mockup `v3b.html`, frame «4 · Vaccini»: `.search .ok-badge .tl-day .tl-rail .tl-pin .tl-line .tl-body .tl-date .tl-age .vax .covers`. In cima lo stato «In regola, tutti e due» con la data di emissione; poi la ricerca; poi la cronologia dalla seduta più recente; in fondo «In programma», vuoto, con la riga che dice di mandare il foglio degli appuntamenti.
 

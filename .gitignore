@@ -1,2 +1,9 @@
 # Strumenti di sviluppo locali (Claude Code: preview server, settings)
 .claude/
+
+# Dati sanitari dei bambini: questo repository e pubblico e GitHub Pages lo serve.
+# v3/dati/vaccini.json e il seme preso dai due certificati ULSS: date, prodotti e
+# lotti delle vaccinazioni. Resta sul computer, non in cronologia. L app lo legge se
+# c e; se non c e, la sezione Vaccini parte vuota e i vaccini si aggiungono dal
+# telefono, dove finiscono nei dati sincronizzati.
+v3/dati/vaccini.json
