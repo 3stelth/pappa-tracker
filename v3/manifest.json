@@ -1,0 +1,15 @@
+{
+  "name": "Pappa Tracker",
+  "short_name": "Pappa",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "it",
+  "background_color": "#EAF0FB",
+  "theme_color": "#EAF0FB",
+  "icons": [
+    { "src": "icona-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icona-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
