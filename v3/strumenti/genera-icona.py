@@ -5,7 +5,8 @@ Lancia:  python -I v3/strumenti/genera-icona.py
 Scrive:  v3/icona-512.png, v3/icona-180.png, v3/icona.svg
 
 La sagoma e quella della funzione baby() del mockup .claude/mockup/v3b.html,
-viewBox 0 0 120 240. Qui le stesse forme si ridisegnano con Pillow.
+viewBox 0 0 120 240, con le braccia accostate al corpo e senza bavaglio:
+a 60 px il bavaglio spariva e le braccia staccate spezzavano la sagoma.
 I PNG non hanno canale alfa: iOS mette il nero dove c'e trasparenza.
 La sagoma sta dentro un quadrato piu piccolo dell'icona, cosi resta un
 margine su tutti i lati: iOS taglia gli angoli.
@@ -13,7 +14,7 @@ margine su tutti i lati: iOS taglia gli angoli.
 
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 V3 = Path(__file__).resolve().parent.parent
 
@@ -21,24 +22,31 @@ BLU = (0x3B, 0x82, 0xF6)    # #3B82F6, il colore di Gabriel
 VERDE = (0x14, 0xB8, 0xA6)  # #14B8A6, il colore di Vittorio
 
 LATO = 2048    # si disegna grande, poi si riduce con LANCZOS
-QUOTA = 0.80   # quota del lato occupata dalla sagoma; il resto e margine
+QUOTA = 0.69   # quota del lato occupata dalla sagoma; il resto e aria
+SU = 0.015     # la sagoma sale di poco: l'ombra sta sotto e pesa
 U = 14         # pixel per unita del viewBox, con supercampionamento
 BORDO = 24     # unita di margine nella tela di lavoro: le braccia ruotate escono dal viewBox
-BAVAGLIO = 190  # il bavaglio e bianco meno coperto, cosi si distingue dal corpo
+
+LUCE = 0.16                  # quanto schiarisce la luce dall'alto, al massimo
+FINE_SOGGETTO = (236, 243, 250)  # il bianco del soggetto in fondo: volume appena accennato
+OMBRA = (8, 44, 78)          # blu scurissimo: un'ombra nera sarebbe dura
+OMBRA_GIU = 0.022            # di quanto scende l'ombra, in quote del lato
+OMBRA_SFOCO = 0.034          # raggio della sfocatura, in quote del lato
+OMBRA_FORZA = 0.30           # opacita dell'ombra
 
 # ── le forme, nelle unita del viewBox 120x240 ──────────────────────────────
 # ellissi: (cx, cy, rx, ry)
 TESTA = (60, 52, 42, 44)
 ORECCHIE = [(17, 56, 8, 10), (103, 56, 8, 10)]
 PIEDI = [(44, 226, 17, 12), (76, 226, 17, 12)]
-OCCHI = [(45, 52, 5, 6.5), (75, 52, 5, 6.5)]
+OCCHI = [(45, 52, 6, 7.5), (75, 52, 6, 7.5)]
 
 # rettangoli arrotondati: (x, y, larghezza, altezza, raggio)
 GAMBE = [(34, 162, 25, 60, 12.5), (61, 162, 25, 60, 12.5)]
 # braccia: come sopra, piu l'angolo in senso orario e il centro di rotazione
 BRACCIA = [
-    (2, 100, 24, 64, 12, 11, (14, 100)),
-    (94, 100, 24, 64, 12, -11, (106, 100)),
+    (8, 100, 24, 64, 12, 11, (20, 100)),
+    (88, 100, 24, 64, 12, -11, (100, 100)),
 ]
 
 # tracciati: punto di partenza, poi i segmenti.
@@ -56,14 +64,8 @@ CORPO = ((60, 92), [
     ('l', (91, 116)),
     ('c', (89, 101), (81, 92), (60, 92)),
 ])
-BAVA = ((29, 150), [
-    ('l', (91, 150)),
-    ('l', (89, 164)),
-    ('c', (88, 176), (78, 184), (60, 184)),
-    ('c', (42, 184), (32, 176), (31, 164)),
-])
 BOCCA = ((51, 68), (60, 75), (69, 68))  # quadratica
-BOCCA_SPESSORE = 3.4
+BOCCA_SPESSORE = 4.6
 
 # Le stesse forme in SVG, per il favicon. Vengono dal mockup senza cambiamenti:
 # se cambi i numeri qui sopra, cambiali anche qui.
@@ -72,15 +74,14 @@ SAGOMA_SVG = """\
 <ellipse cx="17" cy="56" rx="8" ry="10"/><ellipse cx="103" cy="56" rx="8" ry="10"/>
 <ellipse cx="60" cy="52" rx="42" ry="44"/>
 <path d="M60 92c-21 0-29 9-31 24l-4 32c-2 15 11 24 35 24s37-9 35-24l-4-32c-2-15-10-24-31-24z"/>
-<rect x="2" y="100" width="24" height="64" rx="12" transform="rotate(11 14 100)"/>
-<rect x="94" y="100" width="24" height="64" rx="12" transform="rotate(-11 106 100)"/>
+<rect x="8" y="100" width="24" height="64" rx="12" transform="rotate(11 20 100)"/>
+<rect x="88" y="100" width="24" height="64" rx="12" transform="rotate(-11 100 100)"/>
 <rect x="34" y="162" width="25" height="60" rx="12.5"/>
 <rect x="61" y="162" width="25" height="60" rx="12.5"/>
 <ellipse cx="44" cy="226" rx="17" ry="12"/><ellipse cx="76" cy="226" rx="17" ry="12"/>
-<path d="M29 150h62l-2 14c-1 12-11 20-29 20s-28-8-29-20z" fill="#BEBEBE"/>
-<ellipse cx="45" cy="52" rx="5" ry="6.5" fill="#000"/>
-<ellipse cx="75" cy="52" rx="5" ry="6.5" fill="#000"/>
-<path d="M51 68q9 7 18 0" fill="none" stroke="#000" stroke-width="3.4" stroke-linecap="round"/>\
+<ellipse cx="45" cy="52" rx="6" ry="7.5" fill="#000"/>
+<ellipse cx="75" cy="52" rx="6" ry="7.5" fill="#000"/>
+<path d="M51 68q9 7 18 0" fill="none" stroke="#000" stroke-width="4.6" stroke-linecap="round"/>\
 """
 
 
@@ -144,7 +145,8 @@ def braccio(misura, b):
     return strato.rotate(-angolo, resample=Image.Resampling.BICUBIC, center=px(*centro))
 
 
-def maschera():
+def maschera(piena=False):
+    """La sagoma. Con piena=True senza occhi e bocca: serve per l'ombra."""
     misura = ((120 + 2 * BORDO) * U, (240 + 2 * BORDO) * U)
     m = Image.new('L', misura, 0)
     d = ImageDraw.Draw(m)
@@ -159,8 +161,9 @@ def maschera():
         ellisse(d, p, 255)
     for b in BRACCIA:
         m = ImageChops.lighter(m, braccio(misura, b))
+    if piena:
+        return m
     d = ImageDraw.Draw(m)
-    d.polygon(tracciato(BAVA), fill=BAVAGLIO)
     for o in OCCHI:
         ellisse(d, o, 0)
     d.line(
@@ -173,39 +176,64 @@ def maschera():
 # ── fondo sfumato ─────────────────────────────────────────────────────────
 
 def sfondo(lato):
-    """Sfumatura in diagonale dal blu al verde acqua.
+    """Sfumatura verticale: verde acqua in alto, blu in basso, piu una
+    luce morbida dall'alto.
 
-    Si calcola piccola e si ingrandisce: una sfumatura lineare si interpola
-    senza scalini, e il ciclo su 2048x2048 pixel sarebbe lento.
+    Si calcola piccola e si ingrandisce: una sfumatura si interpola senza
+    scalini, e il ciclo su 2048x2048 pixel sarebbe lento.
     """
-    n = 64
+    n = 128
     g = Image.new('RGB', (n, n))
     p = g.load()
     for y in range(n):
         for x in range(n):
-            t = (x + y) / (2 * (n - 1))
-            p[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(BLU, VERDE))
+            t = y / (n - 1)
+            c = [a + (b - a) * t for a, b in zip(VERDE, BLU)]
+            dx, dy = (x / (n - 1)) - 0.5, y / (n - 1)
+            quanta = LUCE * max(0.0, 1 - (dx * dx + dy * dy) ** 0.5 / 1.05) ** 2
+            p[x, y] = tuple(round(v + (255 - v) * quanta) for v in c)
     return g.resize((lato, lato), Image.Resampling.BICUBIC)
+
+
+def soggetto(misura):
+    """Il bianco del bambino: appena piu spento in basso, come se la luce
+    venisse dall'alto."""
+    h = misura[1]
+    g = Image.new('RGB', (1, h))
+    p = g.load()
+    for y in range(h):
+        t = y / (h - 1)
+        p[0, y] = tuple(round(255 + (b - 255) * t) for b in FINE_SOGGETTO)
+    return g.resize(misura, Image.Resampling.BICUBIC)
 
 
 # ── scrittura dei file ────────────────────────────────────────────────────
 
 def main():
     m = maschera()
-    scatola = m.getbbox()
+    piena = maschera(piena=True)
+    scatola = piena.getbbox()
     if scatola is None:
         raise SystemExit('la maschera e vuota: nessuna forma disegnata')
-    m = m.crop(scatola)
+    m, piena = m.crop(scatola), piena.crop(scatola)
     lu, au = m.size
 
     dentro = LATO * QUOTA
     k = dentro / max(lu, au)
     nuova = (max(1, round(lu * k)), max(1, round(au * k)))
     m = m.resize(nuova, Image.Resampling.LANCZOS)
+    piena = piena.resize(nuova, Image.Resampling.LANCZOS)
+
+    x0 = (LATO - nuova[0]) // 2
+    y0 = (LATO - nuova[1]) // 2 - round(SU * LATO)
 
     icona = sfondo(LATO)
-    bianco = Image.new('RGB', nuova, (255, 255, 255))
-    icona.paste(bianco, ((LATO - nuova[0]) // 2, (LATO - nuova[1]) // 2), m)
+    sotto = Image.new('L', (LATO, LATO), 0)
+    sotto.paste(piena, (x0, y0 + round(OMBRA_GIU * LATO)))
+    sotto = sotto.filter(ImageFilter.GaussianBlur(OMBRA_SFOCO * LATO))
+    sotto = sotto.point(lambda v: round(v * OMBRA_FORZA))
+    icona.paste(Image.new('RGB', (LATO, LATO), OMBRA), (0, 0), sotto)
+    icona.paste(soggetto(nuova), (x0, y0), m)
     icona = icona.convert('RGB')
 
     for lato in (512, 180):
@@ -220,11 +248,20 @@ def main():
     ba = (scatola[3] - scatola[1]) / U
     ks = 512 * QUOTA / max(bl, ba)
     tx = 256 - ks * (bx + bl / 2)
-    ty = 256 - ks * (by + ba / 2)
+    ty = 256 - ks * (by + ba / 2) - SU * 512
+    bianco_fine = '#%02X%02X%02X' % FINE_SOGGETTO
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
 <defs>
-<linearGradient id="f" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="#3B82F6"/><stop offset="1" stop-color="#14B8A6"/>
+<linearGradient id="f" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#3B82F6"/>
+</linearGradient>
+<radialGradient id="l" cx="0.5" cy="0" r="1.05">
+<stop offset="0" stop-color="#fff" stop-opacity="{LUCE:.2f}"/>
+<stop offset="0.5" stop-color="#fff" stop-opacity="{LUCE / 4:.2f}"/>
+<stop offset="1" stop-color="#fff" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="b" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="{bianco_fine}"/>
 </linearGradient>
 <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
 <g transform="translate({tx:.2f} {ty:.2f}) scale({ks:.4f})" fill="#fff">
@@ -233,7 +270,8 @@ def main():
 </mask>
 </defs>
 <rect width="512" height="512" fill="url(#f)"/>
-<rect width="512" height="512" fill="#fff" mask="url(#m)"/>
+<rect width="512" height="512" fill="url(#l)"/>
+<rect width="512" height="512" fill="url(#b)" mask="url(#m)"/>
 </svg>
 '''
     f = V3 / 'icona.svg'

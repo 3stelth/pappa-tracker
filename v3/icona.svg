@@ -1,26 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
 <defs>
-<linearGradient id="f" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="#3B82F6"/><stop offset="1" stop-color="#14B8A6"/>
+<linearGradient id="f" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#3B82F6"/>
+</linearGradient>
+<radialGradient id="l" cx="0.5" cy="0" r="1.05">
+<stop offset="0" stop-color="#fff" stop-opacity="0.16"/>
+<stop offset="0.5" stop-color="#fff" stop-opacity="0.04"/>
+<stop offset="1" stop-color="#fff" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="b" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#ECF3FA"/>
 </linearGradient>
 <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-<g transform="translate(151.42 46.10) scale(1.7419)" fill="#fff">
+<g transform="translate(165.80 67.28) scale(1.5024)" fill="#fff">
 <path d="M58 4c7-3 14 1 15 8 1 5-2 9-6 11-3-7-6-13-9-19z"/>
 <ellipse cx="17" cy="56" rx="8" ry="10"/><ellipse cx="103" cy="56" rx="8" ry="10"/>
 <ellipse cx="60" cy="52" rx="42" ry="44"/>
 <path d="M60 92c-21 0-29 9-31 24l-4 32c-2 15 11 24 35 24s37-9 35-24l-4-32c-2-15-10-24-31-24z"/>
-<rect x="2" y="100" width="24" height="64" rx="12" transform="rotate(11 14 100)"/>
-<rect x="94" y="100" width="24" height="64" rx="12" transform="rotate(-11 106 100)"/>
+<rect x="8" y="100" width="24" height="64" rx="12" transform="rotate(11 20 100)"/>
+<rect x="88" y="100" width="24" height="64" rx="12" transform="rotate(-11 100 100)"/>
 <rect x="34" y="162" width="25" height="60" rx="12.5"/>
 <rect x="61" y="162" width="25" height="60" rx="12.5"/>
 <ellipse cx="44" cy="226" rx="17" ry="12"/><ellipse cx="76" cy="226" rx="17" ry="12"/>
-<path d="M29 150h62l-2 14c-1 12-11 20-29 20s-28-8-29-20z" fill="#BEBEBE"/>
-<ellipse cx="45" cy="52" rx="5" ry="6.5" fill="#000"/>
-<ellipse cx="75" cy="52" rx="5" ry="6.5" fill="#000"/>
-<path d="M51 68q9 7 18 0" fill="none" stroke="#000" stroke-width="3.4" stroke-linecap="round"/>
+<ellipse cx="45" cy="52" rx="6" ry="7.5" fill="#000"/>
+<ellipse cx="75" cy="52" rx="6" ry="7.5" fill="#000"/>
+<path d="M51 68q9 7 18 0" fill="none" stroke="#000" stroke-width="4.6" stroke-linecap="round"/>
 </g>
 </mask>
 </defs>
 <rect width="512" height="512" fill="url(#f)"/>
-<rect width="512" height="512" fill="#fff" mask="url(#m)"/>
+<rect width="512" height="512" fill="url(#l)"/>
+<rect width="512" height="512" fill="url(#b)" mask="url(#m)"/>
 </svg>
