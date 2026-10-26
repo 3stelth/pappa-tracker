@@ -69,19 +69,41 @@ const stato = { misura: 'peso', periodo: 'tutto', eta: 'corretta', tabelle: 'att
 // e dentro i gestori: questo modulo si importa anche con Node, dove non c'è.
 const el = {};
 
+// La richiesta delle tabelle in corso, se ce n'è una. Serve a non lanciarne due in
+// parallelo quando si entra e si esce dalla sezione.
+let richiesta = null;
+
+/**
+ * Se serve chiedere le tabelle. Con le tabelle pronte non serve; con una richiesta già
+ * in volo non si chiede due volte. Dopo un errore si riprova: il testo dell'errore dice
+ * di riaprire la sezione, e riaprendola una richiesta nuova parte davvero.
+ */
+export function deveChiedere(tabelle, inCorso) {
+  return tabelle !== 'pronte' && !inCorso;
+}
+
 // Nessun altro carica le tabelle. Se non le chiedessimo qui, lms() tornerebbe sempre
 // null e la sezione non mostrerebbe mai un percentile.
-caricaTabelle()
-  .then(() => {
-    stato.tabelle = 'pronte';
-    aggiorna();
-  })
-  .catch(() => {
-    // Non è più un'attesa: è un errore, e si scrive in modo diverso. Altrimenti chi è
-    // senza rete legge «sto caricando» per sempre.
-    stato.tabelle = 'errore';
-    aggiorna();
-  });
+function chiediTabelle() {
+  if (!deveChiedere(stato.tabelle, richiesta)) return;
+  // Mentre la richiesta è in volo torna il testo di attesa, anche dopo un errore.
+  stato.tabelle = 'attesa';
+  richiesta = caricaTabelle()
+    .then(() => {
+      stato.tabelle = 'pronte';
+    })
+    .catch(() => {
+      // Non è più un'attesa: è un errore, e si scrive in modo diverso. Altrimenti chi è
+      // senza rete legge «sto caricando» per sempre.
+      stato.tabelle = 'errore';
+    })
+    .then(() => {
+      richiesta = null;
+      aggiorna();
+    });
+}
+
+chiediTabelle();
 
 onCambio(() => aggiorna());
 
@@ -103,6 +125,15 @@ export function pctDi(misura, eta, valore, iso) {
   if (!terna) return null;
   const z = zDa(valore, terna);
   return { z, p: percentile(z) };
+}
+
+/**
+ * Perché le bande potrebbero mancare dal grafico. Con le tabelle pronte il motivo non è
+ * questo: torna `undefined`, e il grafico scrive il suo `SENZA_BANDE`.
+ */
+export function messaggioDelGrafico(tabelle) {
+  if (tabelle === 'pronte') return undefined;
+  return tabelle === 'errore' ? TESTO_ERRORE : TESTO_ATTESA;
 }
 
 /** Il testo del riquadro che prende il posto del grafico della lunghezza. */
@@ -298,7 +329,7 @@ function aggiornaGrafico() {
     giorniA: a,
     // Senza bande il grafico non si disegna. Qui si dice perché mancano: chi disegna
     // non lo sa, lo sa questa sezione.
-    messaggio: stato.tabelle === 'errore' ? TESTO_ERRORE : TESTO_ATTESA,
+    messaggio: messaggioDelGrafico(stato.tabelle),
   });
 }
 
@@ -332,6 +363,10 @@ function aggiorna() {
 // ── costruzione e tocchi ───────────────────────────────────────────────────
 
 function disegna(contenitore) {
+  // Riaprire la sezione dopo un errore riprova davvero: è quello che promette il testo
+  // dell'errore. `chiediTabelle` rimette il testo di attesa e non lancia due richieste.
+  chiediTabelle();
+
   contenitore.innerHTML = markup(stato);
 
   const q = (sel) => contenitore.querySelector(sel);

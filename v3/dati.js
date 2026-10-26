@@ -211,36 +211,71 @@ function chiaveVoceVaccino(v) {
   return [v.nome, v.prodotto, v.dose, v.lotto].map((x) => String(x == null ? '' : x).toLowerCase()).join('|');
 }
 
+function vuoto(v) {
+  return v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+}
+
 /**
- * Unisce due blocchi vaccini. I campi del blocco (stato, emessoDa, aggiornatoAl...) li
- * porta il più recente, ma solo quelli che ha: gli altri restano dal più vecchio.
- * Le sedute si uniscono per data e bambini, le voci per nome, prodotto, dose e lotto.
- * Una voce uguale non si duplica; se due voci hanno la stessa chiave vince la più recente.
- * Niente sparisce. Non modifica gli argomenti.
+ * Fonde due voci con la stessa chiave, campo per campo. Un valore pieno della più recente
+ * vince su quello della più vecchia; un valore vuoto della più recente non cancella quello
+ * pieno. Le liste (per esempio `copre`) si uniscono: prima gli elementi della più vecchia.
+ */
+function fondiVoce(vecchia, nuova) {
+  const fusa = { ...vecchia };
+  for (const k of Object.keys(nuova)) {
+    const v = nuova[k];
+    if (Array.isArray(v) && Array.isArray(vecchia[k])) {
+      const visti = new Set();
+      fusa[k] = [...vecchia[k], ...v].filter((e) => {
+        const c = JSON.stringify(e);
+        return visti.has(c) ? false : (visti.add(c), true);
+      });
+    } else if (!vuoto(v) || !(k in vecchia)) {
+      fusa[k] = v;
+    }
+  }
+  return fusa;
+}
+
+/**
+ * Unisce due blocchi vaccini. Non modifica gli argomenti.
+ * - I campi del blocco (stato, emessoDa, aggiornatoAl...) li porta il più recente, ma solo
+ *   quelli che ha: gli altri restano dal più vecchio. A `modificatoAt` uguale vince il
+ *   primo argomento (`mio`), come nelle altre regole di `fondi`.
+ * - Le sedute si uniscono per data e bambini, le voci per nome, prodotto, dose e lotto.
+ * - Due voci con la stessa chiave si fondono campo per campo (vedi fondiVoce): nessun
+ *   valore pieno di una delle due si perde, salvo un conflitto fra due valori pieni, dove
+ *   vince la più recente.
+ * - Una seduta o una voce che non è un oggetto non ha chiave: si tiene com'è, una volta sola.
  */
 export function fondiVaccini(x, y) {
   if (!piano(x)) return piano(y) ? copia(y) : x;
   if (!piano(y)) return copia(x);
-  const [vecchio, nuovo] = (x.modificatoAt || 0) <= (y.modificatoAt || 0) ? [x, y] : [y, x];
+  const [vecchio, nuovo] = (x.modificatoAt || 0) >= (y.modificatoAt || 0) ? [y, x] : [x, y];
   const fuso = { ...copia(vecchio), ...copia(nuovo) };
   fuso.modificatoAt = Math.max(x.modificatoAt || 0, y.modificatoAt || 0);
+  if (!Array.isArray(x.sedute) && !Array.isArray(y.sedute)) return fuso;
 
   const sedute = new Map();
+  const senzaChiave = new Map();
   for (const blocco of [vecchio, nuovo]) {
     for (const s of Array.isArray(blocco.sedute) ? blocco.sedute : []) {
-      if (!piano(s)) continue;
+      if (!piano(s)) { senzaChiave.set(JSON.stringify(s), copia(s)); continue; }
       const k = chiaveSeduta(s);
       const presente = sedute.get(k);
-      const voci = new Map(presente ? presente.voci.map((v) => [chiaveVoceVaccino(v), v]) : []);
+      const voci = new Map(presente ? presente.voci.map((v) => [piano(v) ? chiaveVoceVaccino(v) : JSON.stringify(v), v]) : []);
       for (const v of Array.isArray(s.voci) ? s.voci : []) {
-        if (piano(v)) voci.set(chiaveVoceVaccino(v), copia(v));
+        if (!piano(v)) { voci.set(JSON.stringify(v), copia(v)); continue; }
+        const kv = chiaveVoceVaccino(v);
+        voci.set(kv, voci.has(kv) ? fondiVoce(voci.get(kv), copia(v)) : copia(v));
       }
       sedute.set(k, { ...copia(presente || {}), ...copia(s), voci: [...voci.values()] });
     }
   }
   fuso.sedute = [...sedute.entries()]
     .sort((p, q) => (p[1].data < q[1].data ? -1 : p[1].data > q[1].data ? 1 : p[0] < q[0] ? -1 : 1))
-    .map(([, s]) => s);
+    .map(([, v]) => v)
+    .concat([...senzaChiave.values()]);
   return fuso;
 }
 

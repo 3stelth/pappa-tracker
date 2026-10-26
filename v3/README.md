@@ -13,8 +13,11 @@ Niente compilazione: sono file statici e moduli caricati dal browser. In locale 
 server, perché i moduli ES non si caricano da `file://`.
 
 ```bash
-node .claude/serve.js   # poi apri http://localhost:8765/v3/
+node .claude/serve.js   # poi apri http://localhost:8765/v3/index.html
 ```
+
+In locale scrivi `index.html` per esteso: il server di anteprima non serve l'indice delle
+cartelle e `/v3/` da solo dà 404. Su GitHub Pages `/v3/` funziona.
 
 ## I percentili
 
@@ -40,7 +43,12 @@ node v3/test/esegui.mjs crescita   # solo uno
 ```
 
 Gli stessi moduli girano anche nel browser, su `v3/test/tutti.test.html`: lì i JSON
-passano da `fetch` e i percorsi sono diversi.
+passano da `fetch` e i percorsi sono diversi. Il titolo della pagina diventa `OK` oppure
+`FALLITO`.
+
+Precauzione: prima di provare un salvataggio nel browser, spegni le scritture. In
+console, `(await import('/v3/dati.js')).provaSenzaScritture(true)`. Senza, le misure di
+prova finiscono nel Supabase di famiglia.
 
 Il test più importante ricalcola dalle LMS i valori che l'OMS pubblica nello stesso file:
 25.998 confronti, scarto massimo 0,0005, cioè l'arrotondamento alla terza cifra con cui

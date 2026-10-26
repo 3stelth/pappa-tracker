@@ -216,6 +216,54 @@ export const casi = [
     },
   },
   {
+    nome: 'fondi: due voci uguali su nome, prodotto, dose e lotto ma diverse in copre, tipo, via, sigla si fondono campo per campo',
+    prova: () => {
+      const bb = ['Gabriel', 'Vittorio'];
+      const certificato = { nome: 'Uno', prodotto: 'Prodotto', dose: 1, lotto: 'PROVA501', sigla: 'SIG',
+        tipo: 'vaccino', via: 'iniezione', copre: ['a', 'b', 'c', 'd', 'e', 'f'] };
+      const inFretta = { nome: 'uno', prodotto: 'Prodotto', dose: 1, lotto: 'PROVA501', tipo: 'vaccino', copre: [] };
+      const meglio = { nome: 'Uno', prodotto: 'Prodotto', dose: 1, lotto: 'PROVA501', copre: ['f', 'g'] };
+      const blocco = (voce, m) => ({ vaccini: { modificatoAt: m, sedute: [{ data: '2026-03-03', bambini: bb, voci: [voce] }] } });
+
+      // la voce scritta in fretta è più recente: non cancella le sei malattie del certificato
+      for (const f of [fondi(blocco(inFretta, 9), blocco(certificato, 1)), fondi(blocco(certificato, 1), blocco(inFretta, 9))]) {
+        const voci = f.vaccini.sedute[0].voci;
+        uguale(voci.length, 1, 'una voce sola');
+        uguali(voci[0].copre, ['a', 'b', 'c', 'd', 'e', 'f'], 'le sei malattie restano');
+        uguale(voci[0].sigla, 'SIG', 'la sigla resta');
+        uguale(voci[0].via, 'iniezione', 'la via resta');
+      }
+      // le liste si uniscono, senza ripetere
+      const u = fondi(blocco(meglio, 9), blocco(certificato, 1)).vaccini.sedute[0].voci[0];
+      uguali(u.copre, ['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'copre unite senza doppioni');
+    },
+  },
+  {
+    nome: 'fondi: a modificatoAt uguale i campi del blocco vengono da mio, come nelle altre regole',
+    prova: () => {
+      const mio = { vaccini: { modificatoAt: 7, stato: 'MIO', emessoDa: 'solo mio', sedute: [] } };
+      const altrui = { vaccini: { modificatoAt: 7, stato: 'ALTRUI', aggiornatoAl: '2026-10-26', sedute: [] } };
+      const f = fondi(mio, altrui).vaccini;
+      uguale(f.stato, 'MIO', 'a parità vince mio');
+      uguale(f.emessoDa, 'solo mio', 'i campi di mio restano');
+      uguale(f.aggiornatoAl, '2026-10-26', 'i campi che mio non ha arrivano da altrui');
+      uguale(fondi(altrui, mio).vaccini.stato, 'ALTRUI', 'scambiando le parti vince il nuovo mio');
+      // lo stesso vale per un campo semplice fuori dai vaccini
+      uguale(fondi({ goals: 1 }, { goals: 2 }).goals, 1, 'goals: vince mio');
+    },
+  },
+  {
+    nome: 'fondi: una seduta che non è un oggetto, o sedute che non è un elenco, non spariscono in silenzio',
+    prova: () => {
+      const a = { vaccini: { modificatoAt: 1, sedute: [1, { data: '2026-03-03', bambini: ['Gabriel'], voci: [] }] } };
+      const b = { vaccini: { modificatoAt: 2, sedute: [1] } };
+      const f = fondi(a, b).vaccini.sedute;
+      uguale(f.length, 2, 'una seduta vera e quella strana, una volta sola');
+      vero(f.includes(1), 'la seduta strana resta');
+      uguale(fondi({ vaccini: { modificatoAt: 1, sedute: 'x' } }, { vaccini: { modificatoAt: 2 } }).vaccini.sedute, 'x', 'sedute non-elenco resta');
+    },
+  },
+  {
     nome: 'fondi: i vaccini non modificano gli oggetti che ricevono',
     prova: () => {
       const a = { vaccini: { modificatoAt: 1, stato: 'X', sedute: [{ data: '2026-06-01', bambini: ['Gabriel'], voci: [{ nome: 'Uno', lotto: 'PROVA301' }] }] } };

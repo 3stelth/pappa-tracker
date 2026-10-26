@@ -15,8 +15,10 @@ import {
   TESTO_ATTESA,
   TESTO_ERRORE,
   cartaPercentile,
+  deveChiedere,
   invitoLunghezza,
   markup,
+  messaggioDelGrafico,
   partenzaDi,
 } from '../crescita-vista.js';
 
@@ -401,6 +403,27 @@ export const casi = [
       uguale(carta.percentile, undefined, 'nessun percentile prima del termine');
       uguale(carta.fuori, 'fuori dalle tabelle OMS', 'lo dice');
       uguale(carta.motivo, c.MOTIVO_FUORI_TABELLA, 'con il motivo di crescita.js');
+    },
+  },
+  {
+    nome: 'il testo dell errore promette solo quello che il codice fa davvero',
+    prova: () => {
+      // Il testo dice di riaprire la sezione. Riaprirla esegue disegna(), che chiama
+      // chiediTabelle(): se deveChiedere() tornasse falso dopo un errore, nessuna
+      // richiesta nuova partirebbe e il testo affermerebbe il falso.
+      vero(TESTO_ERRORE.includes('riapri la sezione'), 'il testo dice di riaprire la sezione');
+      vero(deveChiedere('errore', null), 'dopo un errore una richiesta nuova parte davvero');
+      vero(!deveChiedere('errore', 'in volo'), 'ma non due richieste in parallelo');
+      vero(!deveChiedere('pronte', null), 'con le tabelle pronte non si richiede niente');
+      vero(deveChiedere('attesa', null), 'una richiesta persa si rifà');
+    },
+  },
+  {
+    nome: 'con le tabelle pronte il grafico non dice che le sta caricando',
+    prova: () => {
+      uguale(messaggioDelGrafico('pronte'), undefined, 'con le tabelle pronte nessun motivo');
+      uguale(messaggioDelGrafico('attesa'), TESTO_ATTESA, 'in attesa lo dice');
+      uguale(messaggioDelGrafico('errore'), TESTO_ERRORE, 'in errore lo dice');
     },
   },
   {
