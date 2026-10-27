@@ -676,7 +676,7 @@ Una iniezione, una voce: l'esavalente è **una** riga con sotto le sei malattie,
  3. l'esavalente del 3 marzo è una voce sola, con sei malattie in 'copre'
  4. il Beyfortus ha tipo 'profilassi', non 'vaccino'
  5. ogni seduta ha bambini ['Gabriel','Vittorio']
- 6. cerca(sedute,'(omesso)') trova una voce sola, quella del 3 marzo
+ 6. cerca(sedute,'<lotto>') trova una voce sola, quella del 3 marzo
  7. cerca(sedute,'difterite') trova le due voci dell'esavalente
  8. cerca(sedute,'pippo') non trova niente
  9. cerca(sedute,'') torna tutte le cinque sedute
