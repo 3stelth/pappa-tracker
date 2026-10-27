@@ -180,7 +180,8 @@ export function rigaMisura(m) {
     '" data-iso="' + esc(m.iso) + '" data-id="' + esc(m.id || '') + '">' +
     // La pastiglia porta il nome corto: «Gabri», «Vitto», non l'iniziale.
     '<span class="chip ' + (SIGLA[m.bambino] || '') + '">' + esc(CORTO[m.bambino] || m.bambino) + '</span>' +
-    '<span class="d">' + esc(t.nome) + ' · ' + esc(dataCorta(m.iso)) + '</span>' +
+    // Il tipo non si ripete nella riga: lo porta il titolo del gruppo.
+    '<span class="d">' + esc(dataCorta(m.iso)) + '</span>' +
     '<span class="kg">' + testoValore(m.tipo, m.valore) + ' ' + t.unita + '</span>' +
     '</div>'
   );
@@ -444,9 +445,20 @@ let radiceSezione = null;
 
 function riempi() {
   const misure = ultimePerTipo(RIGHE_PER_TIPO);
-  radiceSezione.innerHTML = misure.length
-    ? '<div class="sect">Ultime misure</div><div class="card">' + misure.map(rigaMisura).join('') + '</div>'
-    : '<div class="card vuoto">Non c’è ancora nessuna misura.<br>Tocca + in alto per aggiungerne una.</div>';
+  if (!misure.length) {
+    radiceSezione.innerHTML =
+      '<div class="card vuoto">Non c’è ancora nessuna misura.<br>Tocca + in alto per aggiungerne una.</div>';
+    return;
+  }
+  // Un gruppo per tipo, sempre tutti e tre e sempre nello stesso ordine: così il peso
+  // non finisce mescolato alle temperature, e si vede subito quale tipo manca.
+  radiceSezione.innerHTML = ORDINE_TIPI.map((tipo) => {
+    const righe = misure.filter((m) => m.tipo === tipo);
+    const corpo = righe.length
+      ? righe.map(rigaMisura).join('')
+      : '<div class="vuoto">Nessuna misura ancora.</div>';
+    return '<div class="sect">' + TIPI[tipo].nome + '</div><div class="card">' + corpo + '</div>';
+  }).join('');
 }
 
 function riapri(riga) {
