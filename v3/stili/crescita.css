@@ -43,7 +43,8 @@
 /* ── percentili ── */
 .pctbox{display:flex;gap:12px;margin-top:12px}
 .pctbox>div{flex:1;padding:14px;text-align:left}
-.pctbox .chip{margin:0}
+/* `.chip` è una griglia: dentro una scheda si allargherebbe per tutta la riga. */
+.pctbox .chip{display:inline-grid;margin:0}
 .pctbox .p{font-size:40px;font-weight:600;letter-spacing:-1.6px;margin-top:8px;line-height:1.1;
   font-variant-numeric:tabular-nums}
 .pctbox .t{font-size:13px;font-weight:400;color:var(--sub);margin-top:6px;line-height:1.45;
