@@ -1,72 +1,74 @@
 /* Pappa Tracker v3 — sezione Oggi.
-   Classi e valori dal mockup approvato .claude/mockup/v3b.html, frame «1 · Oggi».
-   Colori e raggi vengono dai token di base.css: qui non ce ne sono di nuovi. */
+   Stile dal mockup approvato mockup-v3c.html, frame «Oggi».
+   Colori, raggi e classi comuni vengono dai token di base.css: qui non ce ne sono di nuovi. */
 
 /* ── le due schede con le sagome ── */
-.oggi .twins{display:flex;gap:10px;margin-top:14px}
-.oggi .twin{flex:1;min-width:0;padding:13px 11px 12px;position:relative;overflow:hidden}
-.oggi .twin::before{content:'';position:absolute;inset:0 0 auto;height:3px}
-.oggi .twin.g::before{background:linear-gradient(135deg,var(--g-2),var(--g-pri))}
-.oggi .twin.v::before{background:linear-gradient(135deg,var(--v-2),var(--v-pri))}
-.oggi .twin-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:5px}
-.oggi .dot{width:8px;height:8px;border-radius:50%}
+.oggi .twins{display:flex;gap:12px;margin-top:14px}
+.oggi .twin{flex:1;min-width:0;padding:14px 14px 16px;position:relative;overflow:hidden}
+.oggi .twin-name{font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;gap:7px}
+.oggi .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .oggi .twin.g .dot{background:var(--g-pri)}
 .oggi .twin.v .dot{background:var(--v-pri)}
 
-.oggi .stage{height:214px;margin:8px 0 0;position:relative}
+/* L'altezza della scena sta anche in oggi.js (ALTEZZA_SCENA): le due misure vanno insieme. */
+.oggi .stage{height:176px;margin:10px 0 0;position:relative}
 .oggi .stage.manca{cursor:pointer}
 /* La sagoma colorata e quella grigia stanno una sull'altra: se ne mostra una sola.
    Il fondo della sagoma sta sul fondo della scena; la scala la dà oggi.js. */
 .oggi .fig{position:absolute;bottom:0;left:50%;width:110px;height:220px;margin-left:-55px;
   transform-origin:50% 100%;will-change:transform}
 .oggi .fig svg{display:block;width:110px}
-.oggi .fig.vuota{opacity:0.35}
+.oggi .fig.vuota{opacity:0.5}
 .oggi .fig[hidden]{display:none}
 .oggi .cmbox{position:absolute;left:0;top:0;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:1px;
   pointer-events:none}
-.oggi .cmbox .n{font-size:15px;font-weight:800;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
-.oggi .cmbox .d{font-size:9px;font-weight:700;color:var(--hint)}
-.oggi .stage.manca .cmbox{color:var(--sub) !important}
-.oggi .stage.manca .cmbox .n{font-size:12.5px;letter-spacing:-0.01em}
-.oggi .hline{position:absolute;left:0;right:6px;border-top:1.5px dashed currentColor;opacity:0.45;pointer-events:none}
+.oggi .cmbox .n{font-size:15px;font-weight:600;letter-spacing:-0.3px;font-variant-numeric:tabular-nums}
+.oggi .cmbox .d{font-size:12px;font-weight:400;color:var(--hint)}
+
+/* Quando manca la lunghezza la scena diventa un invito: testo centrato in cima,
+   con «Aggiungi» nel blu delle azioni. */
+.oggi .stage.manca .cmbox{left:0;right:0;align-items:center;text-align:center;color:var(--sub) !important}
+.oggi .stage.manca .cmbox .n{font-size:13px;font-weight:400;letter-spacing:0}
+.oggi .stage.manca .cmbox .d{font-size:15px;font-weight:400;color:var(--g-pri);margin-top:2px}
+
+.oggi .hline{position:absolute;left:0;right:6px;border-top:1.5px dashed currentColor;opacity:0.4;pointer-events:none}
 .oggi .hline[hidden]{display:none}
 
-.oggi .kgrow{margin-top:9px;padding-top:9px;border-top:1px solid var(--hair)}
-.oggi .big{font-size:26px;font-weight:800;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;line-height:1}
-.oggi .big small{font-size:12.5px;font-weight:700}
-.oggi .delta{font-size:10.5px;font-weight:700;color:var(--sub);margin-top:3px;min-height:1.2em}
+.oggi .kgrow{margin-top:12px;padding-top:12px;border-top:0.5px solid var(--hair)}
+.oggi .big{font-size:36px;font-weight:600;letter-spacing:-1.4px;font-variant-numeric:tabular-nums;line-height:1}
+.oggi .big small{font-size:17px;font-weight:400;color:var(--sub);letter-spacing:0}
+.oggi .delta{font-size:15px;font-weight:500;color:var(--sub);margin-top:6px;min-height:1.2em;
+  font-variant-numeric:tabular-nums}
 .oggi .delta.su{color:var(--green)}
-.oggi .when{font-size:9.5px;color:var(--hint);font-weight:600;margin-top:2px}
+.oggi .when{font-size:13px;color:var(--hint);margin-top:2px}
 
 /* ── barra del tempo con i riferimenti dei mesi ── */
-.oggi .timebar{margin-top:12px;padding:12px 14px 8px}
-.oggi .timebar-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px}
-.oggi .timebar-date{font-size:13px;font-weight:800}
-.oggi .timebar-age{font-size:10px;color:var(--sub);font-weight:600;text-align:right}
-.oggi .track{position:relative;height:50px;margin-top:2px}
-/* Il centro del cursore (26 px) corre da 13 px dal bordo a 13 px dall'altro bordo:
+.oggi .timebar{margin-top:12px;padding:14px 16px 10px}
+.oggi .timebar-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+.oggi .timebar-date{font-size:17px;font-weight:600;letter-spacing:-0.3px}
+.oggi .timebar-age{font-size:15px;color:var(--sub);text-align:right}
+.oggi .track{position:relative;height:46px}
+/* Il centro del cursore (28 px) corre da 14 px dal bordo a 14 px dall'altro bordo:
    le tacche seguono la stessa corsa, così una data sta sotto il cursore che la indica. */
-.oggi .ticks{position:absolute;inset:0 13px auto 13px;height:22px;pointer-events:none}
-.oggi .ticks i{position:absolute;top:2px;width:2px;height:7px;margin-left:-1px;border-radius:1px;opacity:.5;
-  background:var(--hint)}
-.oggi .ticks b{position:absolute;top:11px;transform:translateX(-50%);font-size:8.5px;font-weight:800;
-  color:var(--hint);text-transform:uppercase;letter-spacing:.04em}
-.oggi input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;
-  margin:0;position:absolute;left:0;bottom:0}
+.oggi .ticks{position:absolute;inset:auto 14px 0 14px;height:20px;pointer-events:none}
+.oggi .ticks i{position:absolute;top:0;width:1px;height:5px;margin-left:-0.5px;background:var(--hint)}
+.oggi .ticks b{position:absolute;top:9px;transform:translateX(-50%);font-size:11px;font-weight:400;
+  color:var(--hint);text-transform:none;letter-spacing:0}
+.oggi input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;
+  margin:0;position:absolute;left:0;top:2px}
 .oggi input[type=range]:disabled{opacity:0.5}
-.oggi input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;
-  background:linear-gradient(90deg,var(--g-2),var(--v-2))}
-.oggi input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;
-  background:#fff;box-shadow:0 3px 10px rgba(22,32,72,0.3);border:1px solid var(--glass-brd);margin-top:-10px}
-.oggi input[type=range]::-moz-range-track{height:6px;border-radius:3px;
-  background:linear-gradient(90deg,var(--g-2),var(--v-2))}
-.oggi input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
-  background:#fff;box-shadow:0 3px 10px rgba(22,32,72,0.3);border:1px solid var(--glass-brd)}
+.oggi input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:var(--g-pri)}
+.oggi input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
+  background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.18),0 0 0 0.5px rgba(0,0,0,0.05);border:none;margin-top:-11.5px}
+.oggi input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:var(--g-pri)}
+.oggi input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;border:none;
+  background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.18),0 0 0 0.5px rgba(0,0,0,0.05)}
 
-/* ── ultime pesate ── */
-.oggi .wrow{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--hair)}
-.oggi .wrow:last-child{border-bottom:none}
-.oggi .wrow .d{font-size:12px;font-weight:700;flex:1}
-.oggi .wrow .kg{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
-.oggi .wrow .dl{font-size:10.5px;font-weight:700;color:var(--sub);width:56px;text-align:right;font-variant-numeric:tabular-nums}
+/* ── ultime pesate: tabella raggruppata, righello che parte dal testo ── */
+.oggi .ultime{overflow:hidden}
+.oggi .wrow{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:48px;position:relative}
+.oggi .wrow+.wrow::before{content:'';position:absolute;top:0;left:80px;right:0;height:0.5px;background:var(--hair)}
+.oggi .wrow .d{font-size:17px;flex:1;letter-spacing:-0.2px}
+.oggi .wrow .kg{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-0.2px}
+.oggi .wrow .dl{font-size:15px;color:var(--sub);width:62px;text-align:right;font-variant-numeric:tabular-nums}
 .oggi .wrow .dl.su{color:var(--green)}

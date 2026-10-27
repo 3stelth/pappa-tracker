@@ -10,6 +10,7 @@
 import {
   BAMBINI,
   SIGLA,
+  CORTO,
   MESI,
   isoOggi,
   dataLunga,
@@ -177,7 +178,8 @@ export function rigaMisura(m) {
   return (
     '<div class="wrow" data-bambino="' + esc(m.bambino) + '" data-tipo="' + esc(m.tipo) +
     '" data-iso="' + esc(m.iso) + '" data-id="' + esc(m.id || '') + '">' +
-    '<span class="chip ' + (SIGLA[m.bambino] || '') + '">' + esc(String(m.bambino).charAt(0).toUpperCase()) + '</span>' +
+    // La pastiglia porta il nome corto: «Gabri», «Vitto», non l'iniziale.
+    '<span class="chip ' + (SIGLA[m.bambino] || '') + '">' + esc(CORTO[m.bambino] || m.bambino) + '</span>' +
     '<span class="d">' + esc(t.nome) + ' · ' + esc(dataCorta(m.iso)) + '</span>' +
     '<span class="kg">' + testoValore(m.tipo, m.valore) + ' ' + t.unita + '</span>' +
     '</div>'
@@ -214,7 +216,7 @@ function htmlInserimento(f) {
       '</div>' +
       '<div class="mbtns">' +
         ORDINE_TIPI.map((k) =>
-          '<div class="mbtn card' + (k === f.tipo ? ' on' : '') + '" data-t="' + k + '">' +
+          '<div class="mbtn' + (k === f.tipo ? ' on' : '') + '" data-t="' + k + '">' +
           '<span class="e">' + TIPI[k].emoji + '</span><span class="t">' + TIPI[k].nome + '</span></div>'
         ).join('') +
       '</div>';
@@ -233,7 +235,7 @@ function htmlInserimento(f) {
       '<span class="k">Quando</span><span class="v">' + testoData(f.iso) + '</span>' +
       (f.modifica ? '' : '<input class="data" type="date" value="' + esc(f.iso) + '" max="' + isoOggi() + '" aria-label="Data della misura">') +
     '</div>' +
-    '<div class="src conferma" style="font-size:12.5px;color:var(--txt);margin:0 0 10px" hidden></div>' +
+    '<div class="src conferma" hidden></div>' +
     '<div class="save" role="button">Salva</div>' +
     (f.modifica ? '<div class="elimina" role="button">Cancella</div>' : '') +
     '</div>'

@@ -1,39 +1,48 @@
 /* Sezione Misure: elenco e tendina di inserimento.
-   Riferimento visivo: mockup v3b.html, frame «3 · Misure».
+   Riferimento visivo: mockup-v3c.html. Misure non ha un suo frame nel mockup:
+   l'elenco segue la tabella delle pesate («.list .row») e le scelte seguono il
+   controllo segmentato («.seg»).
    I token (var(--...)) e le classi comuni (.card .chip .who-pick .rowline .save .sect)
    stanno in base.css. Qui ci sono solo le parti di questa sezione, con un prefisso
    (.misure per l'elenco, .ins per la tendina) perché le altre sezioni usano nomi uguali. */
 
 /* ── elenco ── */
-.misure .wrow{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--hair);
+/* Riga di una tabella raggruppata: alta almeno 48px, 16px ai lati. */
+.misure .wrow{position:relative;display:flex;align-items:center;gap:12px;padding:0 16px;min-height:48px;
   cursor:pointer;user-select:none;-webkit-user-select:none;transition:background .12s ease-out}
-.misure .wrow:last-child{border-bottom:none}
-.misure .wrow:active{background:rgba(255,255,255,0.55)}
-.misure .wrow .d{font-size:12px;font-weight:700;flex:1}
-.misure .wrow .kg{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+/* Il separatore parte dal testo, non dal bordo della scheda: 16px + 52px di pastiglia + 12px di spazio. */
+.misure .wrow + .wrow::before{content:'';position:absolute;top:0;left:80px;right:0;height:0.5px;background:var(--hair)}
+.misure .wrow:active{background:var(--glass-2)}
+.misure .wrow .d{font-size:17px;font-weight:400;letter-spacing:-0.2px;flex:1}
+.misure .wrow .kg{font-size:17px;font-weight:600;letter-spacing:-0.2px;font-variant-numeric:tabular-nums}
 .misure .card{overflow:hidden}
 
 /* ── tendina ── */
 .ins{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.ins .mbtns{display:flex;gap:9px;margin-top:14px}
-.ins .mbtn{flex:1;padding:15px 8px 13px;text-align:center;cursor:pointer}
-.ins .mbtn .e{font-size:24px;display:block;line-height:1}
-.ins .mbtn .t{font-size:11.5px;font-weight:800;margin-top:7px}
-.ins .mbtn.on{outline:2px solid var(--g-pri);outline-offset:-2px;background:#fff}
+
+/* I tre tipi di misura sono un controllo segmentato, come .seg: pillola grigia,
+   il tipo scelto su pillola bianca. Niente contorno. */
+.ins .mbtns{display:flex;gap:2px;padding:2px;background:var(--glass-2);border-radius:9px;margin-top:12px}
+.ins .mbtn{flex:1;min-width:0;padding:7px 0 8px;border-radius:7px;text-align:center;cursor:pointer}
+.ins .mbtn .e{font-size:18px;display:block;line-height:1}
+.ins .mbtn .t{font-size:13px;font-weight:500;color:var(--txt);margin-top:4px}
+.ins .mbtn.on{background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04)}
+.ins .mbtn.on .t{font-weight:600}
 
 .ins .stepper{display:flex;align-items:center;gap:12px;justify-content:center;margin:14px 0 10px}
-.ins .step-b{width:64px;height:56px;border-radius:18px;background:var(--glass-2);border:1px solid var(--glass-brd-2);
-  display:grid;place-items:center;font-size:25px;font-weight:700;color:var(--g-pri);
+.ins .step-b{width:64px;height:56px;border-radius:28px;background:var(--glass-2);
+  display:grid;place-items:center;font-size:20px;font-weight:500;color:var(--g-pri);
   touch-action:manipulation;cursor:pointer;transition:transform .09s ease-out}
 .ins .step-b:active{transform:scale(0.94)}
 .ins .val{flex:1;text-align:center}
-.ins .val .n{font-size:44px;font-weight:800;letter-spacing:-0.05em;font-variant-numeric:tabular-nums;line-height:1}
-.ins .val .u{font-size:13px;font-weight:700;color:var(--sub);margin-top:2px}
+.ins .val .n{font-size:44px;font-weight:600;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;line-height:1}
+.ins .val .u{font-size:15px;font-weight:400;color:var(--sub);margin-top:4px}
 
-.ins .quick{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
-.ins .quick b{padding:8px 12px;border-radius:10px;background:var(--glass-2);border:1px solid var(--glass-brd-2);
-  font-size:11px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums;
-  touch-action:manipulation;cursor:pointer;transition:transform .09s ease-out}
+/* I tasti rapidi: quattro pillole grigie di larghezza uguale. */
+.ins .quick{display:flex;gap:6px;margin-bottom:12px}
+.ins .quick b{flex:1;min-width:0;padding:9px 6px;border-radius:20px;background:var(--glass-2);
+  font-size:17px;font-weight:400;color:var(--txt);letter-spacing:-0.2px;font-variant-numeric:tabular-nums;
+  text-align:center;touch-action:manipulation;cursor:pointer;transition:transform .09s ease-out}
 .ins .quick b:active{transform:scale(0.94)}
 
 /* La riga della data: il campo vero sta sopra, trasparente, e prende il tocco. */
@@ -41,9 +50,12 @@
 .ins .rowline input.data{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;cursor:pointer;
   font-size:16px}
 
+/* La domanda prima di sostituire una misura già scritta. */
+.ins .conferma{font-size:15px;color:var(--txt);margin:0 0 10px}
+
 /* Cancella: stesso peso di Salva ma spento, e senza rosso. Dopo il primo tocco si accende. */
-.ins .elimina{width:100%;margin-top:10px;padding:13px;border-radius:17px;background:var(--glass-2);
-  border:1px solid var(--glass-brd-2);color:var(--sub);font-size:13.5px;font-weight:800;text-align:center;
+.ins .elimina{width:100%;margin-top:10px;padding:15px;border-radius:14px;background:var(--glass-2);
+  color:var(--sub);font-size:17px;font-weight:500;letter-spacing:-0.2px;text-align:center;
   cursor:pointer;transition:transform .09s ease-out}
 .ins .elimina:active{transform:scale(0.98)}
-.ins .elimina.chiede{color:var(--txt);background:#fff;border-color:var(--amber)}
+.ins .elimina.chiede{background:#fff;color:var(--red)}

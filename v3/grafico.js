@@ -36,8 +36,8 @@ const PUNTI_BANDA = 40;
 
 // Riempimenti fra le bande, dal più chiaro fuori al più scuro verso il centro.
 const RIEMPIMENTI = [0.05, 0.09, 0.09, 0.05];
-const COLORE_BANDA = '#6B7A99';
-const COLORE_RIEMPIMENTO = '#3B82F6';
+const COLORE_BANDA = 'rgba(60,60,67,0.45)';
+const COLORE_RIEMPIMENTO = '#007AFF';
 
 // Passi dell'asse y fra cui scegliere, per misura. Il primo che lascia al massimo
 // sei righe vince: con i kg si arriva a 2, con i cm a 5 o 10.
@@ -188,7 +188,7 @@ export function disegnaGrafico({ misura, serie, giorniDa, giorniA, messaggio }) 
       `${mezzo ? '' : ' stroke-dasharray="3 3"'}/>`;
     const [gg, v] = b.punti[b.punti.length - 1];
     g +=
-      `<text x="${n1(X(gg) + 3)}" y="${n1(Y(v) + 3)}" font-size="8.5" font-weight="800"` +
+      `<text x="${n1(X(gg) + 3)}" y="${n1(Y(v) + 3)}" font-size="10" font-weight="400"` +
       ` fill="${COLORE_BANDA}" opacity=".8">${b.etichetta}</text>`;
   }
 
@@ -196,17 +196,17 @@ export function disegnaGrafico({ misura, serie, giorniDa, giorniA, messaggio }) 
   for (let v = yMin; v <= yMax + 1e-9; v += p) {
     g +=
       `<line x1="${SX}" y1="${n1(Y(v))}" x2="${LARG - DX - 14}" y2="${n1(Y(v))}"` +
-      ` stroke="rgba(12,18,34,.07)"/>`;
+      ` stroke="#E9E9ED"/>`;
     g +=
       `<text class="asse-y" x="${SX - 6}" y="${n1(Y(v) + 3.5)}" text-anchor="end"` +
-      ` font-size="8.5" font-weight="700" fill="#98A0B2">${scrittoY(v, p)}</text>`;
+      ` font-size="10" font-weight="400" fill="rgba(60,60,67,0.42)">${scrittoY(v, p)}</text>`;
   }
 
   // etichette dell'asse x, in mesi
   for (const m of mesiAsse(da, a)) {
     g +=
       `<text class="asse-x" x="${n1(X(m * GIORNI_MESE))}" y="${ALT - GIU + 14}"` +
-      ` text-anchor="middle" font-size="8.5" font-weight="700" fill="#98A0B2">${m}m</text>`;
+      ` text-anchor="middle" font-size="10" font-weight="400" fill="rgba(60,60,67,0.42)">${m}m</text>`;
   }
 
   // le linee dei bambini e il pallino sull'ultima misura
@@ -226,7 +226,7 @@ export function disegnaGrafico({ misura, serie, giorniDa, giorniA, messaggio }) 
 
   const u = unita(misura);
   g +=
-    `<text x="${SX}" y="${ALT - 4}" font-size="8.5" font-weight="700" fill="#98A0B2">` +
+    `<text x="${SX}" y="${ALT - 4}" font-size="10" font-weight="400" fill="rgba(60,60,67,0.42)">` +
     `età in mesi${u ? ' · ' + u : ''}</text>`;
 
   return cornice(g);
@@ -257,7 +257,7 @@ function vuoto(testo) {
   const primo = ALT / 2 - ((r.length - 1) * 15) / 2;
   return cornice(
     `<text class="messaggio" x="${LARG / 2}" y="${n1(primo)}" text-anchor="middle"` +
-      ` font-size="11" font-weight="700" fill="#98A0B2">` +
+      ` font-size="15" font-weight="400" fill="rgba(60,60,67,0.60)">` +
       r.map((t, i) => `<tspan x="${LARG / 2}" dy="${i ? 15 : 0}">${t}</tspan>`).join('') +
       '</text>'
   );

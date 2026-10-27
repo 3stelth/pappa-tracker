@@ -95,7 +95,9 @@ function rigaVoce(v, q) {
   const chip = copre.length
     ? `<div class="covers">${copre.map((c) => `<i>${evidenzia(c, q)}</i>`).join('')}</div>` : '';
   const dose = v.dose != null && v.dose !== '' ? `<div class="dose">${esc(v.dose)}ª</div>` : '';
-  return `<div class="vax card"><div class="ic">${icona}</div>`
+  // `vax` resta il gancio della somministrazione; `vx-riga` dice che è una riga
+  // dentro la scheda della giornata, non una scheda per conto suo.
+  return `<div class="vax vx-riga"><div class="ic">${icona}</div>`
     + `<div class="nm">${evidenzia(v.nome, q)}${sotto}${chip}</div>${dose}</div>`;
 }
 
@@ -112,9 +114,10 @@ export function rigaSeduta(seduta, query) {
   if (chi.length && chi.length < BAMBINI.length) {
     eta += (eta ? ' · ' : '') + 'solo ' + chi.map(esc).join(' e ');
   }
+  const righe = vociDi(seduta).map((v) => rigaVoce(v, q)).join('');
   return `<div class="tl-day"><div class="tl-rail"><div class="tl-pin"></div><div class="tl-line"></div></div>`
     + `<div class="tl-body"><div class="tl-date">${data}</div><div class="tl-age">${eta}</div>`
-    + vociDi(seduta).map((v) => rigaVoce(v, q)).join('')
+    + (righe ? `<div class="card vx-voci">${righe}</div>` : '')
     + `</div></div>`;
 }
 
@@ -195,14 +198,14 @@ onCambio(() => {
 function disegna(contenitore) {
   const radice = document.createElement('div');
   radice.innerHTML =
-    `<div class="search card"><span class="vx-lente" aria-hidden="true">🔍</span>`
+    `<div class="search"><span class="vx-lente" aria-hidden="true">🔍</span>`
     + `<input type="text" class="vx-q" placeholder="Cerca vaccino, malattia, lotto…" autocomplete="off" `
     + `autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Cerca">`
     + `<span class="vx-x" role="button" aria-label="Cancella la ricerca" hidden>✕</span></div>`
     + `<div class="src vx-conto" hidden></div>`
     + `<div class="vx-testa"></div><div class="vx-lista"></div>`
     + `<div class="vx-programma"><div class="sect">In programma</div>`
-    + `<div class="card vx-niente">Niente in programma.<br>Mandami il foglio degli appuntamenti<br>e li aggiungo qui.</div></div>`;
+    + `<div class="card vuoto">Niente in programma.<br>Mandami il foglio degli appuntamenti<br>e li aggiungo qui.</div></div>`;
   const q = radice.querySelector('.vx-q');
   const x = radice.querySelector('.vx-x');
   const conto = radice.querySelector('.vx-conto');

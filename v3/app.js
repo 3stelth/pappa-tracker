@@ -2,8 +2,10 @@
 // Le sezioni non si importano fra loro: si parlano solo attraverso questo modulo.
 
 export const BAMBINI = ['Gabriel', 'Vittorio'];
-export const COLORE  = { Gabriel: '#3B82F6', Vittorio: '#14B8A6' };
+export const COLORE  = { Gabriel: '#007AFF', Vittorio: '#00897E' };
 export const SIGLA   = { Gabriel: 'g', Vittorio: 'v' };
+// Nome corto, per le pastiglie e le etichette strette: l'iniziale sola non si capisce.
+export const CORTO   = { Gabriel: 'Gabri', Vittorio: 'Vitto' };
 
 export const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
                      'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];

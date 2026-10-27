@@ -7,7 +7,7 @@
 // Il DOM si tocca solo dentro disegna(), piu() e i gestori degli eventi:
 // con Node il modulo si importa e le funzioni pure si provano.
 
-import { registraSezione, apriTendina, chiudiTendina, avviso, BAMBINI, SIGLA, isoOggi } from './app.js';
+import { registraSezione, apriTendina, chiudiTendina, avviso, BAMBINI, SIGLA, CORTO, isoOggi } from './app.js';
 import { stato, pappe, scriviGiudizio, onCambio } from './dati.js';
 
 // ─── catalogo ───────────────────────────────────────────────────────────────
@@ -205,10 +205,6 @@ function esc(testo) {
   return String(testo).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function iniziale(bambino) {
-  return bambino.charAt(0).toUpperCase();
-}
-
 /** Il giudizio che un bambino ha già dato a questa combinazione in un giorno, o ''. */
 function giudizioDelGiorno(bambino, iso, chiave) {
   let trovato = '';
@@ -234,9 +230,12 @@ function rigaHtml(r) {
     return d ? `<span class="pill-like ${SIGLA[b]}">${GIUDIZI[d.giudizio].e} ${d.n}</span>` : '';
   }).join('');
   const tocca = r.soloLettura ? ' sola-lettura' : '';
-  return `<div class="meal card${tocca}"${r.soloLettura ? '' : ' role="button"'} data-chiave="${esc(r.chiave)}">` +
-    `<span class="em">${esc(emoji)}</span><span class="nm">${esc(r.nome)}</span>` +
-    `<span class="st">${pillole}</span></div>`;
+  // Nome e pastiglie stanno dentro .rig: il capello che separa le righe parte da lì,
+  // cioè dal testo, non dal bordo della scheda.
+  return `<div class="meal${tocca}"${r.soloLettura ? '' : ' role="button"'} data-chiave="${esc(r.chiave)}">` +
+    `<span class="em">${esc(emoji)}</span>` +
+    `<span class="rig"><span class="nm">${esc(r.nome)}</span>` +
+    `<span class="st">${pillole}</span></span></div>`;
 }
 
 function facceHtml(bambino, scelto) {
@@ -244,8 +243,9 @@ function facceHtml(bambino, scelto) {
     `<div class="face${g === scelto ? ' sel' : ''}" data-giudizio="${g}">` +
     `<span class="e">${v.e}</span><span class="t">${esc(v.l)}</span></div>`
   ).join('');
+  // La pastiglia porta il nome corto: «Gabri», «Vitto», non l'iniziale sola.
   return `<div class="judge ${SIGLA[bambino]}" data-bambino="${esc(bambino)}">` +
-    `<span class="who ${SIGLA[bambino]}">${iniziale(bambino)}</span><div class="faces">${facce}</div></div>`;
+    `<span class="who ${SIGLA[bambino]}">${esc(CORTO[bambino])}</span><div class="faces">${facce}</div></div>`;
 }
 
 // Un tocco che parte e finisce sullo stesso elemento, senza trascinare: serve per le righe
@@ -283,7 +283,11 @@ function riempi(radice) {
   let html = '';
   for (const b of BLOCCHI) {
     const dentro = righe.filter((r) => r.gruppo === b.gruppo);
-    if (dentro.length) html += `<div class="sect">${b.titolo}</div>` + dentro.map(rigaHtml).join('');
+    // Le righe di un blocco stanno in una scheda sola, come una tabella raggruppata.
+    if (dentro.length) {
+      html += `<div class="sect">${b.titolo}</div><div class="card lista">` +
+        dentro.map(rigaHtml).join('') + `</div>`;
+    }
   }
   radice.innerHTML = html;
 }
@@ -351,8 +355,8 @@ function chiudiSeFinito(radice) {
 function apriGiudizio(riga) {
   if (!riga || riga.soloLettura) return;
   const oggi = isoOggi();
-  const html = `<div class="pp pp-giudizio">` +
-    BAMBINI.map((b) => facceHtml(b, giudizioDelGiorno(b, oggi, riga.chiave))).join('') + `</div>`;
+  const html = `<div class="pp pp-giudizio"><div class="card blocco">` +
+    BAMBINI.map((b) => facceHtml(b, giudizioDelGiorno(b, oggi, riga.chiave))).join('') + `</div></div>`;
   const tendina = apriTendina(html, { titolo: riga.nome, sotto: "Com'è andata oggi?" });
   const radice = tendina.querySelector('.pp-giudizio');
   radice.addEventListener('pointerdown', (e) => {
@@ -373,10 +377,13 @@ function composizioneHtml() {
     ).join('');
     return `<div class="cat-t">${c.emoji} ${esc(c.nome)}</div><div class="icone">${icone}</div>`;
   }).join('');
+  // Due schede: gli alimenti sopra, le faccine sotto.
   return `<div class="pp pp-nuova">` +
+    `<div class="card blocco">` +
     `<div class="comp-nome vuoto-nome">Tocca gli alimenti della pappa</div>` +
-    `<div class="griglia">${gruppi}</div>` +
-    BAMBINI.map((b) => facceHtml(b, '')).join('') + `</div>`;
+    `<div class="griglia">${gruppi}</div></div>` +
+    `<div class="card blocco">` +
+    BAMBINI.map((b) => facceHtml(b, '')).join('') + `</div></div>`;
 }
 
 function apriNuova() {

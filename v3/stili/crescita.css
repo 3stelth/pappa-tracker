@@ -1,51 +1,65 @@
 /* Pappa Tracker v3 — sezione Crescita.
-   Classi .agebox .chart .pctbox .explain copiate dal mockup approvato
-   .claude/mockup/v3b.html, frame «2 · Crescita». I token stanno in base.css.
-   Le classi .cr-* sono aggiunte: nel mockup quei casi non c'erano. */
+   Stile dal mockup approvato mockup-v3c.html, frame «Crescita».
+   I token stanno in base.css: qui non ce ne sono di nuovi. */
 
-/* ── le due età ── */
-.agebox{display:flex;gap:9px;margin-top:14px}
-.agebox>div{flex:1;padding:11px 12px;text-align:center;user-select:none;cursor:pointer}
-.agebox .n{font-size:16px;font-weight:800;letter-spacing:-0.03em;margin-top:3px}
-.agebox>div.on{outline:2px solid var(--g-pri);outline-offset:-2px}
+/* ── le due età: un controllo segmentato a due righe ── */
+.agebox{display:flex;gap:2px;padding:2px;background:var(--glass-2);border-radius:11px;margin-top:14px}
+.agebox>div{flex:1;padding:8px 10px 9px;text-align:center;border-radius:9px;
+  user-select:none;cursor:pointer;background:none;box-shadow:none}
+.agebox>div.on{background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04)}
+.agebox .lbl{font-size:13px;font-weight:400;color:var(--sub)}
+.agebox>div.on .lbl{color:var(--txt)}
+.agebox .n{font-size:17px;font-weight:600;letter-spacing:-0.3px;margin-top:2px}
 .agebox>div:not(.on) .n{color:var(--hint)}
 
 /* ── avviso dell'età anagrafica ── */
-.cr-nota{margin-top:11px;padding:11px 13px;border-radius:var(--r-sm);
-  background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.30);
-  font-size:11px;font-weight:600;line-height:1.5;color:var(--txt)}
+.cr-nota{margin-top:11px;padding:13px 14px;border-radius:var(--r-md);
+  background:rgba(255,204,0,0.18);
+  font-size:15px;font-weight:400;line-height:1.45;color:var(--txt)}
 .cr-nota[hidden]{display:none}
 
 /* ── grafico ── */
-.chart{padding:12px 8px 8px;margin-top:10px}
-.chart svg{display:block;width:100%;height:252px;overflow:visible}
+.chart{padding:14px 10px 10px;margin-top:12px}
+.chart svg{display:block;width:100%;height:236px;overflow:visible}
+
+/* ── legenda: senza, il grafico non si legge ── */
+.cr-legenda{display:flex;flex-wrap:wrap;gap:7px 16px;margin:10px 4px 0}
+.cr-legenda span{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--sub)}
+.cr-legenda .li{width:18px;height:3px;border-radius:2px;flex-shrink:0;font-style:normal}
+.cr-legenda .li.g{background:var(--g-pri)}
+.cr-legenda .li.v{background:var(--v-pri)}
+.cr-legenda .li.med{height:0;background:none;border-top:2px dashed rgba(60,60,67,0.45)}
+.cr-legenda .li.banda{height:12px;border-radius:3px;background:rgba(0,122,255,0.10)}
+/* Quando al posto del grafico c'è l'invito, la legenda non ha niente da spiegare. */
+.cr-invito + .cr-legenda{display:none}
 
 /* ── invito al posto del grafico della lunghezza ── */
-.cr-invito{margin-top:10px;padding:26px 18px;text-align:center;
-  background:var(--glass);backdrop-filter:blur(20px) saturate(160%);
-  -webkit-backdrop-filter:blur(20px) saturate(160%);
-  border:1px dashed var(--glass-brd);border-radius:var(--r-md);
-  font-size:12.5px;font-weight:600;line-height:1.6;color:var(--sub);
+.cr-invito{margin-top:12px;padding:30px 20px;text-align:center;
+  background:var(--glass);border-radius:var(--r-md);box-shadow:var(--shadow-sm);
+  font-size:15px;font-weight:400;line-height:1.5;color:var(--sub);
   user-select:none;cursor:pointer}
-.cr-invito b{color:var(--txt);font-weight:800}
+.cr-invito b{color:var(--g-pri);font-weight:400}
 
 /* ── percentili ── */
-.pctbox{display:flex;gap:9px;margin-top:11px}
-.pctbox>div{flex:1;padding:11px 10px;text-align:center}
-.pctbox .chip{margin:0 auto}
-.pctbox .p{font-size:21px;font-weight:800;letter-spacing:-0.04em;margin-top:2px;
+.pctbox{display:flex;gap:12px;margin-top:12px}
+.pctbox>div{flex:1;padding:14px;text-align:left}
+.pctbox .chip{margin:0}
+.pctbox .p{font-size:40px;font-weight:600;letter-spacing:-1.6px;margin-top:8px;line-height:1.1;
   font-variant-numeric:tabular-nums}
-.pctbox .t{font-size:9.5px;font-weight:700;color:var(--sub);margin-top:3px;line-height:1.35}
-.cr-fuori{font-size:12px;font-weight:800;color:var(--sub);margin-top:4px;line-height:1.3}
-.cr-attesa{flex:1;padding:18px 12px;text-align:center;font-size:11.5px;font-weight:600;
-  color:var(--sub)}
+.pctbox .t{font-size:13px;font-weight:400;color:var(--sub);margin-top:6px;line-height:1.45;
+  font-variant-numeric:tabular-nums}
+.cr-fuori{font-size:22px;font-weight:600;color:var(--sub);margin-top:8px;line-height:1.2;
+  letter-spacing:-0.6px}
+.cr-attesa{flex:1;padding:22px 14px;text-align:center;font-size:15px;font-weight:400;
+  color:var(--sub);line-height:1.45}
 
 /* ── riga fissa sul pediatra ── */
-.cr-pediatra{padding:12px 14px;margin-top:11px;font-size:11px;font-weight:600;
-  line-height:1.55;color:var(--sub)}
+.cr-pediatra{padding:14px 16px;margin-top:12px;font-size:13px;font-weight:400;
+  line-height:1.45;color:var(--sub)}
 
 /* ── spiegazioni ── */
-.explain{padding:13px 14px;margin-top:10px;font-size:11.5px;line-height:1.6;color:var(--sub)}
-.explain b{color:var(--txt);font-weight:700}
-.explain .q{font-size:12px;font-weight:800;color:var(--txt);display:block;margin-bottom:4px}
-.cr-spazio{height:11px}
+.explain{padding:16px;font-size:15px;line-height:1.5;color:var(--sub)}
+.explain b{color:var(--txt);font-weight:600}
+.explain .q{font-size:17px;font-weight:600;letter-spacing:-0.3px;color:var(--txt);
+  display:block;margin-bottom:4px}
+.cr-spazio{height:14px}

@@ -12,7 +12,7 @@
 
 import {
   registraSezione, apriInserimentoMisura,
-  BAMBINI, COLORE, SIGLA, ABBR,
+  BAMBINI, COLORE, SIGLA, CORTO, ABBR,
   dataLunga, dataCorta, numero, isoOggi,
 } from './app.js';
 import { pesate, lunghezze, onCambio } from './dati.js';
@@ -137,15 +137,15 @@ export function eUnTocco(x0, y0, x1, y1, soglia = SOGLIA_TOCCO) {
 
 // ── la schermata ───────────────────────────────────────────────────────────
 
-const ALTEZZA_SCENA = 214;     // px, come .stage nel CSS
+const ALTEZZA_SCENA = 176;     // px, come .stage nel CSS
 const CM_RIFERIMENTO = 78;     // la scena piena vale questa lunghezza, o quella più alta mai misurata
 const ALTEZZA_VUOTA = 0.78;    // frazione fissa della scena: la sagoma grigia non dice niente sull'altezza
 const ALTEZZA_SVG = 220;       // px: il viewBox 120x240 largo 110 px
 const PASSI = 1000;
 
 const TAVOLOZZA = {
-  Gabriel:  { colore2: '#7DB4FB', scuro: '#0B2E63', id: 'og' },
-  Vittorio: { colore2: '#5FE0D0', scuro: '#07443D', id: 'ov' },
+  Gabriel:  { colore2: '#5AA9FF', scuro: '#0B2E63', id: 'og' },
+  Vittorio: { colore2: '#4FC2B8', scuro: '#07443D', id: 'ov' },
 };
 
 const MENO = '−';
@@ -215,7 +215,7 @@ function htmlUltime() {
   const righe = righeUltimePesate(6);
   if (!righe.length) return '<div class="vuoto">Nessuna pesata ancora.</div>';
   return righe.map((r) => `<div class="wrow">
-      <span class="chip ${SIGLA[r.bambino]}">${r.bambino[0]}</span>
+      <span class="chip ${SIGLA[r.bambino]}">${CORTO[r.bambino]}</span>
       <span class="d">${dataCorta(r.iso)}</span>
       <span class="kg">${numero(r.kg)} kg</span>
       <span class="dl ${r.deltaG > 0 ? 'su' : ''}">${r.deltaG === null ? '' : r.deltaG === 0 ? '=' : scrittoDelta(r.deltaG)}</span>
@@ -320,8 +320,8 @@ function disegnaOggi(contenitore) {
       s.figVuota.hidden = !manca;
       s.linea.hidden = manca;
       if (manca) {
-        imposta(s.cm, 'manca la lunghezza');
-        imposta(s.cmData, 'tocca per aggiungerla');
+        imposta(s.cm, 'Manca la lunghezza');
+        imposta(s.cmData, 'Aggiungi');
       } else {
         const h = altezzaSagoma(st.cm, cmMax, ALTEZZA_SCENA);
         s.fig.style.transform = `scale(${(h / ALTEZZA_SVG).toFixed(4)})`;

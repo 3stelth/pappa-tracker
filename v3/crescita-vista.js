@@ -21,6 +21,7 @@
 import {
   BAMBINI,
   COLORE,
+  CORTO,
   SIGLA,
   apriInserimentoMisura,
   dataCorta,
@@ -220,6 +221,12 @@ export function markup({ eta, misura, periodo } = {}) {
 
 <div class="card chart" data-cr="grafico"></div>
 
+<div class="cr-legenda">
+  ${BAMBINI.map((b) => `<span><i class="li ${SIGLA[b]}"></i>${CORTO[b]}</span>`).join('')}
+  <span><i class="li med"></i>Metà dei bambini</span>
+  <span><i class="li banda"></i>Zona normale</span>
+</div>
+
 <div class="pctbox" data-cr="percentili"></div>
 
 <div class="card cr-pediatra">${PEDIATRA}</div>
@@ -269,7 +276,7 @@ function serieDi() {
 
 function cartaHtml(carta) {
   const sigla = SIGLA[carta.bambino];
-  const testa = `<span class="chip ${sigla}">${sigla.toUpperCase()}</span>`;
+  const testa = `<span class="chip ${sigla}">${CORTO[carta.bambino]}</span>`;
 
   if (carta.nota) {
     return `<div class="card">${testa}<div class="cr-fuori">—</div>
