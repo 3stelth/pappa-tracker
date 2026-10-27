@@ -16,6 +16,9 @@
 .misure .wrow .d{font-size:17px;font-weight:400;letter-spacing:-0.2px;flex:1}
 .misure .wrow .kg{font-size:17px;font-weight:600;letter-spacing:-0.2px;font-variant-numeric:tabular-nums}
 .misure .card{overflow:hidden}
+/* Il gruppo senza misure sta dentro la scheda: niente margine sopra e meno altezza
+   della scheda vuota di tutta la sezione. */
+.misure .card > .vuoto{margin-top:0;padding:18px 16px}
 
 /* ── tendina ── */
 .ins{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}

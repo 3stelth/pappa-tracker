@@ -127,6 +127,9 @@ export const casi = [
       vero(t.includes('37,1') && t.includes('°C'), `riga della temperatura: ${t}`);
       vero(!p.includes('8.29'), 'il punto decimale non deve comparire');
       vero(p.includes('25 ott') && t.includes('2 ott'), 'la data corta compare');
+      // Il tipo lo porta il titolo del gruppo: nella riga non si ripete.
+      vero(!p.includes('Peso'), `la riga del peso ripete il tipo: ${p}`);
+      vero(!t.includes('Temperatura'), `la riga della temperatura ripete il tipo: ${t}`);
       for (const riga of [p, l, t]) {
         vero(!riga.includes('undefined') && !riga.includes('NaN'), `riga sporca: ${riga}`);
       }

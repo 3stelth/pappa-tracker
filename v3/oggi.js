@@ -70,10 +70,13 @@ export function sagomaVuota() {
  * I campi che mancano sono null. La lunghezza non si stima mai dal peso.
  * `deltaG` è la differenza in grammi con la pesata precedente, e c'è solo se c'è
  * una pesata precedente.
+ * `ultimaPesata` dice se il peso mostrato è l'ultimo che il bambino ha: la schermata
+ * scrive il confronto con la pesata prima solo lì.
  */
 export function statoAlGiorno(bambino, iso) {
   const fino = (lista) => lista.filter((m) => m.iso <= iso);
-  const p = fino(pesate(bambino));
+  const tutteLePesate = pesate(bambino);
+  const p = fino(tutteLePesate);
   const l = fino(lunghezze(bambino));
   const ultimoP = p.length ? p[p.length - 1] : null;
   const prima = p.length > 1 ? p[p.length - 2] : null;
@@ -83,6 +86,7 @@ export function statoAlGiorno(bambino, iso) {
     isoPeso: ultimoP ? ultimoP.iso : null,
     deltaG: ultimoP && prima ? Math.round((ultimoP.kg - prima.kg) * 1000) : null,
     isoPrecedente: prima ? prima.iso : null,
+    ultimaPesata: ultimoP !== null && p.length === tutteLePesate.length,
     cm: ultimoL ? ultimoL.cm : null,
     isoLunghezza: ultimoL ? ultimoL.iso : null,
   };
@@ -337,7 +341,12 @@ function disegnaOggi(contenitore) {
         s.delta.classList.remove('su');
       } else {
         imposta(s.kg, numero(st.kg));
-        if (st.deltaG === null) {
+        if (!st.ultimaPesata) {
+          // Nello storico il confronto con la pesata prima non serve: si guarda il peso
+          // di quel giorno, non quanto era cresciuto allora.
+          imposta(s.delta, '');
+          s.delta.classList.remove('su');
+        } else if (st.deltaG === null) {
           imposta(s.delta, 'prima pesata');
           s.delta.classList.remove('su');
         } else {

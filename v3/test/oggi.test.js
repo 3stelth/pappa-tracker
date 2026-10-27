@@ -45,6 +45,27 @@ export const casi = [
       uguale(s.isoPeso, '2026-10-25', 'isoPeso');
       uguale(s.deltaG, 135, 'deltaG');
       uguale(s.isoPrecedente, '2026-10-20', 'isoPrecedente');
+      uguale(s.ultimaPesata, true, 'ultimaPesata');
+    },
+  },
+  {
+    nome: 'statoAlGiorno su una data passata: ultimaPesata è false, così la carta non scrive il confronto',
+    prova() {
+      metti({
+        '2026-10-05': { Gabriel: peso(8.13) },
+        '2026-10-20': { Gabriel: peso(8.155) },
+        '2026-10-25': { Gabriel: peso(8.29) },
+      });
+      const indietro = statoAlGiorno('Gabriel', '2026-10-20');
+      uguale(indietro.kg, 8.155, 'kg del 20 ottobre');
+      uguale(indietro.deltaG, 25, 'deltaG resta calcolato');
+      uguale(indietro.ultimaPesata, false, 'ultimaPesata sul 20 ottobre');
+      const oggi = statoAlGiorno('Gabriel', '2026-10-25');
+      uguale(oggi.ultimaPesata, true, 'ultimaPesata sul 25 ottobre');
+      // Una data dopo l'ultima pesata mostra ancora l'ultima pesata: lì il confronto serve.
+      const dopo = statoAlGiorno('Gabriel', '2026-10-27');
+      uguale(dopo.isoPeso, '2026-10-25', 'isoPeso dopo l’ultima pesata');
+      uguale(dopo.ultimaPesata, true, 'ultimaPesata dopo l’ultima pesata');
     },
   },
   {
@@ -55,6 +76,8 @@ export const casi = [
       uguale(s.kg, 8.29, 'kg');
       uguale(s.deltaG, null, 'deltaG');
       uguale(s.isoPrecedente, null, 'isoPrecedente');
+      // Con una pesata sola quella è anche l'ultima: la carta scrive «prima pesata».
+      uguale(s.ultimaPesata, true, 'ultimaPesata');
     },
   },
   {
