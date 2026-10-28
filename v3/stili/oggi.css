@@ -58,17 +58,32 @@
   margin:0;position:absolute;left:0;top:2px}
 .oggi input[type=range]:disabled{opacity:0.5}
 .oggi input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:var(--g-pri)}
+/* Il cursore resta bianco anche col tema scuro, come lo slider di iOS: sta sopra
+   la pista blu, non sopra il fondo della pagina. */
 .oggi input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
   background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.18),0 0 0 0.5px rgba(0,0,0,0.05);border:none;margin-top:-11.5px}
 .oggi input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:var(--g-pri)}
 .oggi input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;border:none;
   background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.18),0 0 0 0.5px rgba(0,0,0,0.05)}
 
-/* ── ultime pesate: tabella raggruppata, righello che parte dal testo ── */
+/* ── ultime misure: mezzo schermo per tipo, tre righe per ognuno ── */
 .oggi .ultime{overflow:hidden}
-.oggi .wrow{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:48px;position:relative}
-.oggi .wrow+.wrow::before{content:'';position:absolute;top:0;left:80px;right:0;height:0.5px;background:var(--hair)}
-.oggi .wrow .d{font-size:17px;flex:1;letter-spacing:-0.2px}
-.oggi .wrow .kg{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-0.2px}
-.oggi .wrow .dl{font-size:15px;color:var(--sub);width:62px;text-align:right;font-variant-numeric:tabular-nums}
-.oggi .wrow .dl.su{color:var(--green)}
+.oggi .ult2{display:grid;grid-template-columns:1fr 1fr}
+.oggi .ult2 > div{padding:13px 12px 14px}
+.oggi .ult2 > div + div{border-left:0.5px solid var(--hair)}
+.oggi .ult2 h3{display:flex;align-items:center;gap:6px;margin:0 0 4px;font-size:13px;font-weight:600;color:var(--sub)}
+.oggi .ult2 h3 svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.oggi .ult2 .ri{padding:8px 0 0;margin-top:8px;border-top:0.5px solid var(--hair)}
+.oggi .ult2 .dt{font-size:12px;color:var(--hint);margin-bottom:3px}
+.oggi .ult2 .vv{display:flex;align-items:center;gap:4px}
+.oggi .ult2 .pun{width:7px;height:7px;border-radius:50%;flex:none}
+.oggi .ult2 .pun.g{background:var(--g-pri)}
+.oggi .ult2 .pun.v{background:var(--v-pri)}
+.oggi .ult2 .n{font-size:16px;font-weight:600;letter-spacing:-0.3px;font-variant-numeric:tabular-nums}
+/* Il bambino senza misura in quella data: trattino grigio, non un numero. */
+.oggi .ult2 .n.manca{color:var(--hint);font-weight:400}
+.oggi .ult2 .n + .pun{margin-left:8px}
+.oggi .ult2 .niente{font-size:13px;color:var(--hint);margin-top:12px;line-height:1.45}
+.oggi .ult2 .agg{display:inline-block;margin-top:8px;font-size:15px;color:var(--g-pri);font-weight:500;
+  cursor:pointer}
