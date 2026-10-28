@@ -7,6 +7,8 @@
    sezioni seguono senza rinominare nulla. */
 
 :root{
+  color-scheme:light;
+
   /* identità dei due bambini */
   --g-pri:#007AFF; --g-2:#007AFF; --g-light:rgba(0,122,255,0.12);
   --v-pri:#00897E; --v-2:#00897E; --v-light:rgba(0,137,126,0.12);
@@ -26,8 +28,63 @@
   /* colori di stato, scelti per restare leggibili anche in piccolo */
   --green:#1C8C3C; --amber:#B25E00; --red:#D70015;
 
+  /* parti del guscio che prima erano scritte a mano qui sotto: senza un token
+     non potrebbero cambiare col tema. */
+  --vetro:rgba(242,242,247,0.80);          /* fondo delle due barre */
+  --bordo:rgba(60,60,67,0.18);             /* filo sotto e sopra le barre */
+  --pillola:#FFFFFF;                       /* segmento scelto nei controlli */
+  --pillola-ombra:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04);
+  --maniglia:rgba(60,60,67,0.30);          /* presa della tendina */
+  --ombra-tendina:0 -10px 40px rgba(0,0,0,0.20);
+  --velo:rgba(0,0,0,0.32);
+  --avviso-fondo:rgba(28,28,30,0.92);
+  --evidenzia:rgba(255,214,10,0.45);       /* ricerca */
+  --griglia:#E9E9ED;                       /* righe dell'asse nel grafico */
+  --banda:rgba(60,60,67,0.45);             /* curve OMS: il grafico e la sua legenda */
+  --nota:rgba(255,204,0,0.18);             /* riquadro giallo di avvertenza */
+  --ok:rgba(28,140,60,0.10);               /* riquadro verde «in regola» */
+
   --r-lg:22px; --r-md:16px; --r-sm:10px;
   --larghezza:480px;
+}
+
+/* ── tema scuro ──
+   Una sola copia della tavolozza. L'attributo `data-scuro` lo mette tema.js, che
+   risolve la scelta dell'utente (chiaro, scuro, come il sistema) in un sì o un no.
+   Uno script in linea dentro <head> lo mette già prima del primo disegno, se no la
+   pagina lampeggia di bianco. Qui non si guarda `prefers-color-scheme`: lo fa
+   tema.js, così la tavolozza non va tenuta allineata in due posti.
+   I colori seguono il tema scuro di iOS: fondo nero, schede grigio scurissimo,
+   accenti più chiari dei loro gemelli di giorno, se no sul nero non si leggono. */
+:root[data-scuro]{
+  color-scheme:dark;
+
+  --g-pri:#0A84FF; --g-2:#0A84FF; --g-light:rgba(10,132,255,0.22);
+  --v-pri:#2DB5A8; --v-2:#2DB5A8; --v-light:rgba(45,181,168,0.22);
+
+  --bg-0:#000000; --bg-1:#1C1C1E;
+  --glass:#1C1C1E; --glass-2:rgba(118,118,128,0.24); --glass-strong:#2C2C2E;
+  --hair:#38383A;
+
+  --txt:#FFFFFF; --sub:rgba(235,235,245,0.60); --hint:rgba(235,235,245,0.30);
+
+  --shadow:0 10px 30px rgba(0,0,0,0.60); --shadow-sm:0 1px 2px rgba(0,0,0,0.40);
+
+  --green:#30D158; --amber:#FF9F0A; --red:#FF453A;
+
+  --vetro:rgba(0,0,0,0.72);
+  --bordo:rgba(235,235,245,0.18);
+  --pillola:#636366;
+  --pillola-ombra:0 3px 8px rgba(0,0,0,0.45);
+  --maniglia:rgba(235,235,245,0.30);
+  --ombra-tendina:0 -10px 40px rgba(0,0,0,0.60);
+  --velo:rgba(0,0,0,0.55);
+  --avviso-fondo:rgba(72,72,74,0.95);
+  --evidenzia:rgba(255,214,10,0.32);
+  --griglia:#2C2C2E;
+  --banda:rgba(235,235,245,0.45);
+  --nota:rgba(255,204,0,0.22);
+  --ok:rgba(48,209,88,0.18);
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -37,9 +94,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro
 
 /* ── intestazione: titolo grande, vetro ── */
 .hdr{position:sticky;top:0;z-index:7;padding:14px 16px 10px;
-  background:rgba(242,242,247,0.80);
+  background:var(--vetro);
   backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);
-  border-bottom:0.5px solid rgba(60,60,67,0.18)}
+  border-bottom:0.5px solid var(--bordo)}
 .hdr-in{max-width:var(--larghezza);margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
 .hdr-t{font-size:34px;font-weight:700;letter-spacing:-0.9px;line-height:1.06}
 .hdr-s{font-size:15px;color:var(--sub);margin-top:2px}
@@ -57,9 +114,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro
 /* ── barra delle sezioni ── */
 .tabbar{position:fixed;bottom:0;left:0;right:0;z-index:8;padding:8px 6px 10px;
   padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
-  background:rgba(242,242,247,0.82);
+  background:var(--vetro);
   backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);
-  border-top:0.5px solid rgba(60,60,67,0.18)}
+  border-top:0.5px solid var(--bordo)}
 .tabbar-in{max-width:var(--larghezza);margin:0 auto;display:flex}
 .tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px 0;
   color:var(--hint);font-size:10px;font-weight:500;user-select:none;cursor:pointer}
@@ -85,8 +142,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro
 .seg,.who-pick{display:flex;gap:2px;padding:2px;background:var(--glass-2);border-radius:9px;margin-top:12px}
 .seg b,.who-pick b{flex:1;text-align:center;padding:8px 0;border-radius:7px;font-size:13px;font-weight:500;
   color:var(--txt);cursor:pointer;user-select:none}
-.seg b.on,.who-pick b.on{background:#fff;font-weight:600;
-  box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04)}
+.seg b.on,.who-pick b.on{background:var(--pillola);font-weight:600;
+  box-shadow:var(--pillola-ombra)}
 .who-pick b.on.g{color:var(--g-pri)}
 .who-pick b.on.v{color:var(--v-pri)}
 
@@ -103,27 +160,27 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro
 
 .src{font-size:13px;color:var(--sub);text-align:center;margin-top:10px;line-height:1.45}
 .hide{display:none}
-mark{background:rgba(255,214,10,0.45);color:inherit;border-radius:3px;padding:0 1px}
+mark{background:var(--evidenzia);color:inherit;border-radius:3px;padding:0 1px}
 
 /* ── tendina in basso ── */
 .sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:var(--larghezza);z-index:10;
   border-radius:16px 16px 0 0;padding:10px 16px 24px;
   padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
-  background:var(--bg-0);box-shadow:0 -10px 40px rgba(0,0,0,0.20);
+  background:var(--bg-0);box-shadow:var(--ombra-tendina);
   will-change:transform}
 .sheet[hidden]{display:none}
 .sheet h4{margin:0 0 2px;font-size:20px;font-weight:700;letter-spacing:-0.4px}
 .sheet h4[hidden],.sheet .sh-sub[hidden]{display:none}
 .sheet .sh-sub{font-size:15px;color:var(--sub);margin-bottom:14px}
-.grab{width:36px;height:5px;border-radius:3px;background:rgba(60,60,67,0.30);margin:0 auto 12px;
+.grab{width:36px;height:5px;border-radius:3px;background:var(--maniglia);margin:0 auto 12px;
   touch-action:none;cursor:grab}
 
 /* ── velo, avviso, segnaposto ── */
-.velo{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,0.32);opacity:0;transition:opacity .22s ease}
+.velo{position:fixed;inset:0;z-index:9;background:var(--velo);opacity:0;transition:opacity .22s ease}
 .velo.on{opacity:1}
 .velo[hidden]{display:none}
 .avviso{position:fixed;left:0;right:0;bottom:100px;margin:0 auto;z-index:12;width:max-content;max-width:300px;
-  padding:12px 18px;border-radius:22px;background:rgba(28,28,30,0.92);color:#fff;
+  padding:12px 18px;border-radius:22px;background:var(--avviso-fondo);color:#fff;
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   font-size:15px;font-weight:500;text-align:center;line-height:1.35;
   opacity:0;transition:opacity .2s ease}

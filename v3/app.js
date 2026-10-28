@@ -1,8 +1,12 @@
 // Pappa Tracker v3 — guscio: intestazione, barra delle sezioni, tendina, avvisi.
 // Le sezioni non si importano fra loro: si parlano solo attraverso questo modulo.
 
+import { avvia as avviaTema } from './tema.js';
+
 export const BAMBINI = ['Gabriel', 'Vittorio'];
-export const COLORE  = { Gabriel: '#007AFF', Vittorio: '#00897E' };
+// Il colore passa dal token, non dal valore: così di notte segue il tema scuro.
+// Questi due finiscono sempre dentro uno stile o un SVG, mai in un calcolo.
+export const COLORE  = { Gabriel: 'var(--g-pri)', Vittorio: 'var(--v-pri)' };
 export const SIGLA   = { Gabriel: 'g', Vittorio: 'v' };
 // Nome corto, per le pastiglie e le etichette strette: l'iniziale sola non si capisce.
 export const CORTO   = { Gabriel: 'Gabri', Vittorio: 'Vitto' };
@@ -56,7 +60,7 @@ const barra    = trova('barra');
 const elTitolo = trova('titolo');
 const elSotto  = trova('sotto');
 const elPiu    = trova('piu');
-const elIngr   = trova('ingranaggio');
+const elTema   = trova('tema');
 const tendina  = trova('tendina');
 const tTitolo  = trova('tendina-titolo');
 const tSotto   = trova('tendina-sotto');
@@ -243,7 +247,9 @@ elPiu.addEventListener('pointerdown', () => {
   if (s && typeof s.piu === 'function') s.piu();
 });
 
-elIngr.addEventListener('pointerdown', () => avviso('Impostazioni: ancora da fare.'));
+// Il tasto del tema si accende da solo: legge la scelta salvata, cambia icona a
+// ogni tocco e dice quale tema è entrato.
+avviaTema(elTema, avviso);
 
 velo.addEventListener('pointerdown', () => chiudiTendina());
 
