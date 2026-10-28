@@ -302,10 +302,11 @@ body.has-baby-switch { padding-bottom: calc(var(--tab-h) + 80px); }
 .lock-icon { font-size: 72px; margin-bottom: 18px; filter: drop-shadow(0 8px 24px rgba(59,130,246,0.35)); }
 .lock-title { font-size: 28px; font-weight: 700; color: var(--txt); margin-bottom: 6px; letter-spacing: -0.03em; }
 .lock-sub { font-size: 14px; color: var(--sub); margin-bottom: 28px; font-weight: 500; }
-.lock-input { width: 100%; max-width: 280px; padding: 14px 18px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur)); font-size: 17px; font-family: inherit; font-weight: 600; text-align: center; outline: none; transition: border 0.2s, box-shadow 0.2s; color: var(--txt); }
+.lock-input { width: 100%; max-width: 280px; padding: 14px 18px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur)); font-size: 17px; font-family: inherit; font-weight: 600; text-align: center; outline: none; transition: border 0.2s, box-shadow 0.2s; color: var(--txt); margin-bottom: 10px; }
 .lock-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
 .lock-btn { margin-top: 16px; width: 100%; max-width: 280px; padding: 14px; border-radius: var(--r-md); border: none; background: var(--grad); color: #fff; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: 0 10px 28px -6px var(--accent); transition: transform 0.15s; }
 .lock-btn:active { transform: scale(0.97); }
+.lock-btn:disabled { opacity: 0.55; }
 .lock-error { color: var(--red); font-size: 13px; font-weight: 600; margin-top: 10px; min-height: 18px; }
 .report-section { margin-bottom: 18px; }
 .report-section h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--hair); letter-spacing: -0.01em; }
@@ -608,13 +609,16 @@ function useSupabase() { return SUPABASE_URL && SUPABASE_ANON_KEY; }
 async function supaFetch(method, path, body) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method, headers: {
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      ...(await authHeaders()),
       "Content-Type": "application/json",
       "Prefer": method === "POST" ? "resolution=merge-duplicates,return=minimal" : "return=minimal"
     },
     body: body ? JSON.stringify(body) : undefined
   });
+  // Senza questo controllo un salvataggio rifiutato passava per riuscito: l'app
+  // mostrava la spunta verde e il dato non era su Supabase. Con il token che scade
+  // ogni ora, sarebbe successo tutti i giorni.
+  if (!r.ok) throw new Error(`Supabase ha risposto ${r.status} a ${method} ${path}`);
   return r;
 }
 // DEPRECATED: do NOT call. Earlier version assigned random UUIDs to legacy entries,
@@ -916,14 +920,21 @@ async function syncToCloudMerged() {
   }
   try {
     state.syncStatus = "syncing"; render();
+    // Precauzione: se la lettura del remoto non riesce, qui non si scrive niente.
+    // Prima si andava avanti con il solo stato locale ("push local as-is"), e la riga
+    // 'main', che è il registro storico, poteva essere sovrascritta con quello che
+    // aveva questo telefono. I dati locali sono già salvati da saveData(), quindi
+    // fermarsi non perde niente: si riprova alla sincronizzazione dopo.
     let remote = {};
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/pappa_tracker_data?id=eq.main&select=data`, {
-        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
-      });
-      const rows = await r.json();
-      if (rows.length > 0 && rows[0].data) remote = rows[0].data;
-    } catch(fe) { console.error("Pre-save fetch failed:", fe); /* fallback: push local as-is */ }
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pappa_tracker_data?id=eq.main&select=data`, {
+      headers: await authHeaders()
+    });
+    if (!r.ok) throw new Error(`Supabase ha risposto ${r.status} leggendo 'main'`);
+    const rows = await r.json();
+    // In caso di errore PostgREST risponde con un oggetto, non con un elenco: senza
+    // questo controllo `rows.length` sarebbe undefined e l'errore passerebbe zitto.
+    if (!Array.isArray(rows)) throw new Error("risposta inattesa leggendo 'main'");
+    if (rows.length > 0 && rows[0].data) remote = rows[0].data;
     state.data = mergeData(state.data, remote);
     migrateTemperatures();
     cleanDuplicates();
@@ -937,9 +948,11 @@ async function syncFromCloud() {
   try {
     state.syncStatus = "syncing"; render();
     const r = await fetch(`${SUPABASE_URL}/rest/v1/pappa_tracker_data?id=eq.main&select=data`, {
-      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+      headers: await authHeaders()
     });
+    if (!r.ok) throw new Error(`Supabase ha risposto ${r.status} leggendo 'main'`);
     const rows = await r.json();
+    if (!Array.isArray(rows)) throw new Error("risposta inattesa leggendo 'main'");
     if (rows.length > 0 && rows[0].data) {
       // Merge remote into local instead of overwriting, so unsaved local edits survive.
       state.data = mergeData(state.data, rows[0].data);
@@ -2772,41 +2785,71 @@ function toggleWkMeal(id) {
   const el=document.getElementById('wkm-'+id);
   if(el) el.hidden=!el.hidden;
 }
-// ─── AUTH ───
-const APP_PASSWORD = "Ebby";
-const AUTH_KEY = "pappatracker_auth";
-function isAuthenticated() {
-  return sessionStorage.getItem(AUTH_KEY) === "true";
+// ─── ACCESSO ───
+// Un account di famiglia su Supabase, con email e password.
+//
+// Prima qui c'era una password scritta dentro il sorgente della pagina. Nascondeva lo
+// schermo, ma non limitava niente: le chiamate a Supabase partivano lo stesso, con la
+// chiave anonima. Adesso senza accesso non parte nessuna chiamata.
+//
+// La sessione la tiene supabase-js: la salva da sé e rinnova il token da sé. Deve
+// restare l'unico punto che rinnova, perché il token di rinnovo si spende una volta
+// sola: due rinnovi in parallelo chiudono la sessione all'utente.
+let supaClient = null;
+function supa() {
+  if (!supaClient) supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return supaClient;
 }
+let entrato = false;
+function isAuthenticated() { return entrato; }
+
+// Le intestazioni di ogni chiamata: la chiave dice quale progetto, il token dice chi
+// sei. Le policy guardano il token. getSession() rinnova da sé se è scaduto.
+async function authHeaders() {
+  const { data } = await supa().auth.getSession();
+  const token = data && data.session && data.session.access_token;
+  if (!token) throw new Error("nessuna sessione: serve entrare di nuovo");
+  return { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${token}` };
+}
+
 function showLockScreen() {
+  entrato = false;
   document.getElementById("app").innerHTML = `<div class="lock-screen">
     <div class="lock-icon">🍼</div>
     <div class="lock-title">Pappa Tracker</div>
     <div class="lock-sub">Gabriel & Vittorio</div>
-    <input class="lock-input" type="password" id="lock-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()">
-    <button class="lock-btn" onclick="checkPassword()">Accedi</button>
+    <input class="lock-input" type="email" id="lock-email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false">
+    <input class="lock-input" type="password" id="lock-pwd" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="lock-btn" id="lock-go" onclick="checkPassword()">Accedi</button>
     <div class="lock-error" id="lock-err"></div>
   </div>`;
-  document.getElementById("lock-pwd").focus();
+  document.getElementById("lock-email").focus();
 }
-function checkPassword() {
+async function checkPassword() {
+  const email = document.getElementById("lock-email").value.trim();
   const pwd = document.getElementById("lock-pwd").value;
-  if (pwd === APP_PASSWORD) {
-    sessionStorage.setItem(AUTH_KEY, "true");
-    initApp();
-  } else {
-    document.getElementById("lock-err").textContent = "Password errata";
+  const err = document.getElementById("lock-err");
+  const go = document.getElementById("lock-go");
+  if (!email || !pwd) { err.textContent = "Servono email e password"; return; }
+  go.disabled = true; go.textContent = "Entro…"; err.textContent = "";
+  const { error } = await supa().auth.signInWithPassword({ email, password: pwd });
+  if (error) {
+    err.textContent = (error.status === 400 || error.status === 401)
+      ? "Email o password sbagliate"
+      : "Non riesco a entrare: " + error.message;
+    go.disabled = false; go.textContent = "Accedi";
     document.getElementById("lock-pwd").value = "";
     document.getElementById("lock-pwd").focus();
+    return;
   }
+  entrato = true;
+  initApp();
 }
-let supaClient = null;
 let realtimeChannel = null;
 function initRealtime() {
-  if (!useSupabase() || !window.supabase || supaClient) return;
+  if (!useSupabase() || !window.supabase || realtimeChannel) return;
   try {
-    supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    realtimeChannel = supaClient
+    realtimeChannel = supa()
       .channel('pappa-changes')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'pappa_tracker_data', filter: 'id=eq.main' },
@@ -2842,11 +2885,27 @@ function initApp() {
   window.addEventListener('focus', onAppFocus);
 }
 // ─── INIT ───
-if (isAuthenticated()) {
-  initApp();
-} else {
+// La sessione la ritrova supabase-js dal deposito del browser: si entra una volta per
+// dispositivo, non una volta al giorno.
+(async () => {
+  if (!window.supabase) {
+    document.getElementById("app").innerHTML = `<div class="lock-screen">
+      <div class="lock-icon">🍼</div>
+      <div class="lock-title">Pappa Tracker</div>
+      <div class="lock-error">Non riesco a caricare la libreria di Supabase. Controlla la rete e riapri l'app.</div>
+    </div>`;
+    return;
+  }
+  // Se la sessione finisce mentre l'app è aperta, torna la schermata d'accesso.
+  supa().auth.onAuthStateChange((evento, sessione) => {
+    if (!sessione && entrato) showLockScreen();
+  });
+  try {
+    const { data } = await supa().auth.getSession();
+    if (data && data.session) { entrato = true; initApp(); return; }
+  } catch (e) { console.error("Auth init error:", e); }
   showLockScreen();
-}
+})();
 </script>
 </body>
 </html>

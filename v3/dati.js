@@ -11,8 +11,9 @@
 //                                   feeds[], diapers[], therapies{} }
 // La v3 non mostra feeds, diapers e therapies, ma la fusione non li perde.
 
-const URL_SUPABASE = 'https://ukcwajbbybkobaroyqiq.supabase.co';
-const CHIAVE_SUPABASE = 'sb_publishable_jicoWcdW87NzVXFQTx3fxA_dJOv_dVe';
+import { URL_SUPABASE, CHIAVE_SUPABASE } from './supabase.js';
+import { token } from './accesso.js';
+
 const TABELLA = 'pappa_tracker_data';
 
 export const stato = { data: {}, sync: 'fermo' };
@@ -332,8 +333,14 @@ export function salvaLocale() {
 
 // ─── Supabase ───
 
-function intestazioni() {
-  return { apikey: CHIAVE_SUPABASE, Authorization: `Bearer ${CHIAVE_SUPABASE}` };
+// La chiave publishable sta in `apikey`, che dice a Supabase di quale progetto si
+// tratta. In `Authorization` va il token dell'utente che è entrato: è quello che le
+// policy guardano. Prima qui c'era la chiave anche in Authorization, e funzionava
+// perché il ruolo anonimo aveva i privilegi; chiusi quelli, resterebbe un 401.
+async function intestazioni() {
+  const t = await token();
+  if (!t) throw new Error('nessuna sessione: serve entrare di nuovo');
+  return { apikey: CHIAVE_SUPABASE, Authorization: `Bearer ${t}` };
 }
 
 function rete(opzioni) {
@@ -345,7 +352,7 @@ function rete(opzioni) {
 /** Legge una riga. Torna il suo `data`, oppure null se la riga non c'è. Lancia se la rete non risponde. */
 async function leggiRiga(chiamata, id) {
   const r = await chiamata(`${URL_SUPABASE}/rest/v1/${TABELLA}?id=eq.${id}&select=data`, {
-    headers: intestazioni(),
+    headers: await intestazioni(),
   });
   if (!r || r.ok === false) throw new Error(`risposta ${r && r.status} leggendo la riga ${id}`);
   const righe = await r.json();
@@ -361,7 +368,7 @@ async function scriviRigaV3(chiamata, data) {
   const r = await chiamata(`${URL_SUPABASE}/rest/v1/${TABELLA}`, {
     method: 'POST',
     headers: {
-      ...intestazioni(),
+      ...(await intestazioni()),
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates,return=minimal',
     },

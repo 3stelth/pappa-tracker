@@ -20,6 +20,7 @@ import {
   provaSenzaScritture,
   avvia,
 } from '../dati.js';
+import { sessioneDiProva } from '../accesso.js';
 
 export const nome = 'dati';
 
@@ -57,9 +58,13 @@ async function senzaMondo(f) {
     value: deposito, configurable: true, writable: true,
   });
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
+  // Le intestazioni di dati.js vogliono il token di chi è entrato. Qui lo diamo finto:
+  // senza, ogni lettura e ogni scrittura si fermerebbe prima di arrivare alla fetch.
+  sessioneDiProva('token-di-prova');
   try {
     return await f({ fetchChiamato: () => fetchChiamato, tocchiDeposito: () => tocchi });
   } finally {
+    sessioneDiProva(null);
     console.log = vecchiaConsole.log;
     console.warn = vecchiaConsole.warn;
     console.error = vecchiaConsole.error;
