@@ -32,6 +32,16 @@ export const TIPI = {
 const TUTTI = 'Tutti e due';
 const ORDINE_TIPI = ['peso', 'lunghezza', 'temperatura'];
 
+// L'icona del titolo di ogni gruppo, nello stesso stile degli altri SVG dell'app:
+// 24×24, solo contorno. Le emoji di TIPI restano ai pulsanti della tendina.
+export const ICONE = {
+  peso: '<rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"/>' +
+    '<path d="M8 14a4 4 0 0 1 8 0"/><path d="M12 14 10.2 10.6"/>',
+  lunghezza: '<path d="M3 15.5 15.5 3 21 8.5 8.5 21z"/>' +
+    '<path d="M6 12.5 8 14.5"/><path d="M9.5 9 11.5 11"/><path d="M13 5.5 15 7.5"/>',
+  temperatura: '<path d="M14 13.6V5a2 2 0 0 0-4 0v8.6a4 4 0 1 0 4 0z"/><path d="M12 9v5"/>',
+};
+
 // Quante cifre decimali si scrivono almeno: 8,29 kg, 70 cm, 37,0 °C.
 const DECIMALI_MINIMI = { peso: 2, lunghezza: 0, temperatura: 1 };
 
@@ -42,10 +52,27 @@ const GIRO_MS = 120;
 const GIRI_LENTI = 8;
 const FATTORE = 5;
 
-// Nell'elenco restano le ultime misure di ogni tipo, così molte temperature non spingono fuori le pesate.
-const RIGHE_PER_TIPO = 12;
+// Da qui in su la temperatura si scrive in arancione. Soglia scelta da Andrea.
+export const FEBBRE = 37.5;
+
+// I quattro tasti del periodo, gli stessi di Crescita, con i giorni che coprono.
+const PERIODI = [['1m', '1 mese'], ['3m', '3 mesi'], ['6m', '6 mesi'], ['tutto', 'Tutto']];
+const GIORNI_PERIODO = { '1m': 30, '3m': 91, '6m': 183 };
+
+const GIORNO_MS = 86400000;
 
 // ── funzioni pure ──────────────────────────────────────────────────────────
+
+function aMs(iso) { return Date.parse(iso + 'T00:00:00Z'); }
+
+/** Quanti giorni separano due date. Conta in UTC: l'ora legale non toglie un giorno. */
+function giorniFra(isoDa, isoA) {
+  return Math.round((aMs(isoA) - aMs(isoDa)) / GIORNO_MS);
+}
+
+function isoMeno(iso, giorni) {
+  return new Date(aMs(iso) - giorni * GIORNO_MS).toISOString().slice(0, 10);
+}
 
 function arrotonda(tipo, valore) {
   const f = 10 ** TIPI[tipo].decimali;
@@ -125,6 +152,78 @@ export function ultimePerTipo(quante) {
 }
 
 /**
+ * Le misure di un tipo, messe in righe affiancate: una colonna per bambino, nello
+ * stesso ordine di BAMBINI. Così il nome e la data non si ripetono a ogni riga.
+ * La riga è il giorno per peso e lunghezza, il giorno più l'ora per la temperatura:
+ * di temperature ce ne sono tante in un giorno. Se la cella è già occupata, la misura
+ * apre una riga in più invece di sparire.
+ *
+ * Ogni riga porta anche `giorni`, i giorni che la separano dalla riga sotto, e
+ * `delta`, una differenza per colonna.
+ *
+ * La differenza si scrive solo se la misura prima di quel bambino sta nella riga
+ * sotto. Se la sua misura prima è più lontana, `giorni` non è il suo intervallo e il
+ * numero mentirebbe: lì `delta` resta null. Capita quando i due sono stati pesati in
+ * giorni diversi.
+ *
+ * Giorni e differenze si contano sulla lista intera, prima del taglio: se no la riga
+ * più vecchia di un periodo perderebbe il confronto con la misura di prima.
+ */
+export function righeAffiancate(tipo, quante) {
+  const righe = [];
+  for (const m of tutteLeMisure()) {
+    if (m.tipo !== tipo) continue;
+    const chiave = tipo === 'temperatura' ? m.iso + ' ' + m.ora : m.iso;
+    const colonna = BAMBINI.indexOf(m.bambino);
+    let riga = righe.find((r) => r.chiave === chiave && !r.celle[colonna]);
+    if (!riga) {
+      riga = { chiave, iso: m.iso, ora: m.ora, celle: BAMBINI.map(() => null) };
+      righe.push(riga);
+    }
+    riga.celle[colonna] = m;
+  }
+  righe.forEach((r, i) => {
+    const sotto = righe[i + 1];
+    r.giorni = sotto ? giorniFra(sotto.iso, r.iso) : null;
+    r.delta = r.celle.map((m, colonna) => {
+      const prima = sotto ? sotto.celle[colonna] : null;
+      return m && prima ? m.valore - prima.valore : null;
+    });
+  });
+  return righe.slice(0, quante);
+}
+
+/** Le righe che stanno nel periodo scelto, contato dalla riga più recente. */
+export function dentroPeriodo(righe, periodo) {
+  const quanti = GIORNI_PERIODO[periodo];
+  if (!quanti || !righe.length) return righe;
+  const limite = isoMeno(righe[0].iso, quanti);
+  return righe.filter((r) => r.iso >= limite);
+}
+
+/**
+ * Le temperature a giorni, dal più recente: per ogni giorno il massimo di ogni
+ * bambino, il conto di tutte le misure e le letture ora per ora.
+ */
+export function giorniTemperatura() {
+  const giorni = [];
+  for (const r of righeAffiancate('temperatura')) {
+    let g = giorni.find((x) => x.iso === r.iso);
+    if (!g) {
+      g = { iso: r.iso, quante: 0, massimi: BAMBINI.map(() => null), letture: [] };
+      giorni.push(g);
+    }
+    g.letture.push(r);
+    r.celle.forEach((m, colonna) => {
+      if (!m) return;
+      g.quante += 1;
+      if (g.massimi[colonna] === null || m.valore > g.massimi[colonna]) g.massimi[colonna] = m.valore;
+    });
+  }
+  return giorni;
+}
+
+/**
  * Le misure che un nuovo salvataggio sostituirebbe. Peso e lunghezza sono una per
  * bambino e per giorno: scriverne una nuova cancella la vecchia. Le temperature sono
  * una lista, si aggiungono e non sostituiscono mai niente.
@@ -157,7 +256,7 @@ export function testoSalvato(tipo, valore, bambini, iso, sostituite) {
 }
 
 /** Il valore scritto per lo schermo: virgola decimale, zeri inutili tolti. */
-function testoValore(tipo, valore) {
+export function testoValore(tipo, valore) {
   const n = Number(valore);
   if (!Number.isFinite(n)) return '—';
   const [intera, dec = ''] = n.toFixed(TIPI[tipo].decimali).split('.');
@@ -166,23 +265,41 @@ function testoValore(tipo, valore) {
   return d ? intera + ',' + d : intera;
 }
 
+/**
+ * La differenza dalla misura prima: grammi interi per il peso, l'unita' del tipo per
+ * gli altri. `=` se non è cambiata, stringa vuota se non si può scrivere.
+ */
+export function testoDelta(tipo, delta) {
+  if (delta === null || delta === undefined) return '';
+  if (tipo === 'peso') {
+    const g = Math.round(delta * 1000);
+    return g === 0 ? '=' : (g > 0 ? '+' : '−') + Math.abs(g);
+  }
+  const v = arrotonda(tipo, delta);
+  return v === 0 ? '=' : (v > 0 ? '+' : '−') + testoValore(tipo, Math.abs(v));
+}
+
 function esc(testo) {
   return String(testo).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
   );
 }
 
-/** HTML di una riga dell'elenco. I dati per riaprirla stanno negli attributi data-. */
-export function rigaMisura(m) {
-  const t = TIPI[m.tipo];
+/**
+ * HTML di una cella dell'elenco. I dati per riaprirla stanno negli attributi data-.
+ * Senza misura resta un trattino, che non si tocca: non ha gli attributi data-.
+ * `dentro` aggiunge HTML dopo il valore (la differenza); `classi` e `attributi`
+ * servono alle letture del giorno aperto, nella temperatura.
+ */
+export function cellaMisura(m, { dentro = '', classi = '', attributi = '' } = {}) {
+  const piu = classi ? ' ' + classi : '';
+  if (!m) return '<div class="mcel vuota' + piu + '"' + attributi + '>—</div>';
   return (
-    '<div class="wrow" data-bambino="' + esc(m.bambino) + '" data-tipo="' + esc(m.tipo) +
-    '" data-iso="' + esc(m.iso) + '" data-id="' + esc(m.id || '') + '">' +
-    // La pastiglia porta il nome corto: «Gabri», «Vitto», non l'iniziale.
-    '<span class="chip ' + (SIGLA[m.bambino] || '') + '">' + esc(CORTO[m.bambino] || m.bambino) + '</span>' +
-    // Il tipo non si ripete nella riga: lo porta il titolo del gruppo.
-    '<span class="d">' + esc(dataCorta(m.iso)) + '</span>' +
-    '<span class="kg">' + testoValore(m.tipo, m.valore) + ' ' + t.unita + '</span>' +
+    '<div class="mcel' + piu + '" data-bambino="' + esc(m.bambino) + '" data-tipo="' + esc(m.tipo) +
+    '" data-iso="' + esc(m.iso) + '" data-id="' + esc(m.id || '') + '"' + attributi + '>' +
+    // Nome, data e tipo non si ripetono nella cella: li portano l'intestazione,
+    // l'etichetta della riga e il titolo del gruppo.
+    testoValore(m.tipo, m.valore) + '<span class="u">' + TIPI[m.tipo].unita + '</span>' + dentro +
     '</div>'
   );
 }
@@ -443,26 +560,141 @@ function ultimeMisureDi(bambino, tipo) {
 
 let radiceSezione = null;
 
+// L'intestazione delle due colonne: il nome di ogni bambino, una volta sola per gruppo.
+const INTESTAZIONE =
+  '<div class="mlab mtit"></div>' +
+  BAMBINI.map((b) =>
+    '<div class="mcol"><span class="chip ' + SIGLA[b] + '">' + CORTO[b] + '</span></div>'
+  ).join('');
+
+// Il periodo scelto in ogni gruppo di valori, come i quattro tasti di Crescita.
+const periodo = { peso: 'tutto', lunghezza: 'tutto' };
+
+// I giorni di temperatura aperti, per data: riempi() li ridisegna aperti.
+const aperti = new Set();
+
+const FRECCIA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
+/**
+ * La casella della differenza. Si scrive sempre, vuota quando non c'è niente da dire:
+ * se no la colonna dei valori si disallinea. Il verde è solo di chi è cresciuto.
+ */
+function htmlDelta(tipo, delta) {
+  const classe = delta === null ? '' : delta === 0 ? ' pari' : delta > 0 ? ' su' : '';
+  return '<span class="dl' + classe + '">' + testoDelta(tipo, delta) + '</span>';
+}
+
+function meseDi(iso) {
+  const [anno, mese] = iso.split('-');
+  return MESI[Number(mese) - 1] + ' ' + anno;
+}
+
+function htmlPeriodo(tipo) {
+  return '<div class="seg" data-gruppo-di="' + tipo + '">' +
+    PERIODI.map(([chiave, nome]) =>
+      '<b class="' + (periodo[tipo] === chiave ? 'on' : '') + '" data-periodo="' + chiave + '">' + nome + '</b>'
+    ).join('') + '</div>';
+}
+
+/** Peso e lunghezza: una riga per giorno, i giorni dalla riga sotto, i grammi nella cella. */
+function htmlValori(tipo, righe) {
+  let mese = '';
+  const corpo = righe.map((r) => {
+    // La sotto-intestazione del mese dà un appoggio dentro l'elenco lungo.
+    let testa = '';
+    const suo = meseDi(r.iso);
+    if (suo !== mese) { mese = suo; testa = '<div class="mmese">' + esc(suo) + '</div>'; }
+    return testa +
+      '<div class="mlab">' + esc(dataCorta(r.iso)) +
+      (r.giorni === null ? '' : '<span class="q">' + r.giorni + ' gg</span>') + '</div>' +
+      r.celle.map((m, i) => cellaMisura(m, { dentro: htmlDelta(tipo, r.delta[i]) })).join('');
+  }).join('');
+  return '<div class="mtab">' + INTESTAZIONE + corpo + '</div>';
+}
+
+/**
+ * Il numero grande di un giorno di temperatura: il massimo di quel bambino. Non porta
+ * gli attributi data-: il tocco apre il giorno, e la singola misura si cambia dentro.
+ */
+function cellaMassimo(valore, classi, attributi) {
+  if (valore === null) return '<div class="mcel vuota' + classi + '"' + attributi + '>—</div>';
+  return '<div class="mcel' + classi + (valore >= FEBBRE ? ' cal' : '') + '"' + attributi + '>' +
+    testoValore('temperatura', valore) + '<span class="u">' + TIPI.temperatura.unita + '</span></div>';
+}
+
+/** Temperatura: una riga per giorno, che si apre sulle ore. */
+function htmlTemperatura(giorni) {
+  const corpo = giorni.map((g) => {
+    const ap = aperti.has(g.iso);
+    const cl = ap ? ' aperto' : '';
+    const attr = ' data-g="' + g.iso + '"';
+    const attrDet = (ap ? '' : ' hidden') + ' data-det="' + g.iso + '"';
+    const riga =
+      '<div class="mlab' + cl + '"' + attr + '>' + esc(dataCorta(g.iso)) +
+        '<span class="q">' + g.quante + (g.quante === 1 ? ' misura' : ' misure') + '</span></div>' +
+      g.massimi.map((v) => cellaMassimo(v, cl, attr)).join('') +
+      '<div class="tfre' + cl + '"' + attr + '>' + FRECCIA + '</div>';
+    const letture = g.letture.map((r) =>
+      '<div class="det mlab"' + attrDet + '>' + esc(r.ora) + '</div>' +
+      r.celle.map((m) =>
+        cellaMisura(m, { classi: 'det' + (m && m.valore >= FEBBRE ? ' cal' : ''), attributi: attrDet })
+      ).join('') +
+      '<div class="det tfre"' + attrDet + '></div>'
+    ).join('');
+    return riga + letture;
+  }).join('');
+  return '<div class="mtab ttab">' + INTESTAZIONE + '<div class="tfre mtit"></div>' + corpo + '</div>';
+}
+
+/** Un gruppo intero: titolo, i tasti del periodo dove servono, la scheda. */
+function htmlGruppo(tipo) {
+  const titolo = '<div class="sect"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONE[tipo] + '</svg>' +
+    TIPI[tipo].nome + '</div>';
+  const scheda = (dentro) => '<div class="card">' + dentro + '</div>';
+  let corpo;
+  if (tipo === 'temperatura') {
+    const giorni = giorniTemperatura();
+    corpo = giorni.length ? scheda(htmlTemperatura(giorni)) : scheda('<div class="vuoto">Nessuna misura ancora.</div>');
+  } else {
+    // Niente tetto di righe: si vedono tutte le date, e i quattro tasti scelgono quante.
+    const tutte = righeAffiancate(tipo);
+    corpo = tutte.length
+      ? htmlPeriodo(tipo) + scheda(htmlValori(tipo, dentroPeriodo(tutte, periodo[tipo])))
+      : scheda('<div class="vuoto">Nessuna misura ancora.</div>');
+  }
+  return '<div data-gruppo="' + tipo + '">' + titolo + corpo + '</div>';
+}
+
 function riempi() {
-  const misure = ultimePerTipo(RIGHE_PER_TIPO);
-  if (!misure.length) {
+  if (!ORDINE_TIPI.some((tipo) => righeAffiancate(tipo, 1).length)) {
     radiceSezione.innerHTML =
       '<div class="card vuoto">Non c’è ancora nessuna misura.<br>Tocca + in alto per aggiungerne una.</div>';
     return;
   }
   // Un gruppo per tipo, sempre tutti e tre e sempre nello stesso ordine: così il peso
   // non finisce mescolato alle temperature, e si vede subito quale tipo manca.
-  radiceSezione.innerHTML = ORDINE_TIPI.map((tipo) => {
-    const righe = misure.filter((m) => m.tipo === tipo);
-    const corpo = righe.length
-      ? righe.map(rigaMisura).join('')
-      : '<div class="vuoto">Nessuna misura ancora.</div>';
-    return '<div class="sect">' + TIPI[tipo].nome + '</div><div class="card">' + corpo + '</div>';
-  }).join('');
+  radiceSezione.innerHTML = ORDINE_TIPI.map(htmlGruppo).join('');
 }
 
-function riapri(riga) {
-  const { bambino, tipo, iso, id } = riga.dataset;
+function scegliPeriodo(tasto) {
+  const tipo = tasto.parentElement.dataset.gruppoDi;
+  if (!tipo || periodo[tipo] === tasto.dataset.periodo) return;
+  periodo[tipo] = tasto.dataset.periodo;
+  // Si rifà solo questo gruppo: gli altri due non devono sfarfallare.
+  const gruppo = radiceSezione.querySelector('[data-gruppo="' + tipo + '"]');
+  if (gruppo) gruppo.outerHTML = htmlGruppo(tipo);
+}
+
+/** Apre o chiude un giorno di temperatura, sul posto: niente elenco rifatto. */
+function apriChiudi(iso) {
+  const ap = !aperti.has(iso);
+  if (ap) aperti.add(iso); else aperti.delete(iso);
+  for (const el of radiceSezione.querySelectorAll('[data-g="' + iso + '"]')) el.classList.toggle('aperto', ap);
+  for (const el of radiceSezione.querySelectorAll('[data-det="' + iso + '"]')) el.hidden = !ap;
+}
+
+function riapri(cella) {
+  const { bambino, tipo, iso, id } = cella.dataset;
   if (tipo === 'temperatura' && !id) {
     avviso('Questa temperatura viene dal registro vecchio: non si può modificare.');
     return;
@@ -476,19 +708,30 @@ function disegna(contenitore) {
   contenitore.append(radiceSezione);
   riempi();
 
-  // Una riga si apre al rilascio e solo se il dito non si è mosso: sul telefono il
+  // Una cella si apre al rilascio e solo se il dito non si è mosso: sul telefono il
   // primo contatto può essere l'inizio di uno scorrimento dell'elenco.
+  // Il bersaglio è la cella, non la riga: su una riga ci sono due misure. Nella
+  // temperatura invece si tocca la riga del giorno, e si apre sulle ore.
+  // I tasti del periodo rispondono subito, come in Crescita: non aprono niente.
   let giu = null;
   radiceSezione.addEventListener('pointerdown', (e) => {
-    const riga = e.target.closest('.wrow');
-    giu = riga ? { riga, x: e.clientX, y: e.clientY } : null;
+    const tasto = e.target.closest('[data-periodo]');
+    if (tasto) { giu = null; scegliPeriodo(tasto); return; }
+    const cella = e.target.closest('.mcel[data-tipo]');
+    const giorno = cella ? null : e.target.closest('[data-g]');
+    giu = cella || giorno ? { cella, giorno, x: e.clientX, y: e.clientY } : null;
   });
   radiceSezione.addEventListener('pointerup', (e) => {
     const g = giu;
     giu = null;
-    if (!g || e.target.closest('.wrow') !== g.riga) return;
+    if (!g) return;
     if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 10) return;
-    riapri(g.riga);
+    if (g.cella) {
+      if (e.target.closest('.mcel[data-tipo]') === g.cella) riapri(g.cella);
+      return;
+    }
+    const su = e.target.closest('[data-g]');
+    if (su && su.dataset.g === g.giorno.dataset.g) apriChiudi(su.dataset.g);
   });
   radiceSezione.addEventListener('pointercancel', () => { giu = null; });
 }
