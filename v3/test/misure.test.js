@@ -16,7 +16,12 @@ import {
   misureDaSostituire,
   testoSostituzione,
   testoSalvato,
-  rigaMisura,
+  righeAffiancate,
+  cellaMisura,
+  dentroPeriodo,
+  giorniTemperatura,
+  testoDelta,
+  FEBBRE,
 } from '../misure.js';
 
 export const nome = 'misure';
@@ -117,21 +122,48 @@ export const casi = [
     },
   },
   {
-    nome: '9. rigaMisura() scrive il valore con la virgola e l\'unità giusta, senza "undefined"',
+    nome: '9. righeAffiancate mette i due bambini sulla stessa riga e cellaMisura scrive il valore con la virgola',
     prova() {
-      const p = rigaMisura({ bambino: 'Gabriel', tipo: 'peso', iso: '2026-10-25', valore: 8.29, id: '' });
-      const l = rigaMisura({ bambino: 'Vittorio', tipo: 'lunghezza', iso: '2026-10-12', valore: 64, id: '' });
-      const t = rigaMisura({ bambino: 'Gabriel', tipo: 'temperatura', iso: '2026-10-02', valore: 37.1, id: 'abc' });
-      vero(p.includes('8,29') && p.includes('kg'), `riga del peso: ${p}`);
-      vero(l.includes('64') && l.includes('cm'), `riga della lunghezza: ${l}`);
-      vero(t.includes('37,1') && t.includes('°C'), `riga della temperatura: ${t}`);
+      metti({
+        '2026-10-20': { Gabriel: { weight: peso(8.1) } },
+        '2026-10-25': { Gabriel: { weight: peso(8.29) }, Vittorio: { weight: peso(6.45) } },
+      });
+      const r = righeAffiancate('peso', 12);
+      uguali(r.map((x) => x.iso), ['2026-10-25', '2026-10-20'], 'una riga per giorno, dalla più recente');
+      uguale(r[0].celle[0].valore, 8.29, 'Gabriel nella prima colonna');
+      uguale(r[0].celle[1].valore, 6.45, 'Vittorio nella seconda');
+      uguale(r[1].celle[1], null, 'il giorno senza Vittorio lascia la cella vuota');
+
+      // La temperatura divide le righe anche per ora: più misure in un giorno restano distinte.
+      metti({
+        '2026-10-25': {
+          Gabriel: { temperatures: [temp(36.8, '08:00', 'a'), temp(37.4, '20:15', 'b')] },
+          Vittorio: { temperatures: [temp(36.9, '08:00', 'c')] },
+        },
+      });
+      const t = righeAffiancate('temperatura', 12);
+      uguali(t.map((x) => x.ora), ['20:15', '08:00'], 'una riga per ora, dalla più tarda');
+      uguale(t[0].celle[1], null, 'alle 20:15 Vittorio non ha misure');
+      uguale(t[1].celle[0].id, 'a');
+      uguale(t[1].celle[1].id, 'c', 'alla stessa ora i due bambini stanno affiancati');
+
+      // Due misure dello stesso bambino allo stesso momento non devono sparire.
+      metti({ '2026-10-25': { Gabriel: { temperatures: [temp(37, '08:00', 'x'), temp(37.5, '08:00', 'y')] } } });
+      const d = righeAffiancate('temperatura', 12);
+      uguale(d.length, 2, 'la cella già occupata apre una riga in più');
+      uguali(d.map((x) => x.celle[0].id).sort(), ['x', 'y']);
+
+      const p = cellaMisura({ bambino: 'Gabriel', tipo: 'peso', iso: '2026-10-25', valore: 8.29, id: '' });
+      const l = cellaMisura({ bambino: 'Vittorio', tipo: 'lunghezza', iso: '2026-10-12', valore: 64, id: '' });
+      const c = cellaMisura({ bambino: 'Gabriel', tipo: 'temperatura', iso: '2026-10-02', valore: 37.1, id: 'abc' });
+      vero(p.includes('8,29') && p.includes('kg'), `cella del peso: ${p}`);
+      vero(l.includes('64') && l.includes('cm'), `cella della lunghezza: ${l}`);
+      vero(c.includes('37,1') && c.includes('°C'), `cella della temperatura: ${c}`);
       vero(!p.includes('8.29'), 'il punto decimale non deve comparire');
-      vero(p.includes('25 ott') && t.includes('2 ott'), 'la data corta compare');
-      // Il tipo lo porta il titolo del gruppo: nella riga non si ripete.
-      vero(!p.includes('Peso'), `la riga del peso ripete il tipo: ${p}`);
-      vero(!t.includes('Temperatura'), `la riga della temperatura ripete il tipo: ${t}`);
-      for (const riga of [p, l, t]) {
-        vero(!riga.includes('undefined') && !riga.includes('NaN'), `riga sporca: ${riga}`);
+      // Nome e data stanno nell'intestazione e nell'etichetta: nella cella non si ripetono.
+      vero(!p.includes('chip') && !p.includes('25 ott'), `la cella ripete il nome o la data: ${p}`);
+      for (const cella of [p, l, c, cellaMisura(null)]) {
+        vero(!cella.includes('undefined') && !cella.includes('NaN'), `cella sporca: ${cella}`);
       }
     },
   },
@@ -205,6 +237,80 @@ export const casi = [
       const m = ultimePerTipo(2);
       uguali(m.map((x) => x.tipo), ['temperatura', 'temperatura', 'peso']);
       uguali(ultimeMisure(2).map((x) => x.tipo), ['temperatura', 'temperatura'], 'ultimeMisure taglia ancora sul totale');
+    },
+  },
+  {
+    nome: '15. righeAffiancate conta i giorni dalla riga sotto e la differenza dalla misura prima',
+    prova() {
+      metti({
+        '2026-09-29': { Gabriel: { weight: peso(8.035) }, Vittorio: { weight: peso(6.18) } },
+        '2026-10-05': { Gabriel: { weight: peso(8.13) }, Vittorio: { weight: peso(6.23) } },
+        '2026-10-20': { Gabriel: { weight: peso(8.155) }, Vittorio: { weight: peso(6.23) } },
+        '2026-10-25': { Gabriel: { weight: peso(8.29) }, Vittorio: { weight: peso(6.45) } },
+      });
+      const r = righeAffiancate('peso');
+      uguali(r.map((x) => x.giorni), [5, 15, 6, null], 'i giorni fra la riga e quella sotto');
+      uguale(testoDelta('peso', r[0].delta[0]), '+135', 'Gabriel dal 20 al 25 ottobre');
+      uguale(testoDelta('peso', r[0].delta[1]), '+220', 'Vittorio dal 20 al 25 ottobre');
+      uguale(testoDelta('peso', r[1].delta[1]), '=', 'il peso che non cambia');
+      uguale(testoDelta('peso', r[3].delta[0]), '', 'la riga più vecchia non ha niente sotto');
+      uguale(r[3].delta[0], null, 'e la differenza è null, non zero');
+    },
+  },
+  {
+    nome: '16. la differenza non si scrive se la misura prima di quel bambino non è sulla riga sotto',
+    prova() {
+      // I giorni in ospedale: l'11 giugno la pesata prima di Gabriel è il 7, non l'8.
+      // «3 gg» non è il suo intervallo, quindi i grammi non si scrivono.
+      metti({
+        '2026-06-07': { Gabriel: { weight: peso(5.61) } },
+        '2026-06-08': { Vittorio: { weight: peso(4.1) } },
+        '2026-06-11': { Gabriel: { weight: peso(5.67) }, Vittorio: { weight: peso(4.2) } },
+      });
+      const r = righeAffiancate('peso');
+      uguali(r.map((x) => x.iso), ['2026-06-11', '2026-06-08', '2026-06-07']);
+      uguale(r[0].giorni, 3, 'i giorni restano quelli fra le due righe');
+      uguale(r[0].delta[0], null, 'Gabriel non ha la differenza: la sua pesata prima è il 7');
+      uguale(testoDelta('peso', r[0].delta[1]), '+100', 'Vittorio invece sì: la sua pesata prima è l’8');
+      uguale(r[1].delta[1], null, 'l’8 giugno Vittorio non ha niente sotto di suo');
+    },
+  },
+  {
+    nome: '17. dentroPeriodo taglia le righe ma non i conti, già fatti sulla lista intera',
+    prova() {
+      metti({
+        '2026-06-11': { Gabriel: { weight: peso(5.67) } },
+        '2026-10-20': { Gabriel: { weight: peso(8.155) } },
+        '2026-10-25': { Gabriel: { weight: peso(8.29) } },
+      });
+      const tutte = righeAffiancate('peso');
+      const mese = dentroPeriodo(tutte, '1m');
+      uguali(mese.map((x) => x.iso), ['2026-10-25', '2026-10-20'], 'un mese dalla pesata più recente');
+      uguale(testoDelta('peso', mese[1].delta[0]), '+2485', 'la riga tagliata tiene il confronto con giugno');
+      uguale(dentroPeriodo(tutte, 'tutto').length, 3, 'Tutto non taglia niente');
+      uguale(dentroPeriodo([], '1m').length, 0, 'senza righe non si rompe');
+    },
+  },
+  {
+    nome: '18. giorniTemperatura fa una riga per giorno, con il massimo di ogni bambino e il conto',
+    prova() {
+      metti({
+        '2026-06-23': {
+          Gabriel: { temperatures: [temp(38.2, '07:00', 'a'), temp(37.0, '19:00', 'b')] },
+          Vittorio: { temperatures: [temp(37.5, '07:00', 'c')] },
+        },
+        '2026-06-05': { Vittorio: { temperatures: [temp(36.5, '10:00', 'd')] } },
+      });
+      const g = giorniTemperatura();
+      uguali(g.map((x) => x.iso), ['2026-06-23', '2026-06-05'], 'un giorno per riga, dal più recente');
+      uguali(g[0].massimi, [38.2, 37.5], 'il massimo di ogni bambino in quel giorno');
+      uguale(g[0].quante, 3, 'il conto è di tutte le misure del giorno');
+      uguali(g[1].massimi, [null, 36.5], 'il bambino senza misure non ha massimo');
+      uguale(g[1].quante, 1);
+      uguali(g[0].letture.map((r) => r.ora), ['19:00', '07:00'], 'le ore dentro, dalla più tarda');
+      uguale(g[0].letture[1].celle[1].id, 'c', 'alle 07:00 i due stanno affiancati');
+      vero(g[0].massimi[0] >= FEBBRE, 'il 23 giugno Gabriel passa la soglia');
+      vero(g[1].massimi[1] < FEBBRE, 'il 5 giugno no');
     },
   },
 ];

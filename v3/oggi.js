@@ -1,5 +1,5 @@
 // Pappa Tracker v3 — sezione Oggi: le sagome dei due bambini, la barra del tempo,
-// le ultime pesate.
+// le ultime misure.
 //
 // Regole che questo modulo rispetta:
 // - Al caricamento non tocca `document`: le funzioni pure (sagoma, statoAlGiorno, ...)
@@ -12,11 +12,13 @@
 
 import {
   registraSezione, apriInserimentoMisura,
-  BAMBINI, COLORE, SIGLA, CORTO, ABBR,
+  BAMBINI, COLORE, SIGLA, ABBR,
   dataLunga, dataCorta, numero, isoOggi,
 } from './app.js';
 import { pesate, lunghezze, onCambio } from './dati.js';
 import { TERMINE, etaScritta, giorniDa, isoDi } from './crescita.js';
+// L'elenco delle ultime misure è lo stesso di Misure: stesse righe, stessi numeri scritti.
+import { TIPI, ICONE, righeAffiancate, testoValore } from './misure.js';
 
 // ── la sagoma ──────────────────────────────────────────────────────────────
 
@@ -56,10 +58,12 @@ export function sagoma({ colore, colore2, scuro, id }) {
 
 /** La stessa sagoma, grigia, per quando manca la lunghezza. L'opacità la dà il CSS (.fig.vuota). */
 export function sagomaVuota() {
+  // Qui non c'è corpo colorato sotto: il bavaglino sta sulla scheda. `--glass` è il
+  // fondo della scheda, così resta un buco nella sagoma e non una macchia bianca.
   return `<svg viewBox="0 0 120 240" aria-hidden="true">
   <g style="fill:var(--hint)">${CORPO}
   </g>
-  <path d="${FASCIA}" fill="#fff" opacity=".7"/>${FACCIA('var(--sub)')}
+  <path d="${FASCIA}" style="fill:var(--glass)" opacity=".7"/>${FACCIA('var(--sub)')}
   </svg>`;
 }
 
@@ -193,37 +197,35 @@ const MARKUP = `<div class="oggi">
       <input type="range" min="0" max="${PASSI}" step="1" value="${PASSI}" aria-label="Giorno da mostrare">
     </div>
   </div>
-  <div class="sect">Ultime pesate</div>
+  <div class="sect">Ultime misure</div>
   <div class="card ultime"></div>
 </div>`;
 
-function righeUltimePesate(quante) {
-  const righe = [];
-  for (const b of BAMBINI) {
-    const lista = pesate(b);
-    lista.forEach((p, i) => {
-      righe.push({
-        bambino: b, iso: p.iso, kg: p.kg,
-        deltaG: i > 0 ? Math.round((p.kg - lista[i - 1].kg) * 1000) : null,
-      });
-    });
+// Le ultime misure dei due tipi, mezzo schermo per tipo. Sono tre per tipo e non una:
+// l'ultimo peso e la sua differenza si vedono già nei riquadri dei due bambini, sopra.
+const QUANTE_ULTIME = 3;
+const SENZA = { peso: 'Mai pesato.', lunghezza: 'Mai misurata.' };
+
+function htmlColonna(tipo) {
+  const t = TIPI[tipo];
+  // L'unità sta una volta sola, nel titolino: nelle righe i numeri non ci starebbero.
+  const titolo = `<h3><svg viewBox="0 0 24 24" aria-hidden="true">${ICONE[tipo]}</svg>${t.nome} · ${t.unita}</h3>`;
+  const righe = righeAffiancate(tipo, QUANTE_ULTIME);
+  if (!righe.length) {
+    return `<div>${titolo}<div class="niente">${SENZA[tipo]}</div>` +
+      `<div class="agg" role="button" data-agg="${tipo}">Aggiungi</div></div>`;
   }
-  righe.sort((x, y) => {
-    if (x.iso !== y.iso) return x.iso < y.iso ? 1 : -1;
-    return BAMBINI.indexOf(x.bambino) - BAMBINI.indexOf(y.bambino);
-  });
-  return righe.slice(0, quante);
+  // Il pallino colorato prende il posto della pastiglia col nome: di spazio ce n'è meno.
+  const corpo = righe.map((r) => `<div class="ri"><div class="dt">${dataCorta(r.iso)}</div>
+      <div class="vv">${r.celle.map((m, i) => `<span class="pun ${SIGLA[BAMBINI[i]]}"></span>` +
+        (m ? `<span class="n">${testoValore(tipo, m.valore)}</span>`
+           : '<span class="n manca">—</span>')).join('')}</div>
+    </div>`).join('');
+  return `<div>${titolo}${corpo}</div>`;
 }
 
 function htmlUltime() {
-  const righe = righeUltimePesate(6);
-  if (!righe.length) return '<div class="vuoto">Nessuna pesata ancora.</div>';
-  return righe.map((r) => `<div class="wrow">
-      <span class="chip ${SIGLA[r.bambino]}">${CORTO[r.bambino]}</span>
-      <span class="d">${dataCorta(r.iso)}</span>
-      <span class="kg">${numero(r.kg)} kg</span>
-      <span class="dl ${r.deltaG > 0 ? 'su' : ''}">${r.deltaG === null ? '' : r.deltaG === 0 ? '=' : scrittoDelta(r.deltaG)}</span>
-    </div>`).join('');
+  return `<div class="ult2">${htmlColonna('peso')}${htmlColonna('lunghezza')}</div>`;
 }
 
 /** Primo e ultimo giorno con una misura, fra pesi e lunghezze dei due bambini. */
@@ -295,6 +297,22 @@ function disegnaOggi(contenitore) {
   const elTacche = radice.querySelector('.ticks');
   const barra = radice.querySelector('input[type=range]');
   const elUltime = radice.querySelector('.ultime');
+
+  // Dove la misura manca del tutto, «Aggiungi» apre l'inserimento di quel tipo. Si
+  // apre al rilascio e col dito quasi fermo, come la sagoma: la pagina si scorre anche
+  // passando da qui.
+  let giuAgg = null;
+  elUltime.addEventListener('pointerdown', (e) => {
+    const agg = e.target.closest('[data-agg]');
+    giuAgg = agg ? { tipo: agg.dataset.agg, x: e.clientX, y: e.clientY } : null;
+  });
+  elUltime.addEventListener('pointerup', (e) => {
+    const g = giuAgg;
+    giuAgg = null;
+    if (!g || !e.target.closest(`[data-agg="${g.tipo}"]`)) return;
+    if (eUnTocco(g.x, g.y, e.clientX, e.clientY)) apriInserimentoMisura({ tipo: g.tipo });
+  });
+  elUltime.addEventListener('pointercancel', () => { giuAgg = null; });
 
   let t0 = 0;
   let t1 = 0;

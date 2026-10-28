@@ -7,14 +7,75 @@
    (.misure per l'elenco, .ins per la tendina) perché le altre sezioni usano nomi uguali. */
 
 /* ── elenco ── */
-/* Riga di una tabella raggruppata: alta almeno 48px, 16px ai lati. */
-.misure .wrow{position:relative;display:flex;align-items:center;gap:12px;padding:0 16px;min-height:48px;
+/* Il titolo del gruppo porta la sua icona, grigia: il colore resta ai due bambini. */
+.misure .sect{display:flex;align-items:center;gap:7px}
+.misure .sect svg{width:20px;height:20px;flex:none;color:var(--sub);
+  fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* Una tabella per gruppo: l'etichetta a sinistra, una colonna di valori per bambino.
+   Le tre colonne sono larghe uguali e non hanno spazio fra loro, se no il filo di
+   separazione fra le righe si spezzerebbe. */
+/* La colonna della data prende quello che le serve e non una goccia di più; le due
+   colonne dei valori si dividono il resto. Con tre `1fr` la data andava a capo. */
+.misure .mtab{display:grid;grid-template-columns:max-content minmax(0,1fr) minmax(0,1fr)}
+.misure .mlab,.misure .mcol,.misure .mcel{min-height:44px;display:flex;align-items:center;padding:7px 7px}
+.misure .mcol,.misure .mcel{justify-content:flex-end}
+.misure .mlab{padding-left:16px;gap:6px;font-size:17px;letter-spacing:-0.2px}
+.misure .mtab > :nth-child(3n){padding-right:16px}
+/* L'intestazione sta sopra il primo filo, quindi i primi tre elementi non ce l'hanno. */
+.misure .mtab > :nth-child(n+4){border-top:0.5px solid var(--hair)}
+/* L'intestazione è più bassa delle righe: porta solo le due pastiglie. */
+.misure .mcol,.misure .mtit{min-height:36px}
+
+/* I quattro tasti del periodo seguono subito il titolo del gruppo. */
+.misure .seg{margin-top:0}
+.misure .seg + .card{margin-top:10px}
+
+/* La sotto-intestazione del mese: un appoggio dentro l'elenco lungo. */
+.misure .mmese{grid-column:1/-1;padding:7px 16px 5px;font-size:13px;font-weight:600;color:var(--sub);
+  background:var(--glass-2);border-top:0.5px solid var(--hair)}
+
+/* I giorni dalla riga sotto, accanto alla data. Nella temperatura è il conto delle misure. */
+.misure .mlab .q{font-size:12px;color:var(--hint);font-variant-numeric:tabular-nums}
+.misure .mlab{white-space:nowrap}
+
+/* La differenza dalla misura prima. La larghezza minima tiene allineata la colonna
+   anche dove la differenza manca: per questo la casella si scrive sempre, vuota.
+   Il verde è solo di chi è cresciuto: un calo resta grigio e col suo segno meno. */
+.misure .mcel .dl{min-width:34px;text-align:right;font-size:12px;font-weight:500;
+  color:var(--sub);margin-left:5px}
+.misure .mcel .dl.su{color:var(--green)}
+.misure .mcel .dl.pari{color:var(--hint)}
+
+.misure .mcel{gap:3px;font-size:17px;font-weight:600;letter-spacing:-0.2px;font-variant-numeric:tabular-nums;
   cursor:pointer;user-select:none;-webkit-user-select:none;transition:background .12s ease-out}
-/* Il separatore parte dal testo, non dal bordo della scheda: 16px + 52px di pastiglia + 12px di spazio. */
-.misure .wrow + .wrow::before{content:'';position:absolute;top:0;left:80px;right:0;height:0.5px;background:var(--hair)}
-.misure .wrow:active{background:var(--glass-2)}
-.misure .wrow .d{font-size:17px;font-weight:400;letter-spacing:-0.2px;flex:1}
-.misure .wrow .kg{font-size:17px;font-weight:600;letter-spacing:-0.2px;font-variant-numeric:tabular-nums}
+.misure .mcel .u{font-size:13px;font-weight:400;color:var(--sub)}
+.misure .mcel:active{background:var(--glass-2)}
+/* La cella senza misura non si tocca: niente puntatore e niente lampo al tocco. */
+.misure .mcel.vuota{color:var(--hint);font-weight:400;cursor:default}
+.misure .mcel.vuota:active{background:none}
+
+/* ── temperatura a episodi: una riga per giorno, che si apre al tocco ── */
+/* La quarta colonna porta la freccia. Con quattro colonne cambiano l'elemento che
+   chiude la riga e quelli che portano il filo: le regole a tre colonne qui non valgono. */
+.misure .ttab{grid-template-columns:minmax(112px,1.35fr) minmax(0,1fr) minmax(0,1fr) 26px}
+.misure .ttab > :nth-child(3n){padding-right:7px}
+.misure .ttab > :nth-child(n+4){border-top:0}
+.misure .ttab > :nth-child(n+5){border-top:0.5px solid var(--hair)}
+.misure .ttab > .tfre{display:flex;align-items:center;justify-content:center;color:var(--hint);
+  min-height:44px;padding:7px 10px 7px 0}
+.misure .tfre svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease-out}
+.misure .tfre.aperto svg{transform:rotate(180deg)}
+/* Da FEBBRE in su, in misure.js. */
+.misure .mcel.cal{color:var(--amber)}
+/* Le letture del giorno aperto: rientrate e su fondo appena diverso. */
+.misure .det{background:var(--glass-2)}
+.misure .det.mlab{padding-left:28px;font-size:15px;color:var(--sub)}
+.misure .det.mcel{font-size:15px;font-weight:500}
+/* `.mlab` e `.mcel` sono flex: senza questa riga l'attributo hidden non le nasconde. */
+.misure .det[hidden]{display:none}
+
 .misure .card{overflow:hidden}
 /* Il gruppo senza misure sta dentro la scheda: niente margine sopra e meno altezza
    della scheda vuota di tutta la sezione. */
@@ -29,7 +90,7 @@
 .ins .mbtn{flex:1;min-width:0;padding:7px 0 8px;border-radius:7px;text-align:center;cursor:pointer}
 .ins .mbtn .e{font-size:18px;display:block;line-height:1}
 .ins .mbtn .t{font-size:13px;font-weight:500;color:var(--txt);margin-top:4px}
-.ins .mbtn.on{background:#fff;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04)}
+.ins .mbtn.on{background:var(--pillola);box-shadow:var(--pillola-ombra)}
 .ins .mbtn.on .t{font-weight:600}
 
 .ins .stepper{display:flex;align-items:center;gap:12px;justify-content:center;margin:14px 0 10px}
@@ -61,4 +122,4 @@
   color:var(--sub);font-size:17px;font-weight:500;letter-spacing:-0.2px;text-align:center;
   cursor:pointer;transition:transform .09s ease-out}
 .ins .elimina:active{transform:scale(0.98)}
-.ins .elimina.chiede{background:#fff;color:var(--red)}
+.ins .elimina.chiede{background:var(--glass);color:var(--red)}
