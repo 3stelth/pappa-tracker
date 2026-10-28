@@ -7,8 +7,14 @@
 // Le tabelle sono quelle per giorno, mai quelle per mese: l'interpolazione lineare
 // fra i mesi interi sbaglia fino a 0,197 in punteggio z, cioè quasi 90 grammi.
 //
-// Il punteggio z non si tronca mai: l'OMS tronca a ±3 solo in alcuni indicatori
-// ponderali, non in peso per età né in lunghezza per età.
+// Qui il punteggio z non si corregge mai oltre ±3. L'OMS invece la correzione la fa,
+// sul peso per età: oltre ±3 ricalcola z sulla distanza fra la seconda e la terza
+// deviazione standard. Fonte: il pacchetto R ufficiale OMS `anthro`, file
+// `z-score-helper.R`, che il peso per età chiama col calcolo corretto e la lunghezza
+// per età no.
+// Non applicarla è una scelta, non una dimenticanza. Misurato sul registro di
+// ottobre 2026: scarto massimo 0,2014 di z, tutto su Vittorio nei primi mesi, e
+// percentili a schermo diversi 0 su 101. Il percentile mostrato non cambia mai.
 
 export const NASCITA = '2025-12-08'; // due gemelli maschi, a 27 settimane + 4 giorni
 export const TERMINE = '2026-03-05'; // 87 giorni dopo la nascita
