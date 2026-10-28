@@ -2,8 +2,7 @@
    Stile: la grammatica dell'app Salute di Apple, come base.css. Le righe di una
    giornata stanno in una scheda bianca sola, divise da un filo che parte dal
    testo; il colore resta ai pallini della cronologia e alle azioni.
-   Le vx-* sono le classi nate qui. I colori vengono dai token di base.css;
-   l'unica eccezione è il verde tenue del riquadro «in regola», ricavato da --green. */
+   Le vx-* sono le classi nate qui. I colori vengono dai token di base.css. */
 
 /* ── barra di ricerca ── */
 .search{display:flex;align-items:center;gap:8px;padding:9px 12px;margin-top:14px;
@@ -20,7 +19,7 @@
 
 /* ── «tutto in regola»: verde tenue, senza bordo ── */
 .ok-badge{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-top:12px;
-  background:rgba(28,140,60,0.10);border-radius:var(--r-md)}
+  background:var(--ok);border-radius:var(--r-md)}
 .ok-badge .ic{width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;
   display:grid;place-items:center;font-size:15px;flex-shrink:0}
 .ok-badge b{font-size:17px;font-weight:600;letter-spacing:-0.3px;display:block;line-height:1.3}

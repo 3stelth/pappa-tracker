@@ -17,6 +17,19 @@
 <link rel="stylesheet" href="stili/misure.css">
 <link rel="stylesheet" href="stili/pappe.css">
 <link rel="stylesheet" href="stili/vaccini.css">
+<script>
+/* Mette il tema prima del primo disegno. I moduli partono dopo l'analisi della
+   pagina: senza queste righe, chi ha scelto il tema scuro vede un lampo di bianco.
+   Ripete in piccolo quello che fa tema.js, che resta la fonte vera: qui si decide
+   solo acceso o spento, i colori stanno tutti in base.css. */
+try {
+  var scelta = localStorage.getItem('pappatracker_tema_v3') || 'sistema';
+  var scuro = scelta === 'scuro' ||
+    (scelta !== 'chiaro' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.tema = scelta;
+  if (scuro) document.documentElement.dataset.scuro = '1';
+} catch (e) { /* senza localStorage resta il tema chiaro */ }
+</script>
 </head>
 <body>
 
@@ -27,7 +40,9 @@
       <div class="hdr-s" id="sotto"></div>
     </div>
     <div class="hdr-bs">
-      <div class="hdr-b" id="ingranaggio" role="button" tabindex="0" aria-label="Impostazioni"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H2.8a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2.8a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+      <!-- L'icona qui è quella di «come il sistema»: tema.js la cambia all'avvio se
+           la scelta salvata è un'altra. -->
+      <div class="hdr-b" id="tema" role="button" tabindex="0" aria-label="Come il sistema"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 3.8a8.2 8.2 0 0 1 0 16.4z" style="fill:currentColor" stroke="none"/></svg></div>
       <div class="hdr-b pri" id="piu" role="button" tabindex="0" aria-label="Aggiungi" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></div>
     </div>
   </div>
