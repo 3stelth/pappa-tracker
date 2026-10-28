@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pappa Tracker v3 — proposta di stile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ──────────────────────────────────────────────────────────────
+   Proposta: la grammatica dell'app Salute di Apple.
+   Schede bianche piatte su grigio di gruppo, vetro solo sulle barre,
+   tre pesi di carattere soli, colore riservato ai due bambini.
+   ────────────────────────────────────────────────────────────── */
+
+:root{
+  --bg:#F2F2F7;
+  --card:#FFFFFF;
+  --fill:rgba(118,118,128,0.12);
+  --sep:#D8D8DC;
+
+  --lab:#000000;
+  --lab2:rgba(60,60,67,0.60);
+  --lab3:rgba(60,60,67,0.32);
+
+  --g:#007AFF;
+  --v:#00897E;
+  --g-soft:rgba(0,122,255,0.12);
+  --v-soft:rgba(0,137,126,0.12);
+  --up:#1C8C3C;
+
+  --r-card:16px;
+  --r-seg:9px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  background:#1C1C1E;color:#fff;padding:36px 28px 48px;
+  -webkit-font-smoothing:antialiased;
+}
+
+.intro{max-width:860px;margin:0 auto 30px}
+.intro h1{font-size:26px;font-weight:600;letter-spacing:-0.4px}
+.intro p{margin-top:9px;font-size:15px;line-height:1.6;color:rgba(255,255,255,0.62);max-width:64ch}
+.frames{display:flex;flex-direction:column;gap:34px;align-items:center}
+.frame-wrap{width:390px}
+.frame-cap{font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:12px;line-height:1.5}
+.frame-cap b{color:#fff;font-weight:600;display:block;font-size:15px;margin-bottom:3px}
+
+.phone{
+  width:390px;height:844px;border-radius:42px;overflow:hidden;position:relative;
+  background:var(--bg);color:var(--lab);
+  box-shadow:0 26px 70px rgba(0,0,0,0.5);
+}
+.phone.oggi{height:986px;border-radius:30px}
+.phone.lunga{height:1286px;border-radius:30px}
+
+/* ── barra di navigazione: qui il vetro ci sta ── */
+.nav{
+  position:absolute;top:0;left:0;right:0;z-index:5;padding:14px 20px 10px;
+  background:rgba(242,242,247,0.80);
+  backdrop-filter:blur(22px) saturate(180%);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  border-bottom:0.5px solid rgba(60,60,67,0.18);
+}
+.nav-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.nav h2{font-size:34px;font-weight:700;letter-spacing:-0.9px;line-height:1.05}
+.nav .sub{font-size:15px;color:var(--lab2);margin-top:2px}
+.nav-acts{display:flex;gap:12px;align-items:center;padding-bottom:4px}
+.nav-acts .ico{width:30px;height:30px;border-radius:50%;background:var(--fill);display:grid;place-items:center}
+.nav-acts .ico svg{width:17px;height:17px;stroke:var(--lab2);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nav-acts .add{width:30px;height:30px;border-radius:50%;background:var(--g);display:grid;place-items:center}
+.nav-acts .add svg{width:16px;height:16px;stroke:#fff;stroke-width:2.4;stroke-linecap:round}
+
+.body{position:absolute;inset:0;padding:112px 16px 96px;overflow:hidden}
+
+.group-h{display:flex;align-items:baseline;justify-content:space-between;margin:26px 2px 10px}
+.group-h h3{font-size:20px;font-weight:700;letter-spacing:-0.4px}
+.group-h a{font-size:15px;color:var(--g);text-decoration:none}
+
+.card{background:var(--card);border-radius:var(--r-card);padding:16px}
+
+/* ── Oggi ── */
+.twins{display:flex;gap:12px}
+.twin{flex:1;min-width:0;background:var(--card);border-radius:var(--r-card);padding:14px 14px 16px;display:flex;flex-direction:column}
+.twin-name{display:flex;align-items:center;gap:7px;font-size:17px;font-weight:600;letter-spacing:-0.2px}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.twin.g .dot{background:var(--g)}
+.twin.v .dot{background:var(--v)}
+
+.stage{height:156px;margin:10px 0 2px;display:grid;place-items:end center}
+.empty{text-align:center;margin-top:8px}
+.empty .t{font-size:13px;color:var(--lab2);line-height:1.4}
+.empty .a{font-size:15px;color:var(--g);margin-top:3px;display:inline-block}
+
+.kg{margin-top:12px;padding-top:12px;border-top:0.5px solid var(--sep)}
+.kg .n{font-size:38px;font-weight:600;letter-spacing:-1.4px;line-height:1;font-variant-numeric:tabular-nums}
+.kg .n span{font-size:17px;font-weight:400;color:var(--lab2);letter-spacing:0;margin-left:3px}
+.kg .d{font-size:15px;font-weight:500;color:var(--up);margin-top:6px;font-variant-numeric:tabular-nums}
+.kg .w{font-size:13px;color:var(--lab3);margin-top:2px}
+
+.time{margin-top:12px}
+.time-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.time-top .d{font-size:17px;font-weight:600;letter-spacing:-0.3px}
+.time-top .a{font-size:15px;color:var(--lab2)}
+.track{position:relative;height:44px;margin-top:10px}
+.ticks{position:absolute;left:14px;right:14px;bottom:0;height:18px}
+.ticks i{position:absolute;bottom:14px;width:1px;height:5px;background:var(--lab3);margin-left:-0.5px}
+.ticks b{position:absolute;bottom:0;transform:translateX(-50%);font-size:11px;font-weight:400;color:var(--lab3)}
+.rail{position:absolute;top:6px;left:0;right:0;height:5px;border-radius:3px;background:var(--fill)}
+.rail i{position:absolute;top:0;bottom:0;left:0;width:96%;border-radius:3px;background:var(--g)}
+.knob{position:absolute;top:-6px;left:calc(96% - 14px);width:28px;height:28px;border-radius:50%;background:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,0.18),0 0 0 0.5px rgba(0,0,0,0.05)}
+
+/* ── elenco delle pesate ── */
+.list{background:var(--card);border-radius:var(--r-card);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:48px;position:relative}
+.row+.row::before{content:'';position:absolute;top:0;left:80px;right:0;height:0.5px;background:var(--sep)}
+.badge{font-style:normal;min-width:52px;height:24px;border-radius:12px;display:grid;place-items:center;padding:0 8px;
+  font-size:12px;font-weight:600;flex-shrink:0;letter-spacing:-0.1px}
+.badge.g{background:var(--g-soft);color:var(--g)}
+.badge.v{background:var(--v-soft);color:var(--v)}
+.row .date{font-size:17px;flex:1;letter-spacing:-0.2px}
+.row .val{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-0.2px}
+.row .delta{font-size:15px;color:var(--lab2);width:60px;text-align:right;font-variant-numeric:tabular-nums}
+.row .delta.up{color:var(--up)}
+
+/* ── controlli segmentati ── */
+.seg{display:flex;gap:2px;padding:2px;background:var(--fill);border-radius:var(--r-seg);margin-top:10px}
+.seg b{flex:1;text-align:center;padding:7px 0;border-radius:7px;font-size:13px;font-weight:500;color:var(--lab)}
+.seg b.on{background:#fff;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04)}
+.seg-val{text-align:center;font-size:17px;font-weight:600;letter-spacing:-0.3px;margin-top:8px}
+
+/* ── grafico ── */
+.chart{margin-top:12px;padding:14px 12px 12px}
+.chart svg{display:block;width:100%;height:186px;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:7px 16px;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--sep)}
+.legend span{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--lab2)}
+.legend i{font-style:normal;width:18px;height:3px;border-radius:2px;flex-shrink:0}
+.legend i.band{height:12px;width:18px;border-radius:3px;background:rgba(0,122,255,0.10);border:1px solid rgba(0,122,255,0.16)}
+.legend i.med{background:none;border-top:2px dashed rgba(60,60,67,0.45);height:0}
+
+/* ── nota di lettura ── */
+.howto{margin-top:12px;padding:15px 16px}
+.howto h4{font-size:17px;font-weight:600;letter-spacing:-0.3px}
+.howto ul{list-style:none;margin-top:10px}
+.howto li{position:relative;padding-left:18px;font-size:15px;line-height:1.45;color:var(--lab2);margin-top:7px}
+.howto li::before{content:'';position:absolute;left:3px;top:9px;width:5px;height:5px;border-radius:50%;background:var(--lab3)}
+.howto li b{color:var(--lab);font-weight:600}
+
+/* ── percentili ── */
+.pcts{display:flex;gap:12px;margin-top:12px}
+.pct{flex:1;background:var(--card);border-radius:var(--r-card);padding:14px}
+.pct .who{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;letter-spacing:-0.2px}
+.pct .p{font-size:40px;font-weight:600;letter-spacing:-1.6px;line-height:1.1;margin-top:8px;font-variant-numeric:tabular-nums}
+.pct.g .p{color:var(--g)}
+.pct.v .p{color:var(--v)}
+.pct .z{font-size:13px;color:var(--lab2);font-variant-numeric:tabular-nums;margin-top:2px}
+.pct .m{font-size:13px;color:var(--lab2);margin-top:8px;line-height:1.45;font-variant-numeric:tabular-nums}
+.pct .f{font-size:12px;color:var(--lab3);margin-top:4px;line-height:1.45}
+
+.footnote{font-size:13px;color:var(--lab2);line-height:1.5;margin:12px 6px 0}
+
+/* ── barra delle sezioni ── */
+.tabs{
+  position:absolute;left:0;right:0;bottom:0;z-index:5;display:flex;padding:8px 6px 22px;
+  background:rgba(242,242,247,0.82);
+  backdrop-filter:blur(22px) saturate(180%);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  border-top:0.5px solid rgba(60,60,67,0.18);
+}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--lab3)}
+.tab svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab b{font-size:10px;font-weight:500}
+.tab.on{color:var(--g)}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Pappa Tracker v3 — proposta di stile</h1>
+  <p>Stessa struttura, stesse parole, stessi numeri. Cambiano tipografia, superfici e spaziature:
+     schede bianche piatte su grigio, tre pesi di carattere soli, vetro solo sulle due barre,
+     colore riservato ai due bambini. Il grafico qui è ridisegnato a mano: mostra lo stile,
+     non i dati veri.</p>
+</div>
+
+<div class="frames">
+
+  <!-- ══════════════ 1 · OGGI ══════════════ -->
+  <div class="frame-wrap">
+    <div class="frame-cap"><b>Oggi</b>Titolo grande, schede alleggerite, pesate come tabella iOS.</div>
+    <div class="phone oggi">
+      <div class="nav">
+        <div class="nav-row">
+          <div>
+            <h2>Oggi</h2>
+            <div class="sub">Martedì 27 ottobre</div>
+          </div>
+          <div class="nav-acts">
+            <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H2.8a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2.8a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+            <div class="add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="twins">
+          <div class="twin g">
+            <div class="twin-name"><i class="dot"></i>Gabri</div>
+            <div class="stage">
+              <svg width="86" height="150" viewBox="0 0 120 240" aria-hidden="true">
+                <g fill="#DCDCE1">
+                  <path d="M58 4c7-3 14 1 15 8 1 5-2 9-6 11-3-7-6-13-9-19z"/>
+                  <ellipse cx="17" cy="56" rx="8" ry="10"/><ellipse cx="103" cy="56" rx="8" ry="10"/>
+                  <ellipse cx="60" cy="52" rx="42" ry="44"/>
+                  <path d="M60 92c-21 0-29 9-31 24l-4 32c-2 15 11 24 35 24s37-9 35-24l-4-32c-2-15-10-24-31-24z"/>
+                  <rect x="2" y="100" width="24" height="64" rx="12" transform="rotate(11 14 100)"/>
+                  <rect x="94" y="100" width="24" height="64" rx="12" transform="rotate(-11 106 100)"/>
+                  <rect x="34" y="162" width="25" height="60" rx="12.5"/>
+                  <rect x="61" y="162" width="25" height="60" rx="12.5"/>
+                  <ellipse cx="44" cy="226" rx="17" ry="12"/><ellipse cx="76" cy="226" rx="17" ry="12"/>
+                </g>
+                <path d="M29 150h62l-2 14c-1 12-11 20-29 20s-28-8-29-20z" fill="#fff" opacity=".75"/>
+                <ellipse cx="45" cy="52" rx="5" ry="6.5" fill="rgba(60,60,67,0.42)"/>
+                <ellipse cx="75" cy="52" rx="5" ry="6.5" fill="rgba(60,60,67,0.42)"/>
+                <path d="M51 68q9 7 18 0" fill="none" stroke="rgba(60,60,67,0.34)" stroke-width="3.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="empty">
+              <div class="t">Manca la lunghezza</div>
+              <div class="a">Aggiungi</div>
+            </div>
+            <div class="kg">
+              <div class="n">8,29<span>kg</span></div>
+              <div class="d">+135 g dal 20 ott</div>
+              <div class="w">Pesato il 25 ottobre</div>
+            </div>
+          </div>
+          <div class="twin v">
+            <div class="twin-name"><i class="dot"></i>Vitto</div>
+            <div class="stage">
+              <svg width="86" height="150" viewBox="0 0 120 240" aria-hidden="true">
+                <g fill="#DCDCE1">
+                  <path d="M58 4c7-3 14 1 15 8 1 5-2 9-6 11-3-7-6-13-9-19z"/>
+                  <ellipse cx="17" cy="56" rx="8" ry="10"/><ellipse cx="103" cy="56" rx="8" ry="10"/>
+                  <ellipse cx="60" cy="52" rx="42" ry="44"/>
+                  <path d="M60 92c-21 0-29 9-31 24l-4 32c-2 15 11 24 35 24s37-9 35-24l-4-32c-2-15-10-24-31-24z"/>
+                  <rect x="2" y="100" width="24" height="64" rx="12" transform="rotate(11 14 100)"/>
+                  <rect x="94" y="100" width="24" height="64" rx="12" transform="rotate(-11 106 100)"/>
+                  <rect x="34" y="162" width="25" height="60" rx="12.5"/>
+                  <rect x="61" y="162" width="25" height="60" rx="12.5"/>
+                  <ellipse cx="44" cy="226" rx="17" ry="12"/><ellipse cx="76" cy="226" rx="17" ry="12"/>
+                </g>
+                <path d="M29 150h62l-2 14c-1 12-11 20-29 20s-28-8-29-20z" fill="#fff" opacity=".75"/>
+                <ellipse cx="45" cy="52" rx="5" ry="6.5" fill="rgba(60,60,67,0.42)"/>
+                <ellipse cx="75" cy="52" rx="5" ry="6.5" fill="rgba(60,60,67,0.42)"/>
+                <path d="M51 68q9 7 18 0" fill="none" stroke="rgba(60,60,67,0.34)" stroke-width="3.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="empty">
+              <div class="t">Manca la lunghezza</div>
+              <div class="a">Aggiungi</div>
+            </div>
+            <div class="kg">
+              <div class="n">6,45<span>kg</span></div>
+              <div class="d">+220 g dal 20 ott</div>
+              <div class="w">Pesato il 25 ottobre</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card time">
+          <div class="time-top">
+            <div class="d">25 ottobre 2026</div>
+            <div class="a">Corretta 7 mesi e 20 gg</div>
+          </div>
+          <div class="track">
+            <div class="rail"><i></i></div>
+            <div class="knob"></div>
+            <div class="ticks" id="ticks-oggi"></div>
+          </div>
+        </div>
+
+        <div class="group-h">
+          <h3>Ultime pesate</h3>
+          <a href="#">Tutte</a>
+        </div>
+        <div class="list">
+          <div class="row"><i class="badge g">Gabri</i><span class="date">25 ott</span><span class="val">8,29 kg</span><span class="delta up">+135 g</span></div>
+          <div class="row"><i class="badge v">Vitto</i><span class="date">25 ott</span><span class="val">6,45 kg</span><span class="delta up">+220 g</span></div>
+          <div class="row"><i class="badge g">Gabri</i><span class="date">20 ott</span><span class="val">8,155 kg</span><span class="delta up">+25 g</span></div>
+          <div class="row"><i class="badge v">Vitto</i><span class="date">20 ott</span><span class="val">6,23 kg</span><span class="delta">=</span></div>
+          <div class="row"><i class="badge g">Gabri</i><span class="date">5 ott</span><span class="val">8,13 kg</span><span class="delta up">+95 g</span></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg><b>Oggi</b></div>
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4 16l5-6 4 3.5L20 5"/></svg><b>Crescita</b></div>
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M7 7h10"/><path d="M8 17h8"/></svg><b>Misure</b></div>
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M6 4v7a3 3 0 0 0 6 0V4"/><path d="M9 11v9"/><path d="M17 4c-1.2 2-1.7 4-1.7 6.5 0 1.6.6 2.5 1.7 2.5s1.7-.9 1.7-2.5C18.7 8 18.2 6 17 4z"/><path d="M17 13v7"/></svg><b>Pappe</b></div>
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M14.5 3.5 20.5 9.5"/><path d="M17.5 6.5 9 15l-3.5.9.9-3.5 8.5-8.5"/><path d="M4 20l2.5-2.5"/></svg><b>Vaccini</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 2 · CRESCITA ══════════════ -->
+  <div class="frame-wrap">
+    <div class="frame-cap"><b>Crescita</b>Un solo stile di controllo, legenda e nota di lettura sotto il grafico. Qui la pagina è mostrata intera.</div>
+    <div class="phone lunga">
+      <div class="nav">
+        <div class="nav-row">
+          <div>
+            <h2>Crescita</h2>
+            <div class="sub">Curve OMS 2006, maschi</div>
+          </div>
+          <div class="nav-acts">
+            <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H2.8a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2.8a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="seg" style="margin-top:0">
+          <b class="on">Età corretta</b><b>Età anagrafica</b>
+        </div>
+        <div class="seg-val">7 mesi e 22 giorni</div>
+
+        <div class="seg"><b class="on">Peso</b><b>Lunghezza</b></div>
+        <div class="seg"><b>1 mese</b><b>3 mesi</b><b>6 mesi</b><b class="on">Tutto</b></div>
+
+        <div class="card chart">
+          <svg id="grafico" viewBox="0 0 330 236"></svg>
+          <div class="legend">
+            <span><i style="background:#007AFF"></i>Gabri</span>
+            <span><i style="background:#00897E"></i>Vitto</span>
+            <span><i class="med"></i>Metà dei bambini</span>
+            <span><i class="band"></i>Zona normale</span>
+          </div>
+        </div>
+
+        <div class="card howto">
+          <h4>Come si legge</h4>
+          <ul>
+            <li>In basso ci sono i <b>mesi</b> di età corretta. A sinistra i <b>chili</b>.</li>
+            <li>Le due linee colorate sono il peso di Gabri e Vitto, pesata dopo pesata.</li>
+            <li>La <b>fascia azzurra</b> è dove sta quasi ogni bambino nato a termine: dal 3° al 97° percentile.</li>
+            <li>La <b>linea tratteggiata</b> è la metà esatta, il 50° percentile.</li>
+            <li>Una linea sotto la fascia vuol dire peso più basso degli altri. Conta la <b>direzione</b>: se sale parallela alla fascia, il ritmo della crescita è quello giusto.</li>
+          </ul>
+        </div>
+
+        <div class="pcts">
+          <div class="pct g">
+            <div class="who"><i class="dot" style="background:var(--g)"></i>Gabri</div>
+            <div class="p">40°</div>
+            <div class="z">z −0,25</div>
+            <div class="m">8,290 kg il 25 ott</div>
+            <div class="f">Alla prima misura 5°, z −1,61</div>
+          </div>
+          <div class="pct v">
+            <div class="who"><i class="dot" style="background:var(--v)"></i>Vitto</div>
+            <div class="p">&lt;1°</div>
+            <div class="z">z −2,52</div>
+            <div class="m">6,450 kg il 25 ott</div>
+            <div class="f">Alla prima misura &lt;1°, z −3,74</div>
+          </div>
+        </div>
+
+        <p class="footnote">40° vuol dire che su cento bambini nati a termine della stessa età, circa quaranta
+          pesano meno di Gabri. Il percentile è una descrizione statistica, da leggere con il pediatra:
+          non è un voto e non è una diagnosi.</p>
+      </div>
+
+      <div class="tabs">
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg><b>Oggi</b></div>
+        <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4 16l5-6 4 3.5L20 5"/></svg><b>Crescita</b></div>
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M7 7h10"/><path d="M8 17h8"/></svg><b>Misure</b></div>
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M6 4v7a3 3 0 0 0 6 0V4"/><path d="M9 11v9"/><path d="M17 4c-1.2 2-1.7 4-1.7 6.5 0 1.6.6 2.5 1.7 2.5s1.7-.9 1.7-2.5C18.7 8 18.2 6 17 4z"/><path d="M17 13v7"/></svg><b>Pappe</b></div>
+        <div class="tab"><svg viewBox="0 0 24 24"><path d="M14.5 3.5 20.5 9.5"/><path d="M17.5 6.5 9 15l-3.5.9.9-3.5 8.5-8.5"/><path d="M4 20l2.5-2.5"/></svg><b>Vaccini</b></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── tacche dei mesi sulla barra del tempo ──
+(function(){
+  var mesi = ['mar','apr','mag','giu','lug','ago','set','ott'];
+  var box = document.getElementById('ticks-oggi');
+  mesi.forEach(function(m,i){
+    var x = (i/(mesi.length-1))*100;
+    box.insertAdjacentHTML('beforeend',
+      '<i style="left:'+x+'%"></i><b style="left:'+x+'%">'+m+'</b>');
+  });
+})();
+
+// ── grafico di crescita: disegno di prova, non i dati veri ──
+(function(){
+  var W=330,H=236,L=26,R=30,T=10,B=28;
+  function x(m){ return L + (m/10)*(W-L-R); }
+  function y(k){ return (H-B) - ((k-2)/10)*(H-T-B); }
+
+  function punti(v){ return v.map(function(k,i){ return [x(i),y(k)]; }); }
+  function liscia(pts){
+    var d='M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1);
+    for(var i=0;i<pts.length-1;i++){
+      var x0=pts[i][0], y0=pts[i][1], x1=pts[i+1][0], y1=pts[i+1][1];
+      var cx=(x0+x1)/2;
+      d+=' C'+cx.toFixed(1)+','+y0.toFixed(1)+' '+cx.toFixed(1)+','+y1.toFixed(1)+' '+x1.toFixed(1)+','+y1.toFixed(1);
+    }
+    return d;
+  }
+  function banda(alto,basso){
+    var a=punti(alto), b=punti(basso).slice().reverse();
+    return liscia(a)+' L'+b[0][0].toFixed(1)+','+b[0][1].toFixed(1)+' '+liscia(b).replace(/^M[^C]*C/,'C')+' Z';
+  }
+
+  var P97=[4.3,5.7,7.0,7.9,8.6,9.2,9.7,10.2,10.5,10.9,11.2];
+  var P50=[3.3,4.5,5.6,6.4,7.0,7.5,7.9,8.3,8.6,8.9,9.2];
+  var P3 =[2.5,3.4,4.3,5.0,5.6,6.0,6.4,6.7,6.9,7.1,7.4];
+
+  var gab=[2.6,3.3,4.3,5.2,6.1,6.8,7.4,7.9], gabF=[7.7,8.29];
+  var vit=[2.3,2.9,3.6,4.3,4.9,5.4,5.9,6.2], vitF=[7.7,6.45];
+  function curva(v,f){ return punti(v).concat([[x(f[0]),y(f[1])]]); }
+
+  var s='';
+  s+='<path d="'+banda(P97,P3)+'" fill="rgba(0,122,255,0.09)"/>';
+  [2,4,6,8,10,12].forEach(function(k){
+    s+='<line x1="'+L+'" y1="'+y(k).toFixed(1)+'" x2="'+(W-R)+'" y2="'+y(k).toFixed(1)+'" stroke="#E9E9ED" stroke-width="1"/>';
+    s+='<text x="'+(L-7)+'" y="'+(y(k)+3.5).toFixed(1)+'" text-anchor="end" font-size="10" fill="rgba(60,60,67,0.42)">'+k+'</text>';
+  });
+  s+='<path d="'+liscia(punti(P50))+'" fill="none" stroke="rgba(60,60,67,0.45)" stroke-width="1.5" stroke-dasharray="4 4"/>';
+  [['97°',P97[10]],['50°',P50[10]],['3°',P3[10]]].forEach(function(p){
+    s+='<text x="'+(W-R+5)+'" y="'+(y(p[1])+3.5).toFixed(1)+'" font-size="10" fill="rgba(60,60,67,0.42)">'+p[0]+'</text>';
+  });
+  [0,2,4,6,8,10].forEach(function(m){
+    s+='<text x="'+x(m).toFixed(1)+'" y="'+(H-B+16)+'" text-anchor="middle" font-size="10" fill="rgba(60,60,67,0.42)">'+m+'m</text>';
+  });
+  var pg=curva(gab,gabF), pv=curva(vit,vitF);
+  s+='<path d="'+liscia(pg)+'" fill="none" stroke="#007AFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<path d="'+liscia(pv)+'" fill="none" stroke="#00897E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<circle cx="'+x(gabF[0]).toFixed(1)+'" cy="'+y(gabF[1]).toFixed(1)+'" r="5.5" fill="#fff"/><circle cx="'+x(gabF[0]).toFixed(1)+'" cy="'+y(gabF[1]).toFixed(1)+'" r="3.6" fill="#007AFF"/>';
+  s+='<circle cx="'+x(vitF[0]).toFixed(1)+'" cy="'+y(vitF[1]).toFixed(1)+'" r="5.5" fill="#fff"/><circle cx="'+x(vitF[0]).toFixed(1)+'" cy="'+y(vitF[1]).toFixed(1)+'" r="3.6" fill="#00897E"/>';
+
+  document.getElementById('grafico').innerHTML=s;
+})();
+</script>
+</body>
+</html>
