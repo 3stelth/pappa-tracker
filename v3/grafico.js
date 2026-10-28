@@ -36,8 +36,13 @@ const PUNTI_BANDA = 40;
 
 // Riempimenti fra le bande, dal più chiaro fuori al più scuro verso il centro.
 const RIEMPIMENTI = [0.05, 0.09, 0.09, 0.05];
-const COLORE_BANDA = 'rgba(60,60,67,0.45)';
-const COLORE_RIEMPIMENTO = '#007AFF';
+// I colori sono token del CSS: dentro un SVG scritto nella pagina `var(--token)` vale
+// come in un foglio di stile, così il tema scuro li cambia da sé.
+const COLORE_BANDA = 'var(--banda)';
+const COLORE_RIEMPIMENTO = 'var(--g-pri)';
+// Ogni scritta del grafico — kg, mesi, la riga in fondo, il messaggio del grafico
+// vuoto — è testo secondario e sta tutta qui.
+const COLORE_TESTO = 'var(--sub)';
 
 // Passi dell'asse y fra cui scegliere, per misura. Il primo che lascia al massimo
 // sei righe vince: con i kg si arriva a 2, con i cm a 5 o 10.
@@ -196,17 +201,17 @@ export function disegnaGrafico({ misura, serie, giorniDa, giorniA, messaggio }) 
   for (let v = yMin; v <= yMax + 1e-9; v += p) {
     g +=
       `<line x1="${SX}" y1="${n1(Y(v))}" x2="${LARG - DX - 14}" y2="${n1(Y(v))}"` +
-      ` stroke="#E9E9ED"/>`;
+      ` stroke="var(--griglia)"/>`;
     g +=
       `<text class="asse-y" x="${SX - 6}" y="${n1(Y(v) + 3.5)}" text-anchor="end"` +
-      ` font-size="10" font-weight="400" fill="rgba(60,60,67,0.42)">${scrittoY(v, p)}</text>`;
+      ` font-size="10" font-weight="400" fill="${COLORE_TESTO}">${scrittoY(v, p)}</text>`;
   }
 
   // etichette dell'asse x, in mesi
   for (const m of mesiAsse(da, a)) {
     g +=
       `<text class="asse-x" x="${n1(X(m * GIORNI_MESE))}" y="${ALT - GIU + 14}"` +
-      ` text-anchor="middle" font-size="10" font-weight="400" fill="rgba(60,60,67,0.42)">${m}m</text>`;
+      ` text-anchor="middle" font-size="10" font-weight="400" fill="${COLORE_TESTO}">${m}m</text>`;
   }
 
   // le linee dei bambini e il pallino sull'ultima misura
@@ -219,14 +224,17 @@ export function disegnaGrafico({ misura, serie, giorniDa, giorniA, messaggio }) 
         ` stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
     const [gg, v] = l.punti[l.punti.length - 1];
+    // Il pallino è un buco nella linea: dentro si vede la scheda, non il bianco.
+    // `--glass` è il fondo della scheda `.chart`, bianco di giorno e quasi nero di
+    // notte, così l'anello colorato resta un anello in tutti e due i temi.
     g +=
-      `<circle class="punto" cx="${n1(X(gg))}" cy="${n1(Y(v))}" r="4.6" fill="#fff"` +
+      `<circle class="punto" cx="${n1(X(gg))}" cy="${n1(Y(v))}" r="4.6" fill="var(--glass)"` +
       ` stroke="${col}" stroke-width="2.4"/>`;
   }
 
   const u = unita(misura);
   g +=
-    `<text x="${SX}" y="${ALT - 4}" font-size="10" font-weight="400" fill="rgba(60,60,67,0.42)">` +
+    `<text x="${SX}" y="${ALT - 4}" font-size="10" font-weight="400" fill="${COLORE_TESTO}">` +
     `età in mesi${u ? ' · ' + u : ''}</text>`;
 
   return cornice(g);
@@ -257,7 +265,7 @@ function vuoto(testo) {
   const primo = ALT / 2 - ((r.length - 1) * 15) / 2;
   return cornice(
     `<text class="messaggio" x="${LARG / 2}" y="${n1(primo)}" text-anchor="middle"` +
-      ` font-size="15" font-weight="400" fill="rgba(60,60,67,0.60)">` +
+      ` font-size="15" font-weight="400" fill="${COLORE_TESTO}">` +
       r.map((t, i) => `<tspan x="${LARG / 2}" dy="${i ? 15 : 0}">${t}</tspan>`).join('') +
       '</text>'
   );
