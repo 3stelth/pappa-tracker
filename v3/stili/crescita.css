@@ -47,6 +47,13 @@
 .pctbox .chip{display:inline-grid;margin:0}
 .pctbox .p{font-size:40px;font-weight:600;letter-spacing:-1.6px;margin-top:8px;line-height:1.1;
   font-variant-numeric:tabular-nums}
+/* Il posto nelle bande e il movimento, sotto il numero grande. Parole neutre: la
+   fascia nel colore del testo perché è il fatto, la tendenza in grigio perché è il
+   contorno. Il verso lo porta la freccia, non il colore. */
+.pctbox .cr-fascia{font-size:13px;font-weight:500;color:var(--txt);margin-top:5px;
+  line-height:1.35}
+.pctbox .cr-tend{font-size:13px;font-weight:400;color:var(--sub);margin-top:1px;
+  line-height:1.35}
 .pctbox .t{font-size:13px;font-weight:400;color:var(--sub);margin-top:6px;line-height:1.45;
   font-variant-numeric:tabular-nums}
 .cr-fuori{font-size:22px;font-weight:600;color:var(--sub);margin-top:8px;line-height:1.2;

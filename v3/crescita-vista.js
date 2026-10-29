@@ -147,6 +147,68 @@ export function invitoLunghezza(quante) {
   );
 }
 
+// ── dove sta, e da quanto si muove ─────────────────────────────────────────
+
+/**
+ * Il posto nelle bande OMS, detto con parole neutre. Dice dove cade il numero, non se
+ * è un buon numero: la lettura clinica la fa il pediatra, non questa scheda. I bordi
+ * sono quelli che il grafico già disegna, la 3ª e la 97ª centile.
+ *
+ * Dentro le bande non si nominano le due centili: «fra la 3ª e la 97ª centile OMS» va
+ * a capo nella carta, che a schermo stretto è larga 166 px.
+ */
+export function fascia(p) {
+  if (!Number.isFinite(p)) return undefined;
+  if (p < 1) return 'sotto la 1ª centile OMS';
+  if (p < 3) return 'sotto la 3ª centile OMS';
+  if (p > 99) return 'sopra la 99ª centile OMS';
+  if (p > 97) return 'sopra la 97ª centile OMS';
+  return 'dentro le bande OMS';
+}
+
+// Sotto mezzo punto di z il movimento non si scrive. Fra una pesata e l'altra lo scarto
+// normale è di uno o due decimi: chiamarlo tendenza vuol dire leggere il rumore.
+const SOGLIA_TENDENZA = 0.5;
+
+/** «da 5 mesi», «da un mese», «da poche settimane»: mesi interi fra due date. */
+function daQuanto(isoDa, isoA) {
+  const da = new Date(isoDa + 'T00:00:00');
+  const a = new Date(isoA + 'T00:00:00');
+  let mesi = (a.getFullYear() - da.getFullYear()) * 12 + (a.getMonth() - da.getMonth());
+  // Il mese si compie al giorno di partenza: prima di quello è ancora il mese prima.
+  if (a.getDate() < da.getDate()) mesi -= 1;
+  if (mesi < 1) return 'da poche settimane';
+  if (mesi === 1) return 'da un mese';
+  return `da ${mesi} mesi`;
+}
+
+/**
+ * Da quanto il punteggio z si muove, e in che verso. Confronta l'ultimo z con il minimo
+ * e con il massimo di tutto il registro, e racconta il movimento più lungo dei due: in
+ * una serie che sale il minimo sta all'inizio, quindi «risale da» quella data.
+ * Guarda tutto il registro di proposito: due pesate vicine dicono la bilancia, non il
+ * bambino. `serie` sono coppie {iso, z} in ordine di data crescente.
+ */
+export function tendenza(serie) {
+  if (!serie || serie.length < 2) return undefined;
+  const ultimo = serie[serie.length - 1];
+  let giu = serie[0];
+  let su = serie[0];
+  for (const x of serie) {
+    if (x.z < giu.z) giu = x;
+    if (x.z > su.z) su = x;
+  }
+  const salita = ultimo.z - giu.z;
+  const discesa = su.z - ultimo.z;
+  if (salita >= SOGLIA_TENDENZA && salita >= discesa) {
+    return { verso: 'su', testo: `risale ${daQuanto(giu.iso, ultimo.iso)}` };
+  }
+  if (discesa >= SOGLIA_TENDENZA) {
+    return { verso: 'giu', testo: `scende ${daQuanto(su.iso, ultimo.iso)}` };
+  }
+  return { verso: 'fermo', testo: 'stabile' };
+}
+
 /**
  * Che cosa va scritto nella carta di un bambino. Torna dati, non HTML: così si prova
  * senza DOM. `righe` sono quelle di dati.js, in ordine di data crescente.
@@ -177,6 +239,7 @@ export function cartaPercentile({ bambino, righe, misura, eta, tabelle }) {
     quanto,
     percentile: percentileScritto(ora.p),
     z: zScritto(ora.z),
+    fascia: fascia(ora.p),
     // Il numero porta addosso la data da cui è contato. Così non basta un interruttore
     // sbagliato per far leggere un percentile anagrafico come se fosse corretto.
     etaNota: eta === 'corretta' ? undefined : 'contato dall’età anagrafica',
@@ -189,6 +252,14 @@ export function cartaPercentile({ bambino, righe, misura, eta, tabelle }) {
     carta.prima = q
       ? `alla prima misura ${percentileScritto(q.p)}, ${zScritto(q.z)}`
       : 'la prima misura è fuori dalle tabelle OMS';
+    // Le righe fuori dalle tabelle restano fuori anche dalla tendenza: un buco vale
+    // meno di un numero inventato.
+    const serie = [];
+    for (const r of righe) {
+      const p = pctDi(misura, eta, r[k], r.iso);
+      if (p) serie.push({ iso: r.iso, z: p.z });
+    }
+    carta.tendenza = tendenza(serie);
   }
   return carta;
 }
@@ -288,8 +359,15 @@ function cartaHtml(carta) {
   }
   const prima = carta.prima ? `<br>${carta.prima}` : '';
   const quale = carta.etaNota ? `<br>${carta.etaNota}` : '';
+  // La freccia dice il verso senza una parola in più, e non si appoggia al colore.
+  const FRECCIA = { su: '↑', giu: '↓', fermo: '→' };
+  const banda = carta.fascia ? `<div class="cr-fascia">${carta.fascia}</div>` : '';
+  const tend = carta.tendenza
+    ? `<div class="cr-tend">${FRECCIA[carta.tendenza.verso]} ${carta.tendenza.testo}</div>`
+    : '';
   return `<div class="card">${testa}
     <div class="p" style="color:${COLORE[carta.bambino]}">${carta.percentile}</div>
+    ${banda}${tend}
     <div class="t">${carta.z}<br>${carta.quanto}${prima}${quale}</div></div>`;
 }
 

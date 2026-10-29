@@ -16,10 +16,12 @@ import {
   TESTO_ERRORE,
   cartaPercentile,
   deveChiedere,
+  fascia,
   invitoLunghezza,
   markup,
   messaggioDelGrafico,
   partenzaDi,
+  tendenza,
 } from '../crescita-vista.js';
 
 export const nome = 'grafico';
@@ -459,6 +461,109 @@ export const casi = [
         vicino(pTrovato, p, 0.005, `${chi}: percentile`);
         uguale(c.percentileScritto(pTrovato), scritto, `${chi}: percentile scritto`);
       }
+    },
+  },
+  {
+    nome: 'la fascia dice il posto nelle bande OMS, senza giudizi',
+    prova: () => {
+      uguale(fascia(0.588), 'sotto la 1ª centile OMS', 'Vittorio, 25 ottobre');
+      uguale(fascia(40.098), 'dentro le bande OMS', 'Gabriel, 25 ottobre');
+      // I bordi sono la 3ª e la 97ª, le stesse che il grafico disegna.
+      uguale(fascia(2.9), 'sotto la 3ª centile OMS');
+      uguale(fascia(3), 'dentro le bande OMS', 'la 3ª centile sta dentro');
+      uguale(fascia(97), 'dentro le bande OMS', 'la 97ª centile sta dentro');
+      uguale(fascia(97.1), 'sopra la 97ª centile OMS');
+      uguale(fascia(99.4), 'sopra la 99ª centile OMS');
+      uguale(fascia(0.9), 'sotto la 1ª centile OMS');
+      uguale(fascia(1), 'sotto la 3ª centile OMS', 'la 1ª centile non è più «sotto la 1ª»');
+      // Nessuna fascia contiene una parola che dica se il numero è buono o cattivo.
+      for (const p of [0.5, 2, 50, 98, 99.9]) {
+        for (const parola of ['sottopeso', 'grave', 'normale', 'male', 'bene']) {
+          vero(!fascia(p).includes(parola), `la fascia di ${p} non dice «${parola}»`);
+        }
+      }
+      uguale(fascia(NaN), undefined, 'senza percentile nessuna fascia');
+      uguale(fascia(undefined), undefined);
+    },
+  },
+  {
+    nome: 'la tendenza guarda tutto il registro, non le ultime due misure',
+    prova: () => {
+      // Serie che risale dopo un fondo: è il caso vero di Vittorio, fondo a maggio.
+      const risale = [
+        { iso: '2026-03-19', z: -3.74 },
+        { iso: '2026-05-06', z: -4.57 },
+        { iso: '2026-08-09', z: -2.95 },
+        { iso: '2026-10-25', z: -2.52 },
+      ];
+      uguali(tendenza(risale), { verso: 'su', testo: 'risale da 5 mesi' },
+        'conta dal fondo di maggio, non dalla prima misura');
+
+      const scende = risale.map((x) => ({ iso: x.iso, z: -x.z }));
+      uguali(tendenza(scende), { verso: 'giu', testo: 'scende da 5 mesi' },
+        'la serie rovesciata scende dallo stesso punto');
+
+      // Due pesate vicine che ballano di un decimo non sono una tendenza.
+      const rumore = [
+        { iso: '2026-09-01', z: -2.5 },
+        { iso: '2026-09-08', z: -2.4 },
+        { iso: '2026-09-15', z: -2.6 },
+        { iso: '2026-10-25', z: -2.45 },
+      ];
+      uguale(tendenza(rumore).verso, 'fermo', 'sotto mezzo punto di z resta «stabile»');
+      uguale(tendenza(rumore).testo, 'stabile');
+
+      // L'ultima misura è il fondo: scende, anche se prima era risalita.
+      const giuAllaFine = [
+        { iso: '2026-01-10', z: -1.0 },
+        { iso: '2026-04-10', z: 0.2 },
+        { iso: '2026-10-25', z: -1.4 },
+      ];
+      uguale(tendenza(giuAllaFine).verso, 'giu');
+      uguale(tendenza(giuAllaFine).testo, 'scende da 6 mesi', 'conta dal massimo di aprile');
+
+      uguale(tendenza([{ iso: '2026-10-25', z: -2.5 }]), undefined, 'con una misura sola');
+      uguale(tendenza([]), undefined);
+      uguale(tendenza(undefined), undefined);
+    },
+  },
+  {
+    nome: 'la durata della tendenza è in mesi interi, e il mese si compie al suo giorno',
+    prova: () => {
+      const con = (isoFondo, isoUltimo) =>
+        tendenza([
+          { iso: isoFondo, z: -3 },
+          { iso: isoUltimo, z: -1 },
+        ]).testo;
+      uguale(con('2026-05-06', '2026-10-25'), 'risale da 5 mesi');
+      uguale(con('2026-05-06', '2026-06-05'), 'risale da poche settimane', 'un giorno prima');
+      uguale(con('2026-05-06', '2026-06-06'), 'risale da un mese', 'il giorno esatto');
+      uguale(con('2026-10-20', '2026-10-25'), 'risale da poche settimane');
+    },
+  },
+  {
+    nome: 'la carta porta la fascia e la tendenza, e con una misura sola solo la fascia',
+    prova: async () => {
+      await pronte();
+      const comune = { misura: 'peso', eta: 'corretta', tabelle: 'pronte' };
+      const vitto = cartaPercentile({ bambino: 'Vittorio', righe: PESATE.Vittorio, ...comune });
+      uguale(vitto.percentile, '<1°', 'il numero grande non cambia');
+      uguale(vitto.fascia, 'sotto la 1ª centile OMS');
+      uguale(vitto.tendenza.verso, 'su', 'da marzo a ottobre Vittorio risale');
+
+      const gabri = cartaPercentile({ bambino: 'Gabriel', righe: PESATE.Gabriel, ...comune });
+      uguale(gabri.fascia, 'dentro le bande OMS');
+      uguale(gabri.tendenza.verso, 'su');
+
+      // Con una misura sola non c'è nessun movimento da raccontare, ma il posto sì.
+      const sola = cartaPercentile({
+        bambino: 'Vittorio',
+        righe: [PESATE.Vittorio[1]],
+        ...comune,
+      });
+      uguale(sola.fascia, 'sotto la 1ª centile OMS', 'la fascia c è anche con una misura');
+      uguale(sola.tendenza, undefined, 'la tendenza no');
+      uguale(sola.prima, undefined);
     },
   },
 ];
