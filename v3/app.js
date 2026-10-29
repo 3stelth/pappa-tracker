@@ -234,6 +234,22 @@ export function apriInserimentoMisura(opzioni) {
   if (typeof inserimento === 'function') inserimento(opzioni);
 }
 
+// ── ricaricamento al rientro ───────────────────────────────────────────────
+// L'app aggiunta alla schermata Home di iOS resta viva in memoria per giorni: non
+// ricarica mai da sola, e lì non c'è nessun tasto per farlo. Senza queste righe una
+// versione nuova del sito non arriva mai. Il gesto di iOS, tirare giù dall'alto,
+// continua a funzionare: nessun CSS dell'app lo blocca.
+
+// Quattro ore: una notte sta dentro, il giro fra una pappa e l'altra no. Il sito
+// manda `Cache-Control: max-age=600`, quindi dopo quattro ore fuori la ricarica
+// prende i file nuovi davvero, non quelli in cache.
+export const FUORI_PER_RICARICARE = 4 * 60 * 60 * 1000;
+
+/** Se al rientro conviene ricaricare la pagina. `msFuori` sono i millisecondi fuori. */
+export function deveRicaricare(msFuori) {
+  return Number.isFinite(msFuori) && msFuori >= FUORI_PER_RICARICARE;
+}
+
 // ── tocchi: rispondono su pointerdown, non al rilascio ─────────────────────
 
 if (inPagina) {
@@ -252,6 +268,18 @@ elPiu.addEventListener('pointerdown', () => {
 avviaTema(elTema, avviso);
 
 velo.addEventListener('pointerdown', () => chiudiTendina());
+
+// `document.hidden` scatta sia cambiando app sia bloccando lo schermo. Il tempo
+// fuori si conta solo se prima c'è stata un'uscita: al primo evento `uscita` vale
+// zero, e senza questo controllo la differenza sarebbe enorme e ricaricherebbe
+// sempre.
+let uscita = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { uscita = Date.now(); return; }
+  const fuori = uscita ? Date.now() - uscita : 0;
+  uscita = 0;
+  if (deveRicaricare(fuori)) location.reload();
+});
 
 vaA('oggi');
 }
