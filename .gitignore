@@ -1,5 +1,8 @@
 # Strumenti di sviluppo locali (Claude Code: preview server, settings)
 .claude/
+# Stato di claude-flow, rimasto nella cartella principale da luglio 2026. Non e
+# codice del progetto: senza questa riga torna a ogni git status.
+.claude-flow/
 
 # Dati sanitari dei bambini: questo repository e pubblico e GitHub Pages lo serve.
 # v3/dati/vaccini.json e il seme preso dai due certificati ULSS: date, prodotti e
